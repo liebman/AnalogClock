@@ -1,0 +1,11 @@
+.metadata
+.project
+.cproject
+.DS_Store
+.ino.cpp
+.settings
+*/Release
+*/libraries
+*/core
+*.bak
+*-bak
