@@ -22,9 +22,7 @@
 #define CMD_CONTROL     0x03
 #define CMD_STATUS      0x04
 #define CMD_TP_DURATION 0x05
-#define CMD_TP_COUNT    0x06
 #define CMD_AP_DURATION 0x07
-#define CMD_AP_COUNT    0x08
 #define CMD_AP_DELAY    0x09
 
 // control register bits

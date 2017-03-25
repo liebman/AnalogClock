@@ -16,11 +16,8 @@
 
 #define DEBUG_I2CAC     1
 #define DRV8838         1
-#define USE_TIMER       1
 
-#ifdef USE_TIMER
 #define DEBUG_TIMER     1
-#endif
 
 #ifdef __AVR_ATtinyX5__
 #define INT_PIN         1
@@ -51,9 +48,7 @@
 #define CMD_CONTROL     0x03
 #define CMD_STATUS      0x04
 #define CMD_TP_DURATION 0x05
-#define CMD_TP_COUNT    0x06
 #define CMD_AP_DURATION 0x07
-#define CMD_AP_COUNT    0x08
 #define CMD_AP_DELAY    0x09
 
 // control register bits
@@ -82,33 +77,19 @@
 // Timing defaults
 //
 
-#define DEFAULT_TP_DURATION 16000 // pulse duration in us.
-#define DEFAULT_TP_COUNT    2     // pulse duration multiplier
-#define DEFAULT_AP_DURATION 16000 // pulse duration during adjust
-#define DEFAULT_AP_COUNT    2     // pulse duration multiplier during adjust
-#define DEFAULT_AP_DELAY    16    // delay between adjust pulses in ms.
 
-#ifdef USE_TIMER
 #define CLOCK_HZ        16000000
 #define PRESCALE        256
 
-//#define DEFAULT_TP_DURATION 32 // pulse duration in ms.
-//#define DEFAULT_AP_DURATION 32 // pulse duration during adjust
-//#define DEFAULT_AP_DELAY    16 // delay between adjust pulses in ms.
-
-#define DEFAULT_TP_DURATION_MS ((DEFAULT_TP_DURATION*DEFAULT_TP_COUNT)/1000) // pulse duration in ms.
-#define DEFAULT_AP_DURATION_MS ((DEFAULT_AP_DURATION*DEFAULT_AP_COUNT)/1000) // pulse duration during adjust
-#define DEFAULT_AP_DELAY_MS    DEFAULT_AP_DELAY                              // delay between adjust pulses in ms.
+#define DEFAULT_TP_DURATION_MS 32 // pulse duration in ms.
+#define DEFAULT_AP_DURATION_MS 32 // pulse duration during adjust
+#define DEFAULT_AP_DELAY_MS    16 // delay between adjust pulses in ms.
 
 #define ms2Timer(x) ((uint16_t)(CLOCK_HZ /(PRESCALE * (1/((double)x/1000)))))
 
-#define tp_count 0
-#define ap_count 0
 
-#endif
 
-void tickDelay(uint16_t duration, uint16_t count);
-void advanceClock(uint16_t duration, uint16_t count);
+void advanceClock(uint16_t duration);
 void tick();
 
 

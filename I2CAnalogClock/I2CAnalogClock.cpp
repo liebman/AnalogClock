@@ -5,10 +5,6 @@ volatile uint16_t adjustment;   // This is the adjustment to be made.
 volatile uint16_t tp_duration;
 volatile uint16_t ap_duration;
 volatile uint16_t ap_delay;     // delay in ms between ticks during adjustment
-#ifndef USE_TIMER
-volatile uint16_t tp_count;
-volatile uint16_t ap_count;
-#endif
 
 volatile uint8_t control;       // This is our control "register".
 volatile uint8_t status;        // status register
@@ -39,19 +35,9 @@ void i2creceive(int size)
         case CMD_TP_DURATION:
             tp_duration = WireRead() | WireRead() << 8;
             break;
-#ifndef USE_TIMER
-            case CMD_TP_COUNT:
-            tp_count = WireRead() | WireRead() << 8;
-            break;
-#endif
         case CMD_AP_DURATION:
             ap_duration = WireRead() | WireRead() << 8;
             break;
-#ifndef USE_TIMER
-            case CMD_AP_COUNT:
-            ap_count = WireRead() | WireRead() << 8;
-            break;
-#endif
         case CMD_AP_DELAY:
             ap_delay = WireRead() | WireRead() << 8;
             break;
@@ -89,25 +75,11 @@ void i2crequest()
         WireWrite(value & 0xff);
         WireWrite(value >> 8);
         break;
-#ifndef USE_TIMER
-        case CMD_TP_COUNT:
-        value = tp_count;
-        WireWrite(value & 0xff);
-        WireWrite(value >> 8);
-        break;
-#endif
     case CMD_AP_DURATION:
         value = ap_duration;
         WireWrite(value & 0xff);
         WireWrite(value >> 8);
         break;
-#ifndef USE_TIMER
-        case CMD_AP_COUNT:
-        value = ap_count;
-        WireWrite(value & 0xff);
-        WireWrite(value >> 8);
-        break;
-#endif
     case CMD_AP_DELAY:
         value = ap_delay;
         WireWrite(value & 0xff);
@@ -124,7 +96,6 @@ void i2crequest()
     }
 }
 
-#ifdef USE_TIMER
 void (*timer_cb)();
 volatile bool timer_running;
 volatile unsigned int start_time;
@@ -190,8 +161,6 @@ void startTimer(int ms, void (*func)())
     // enable all interrupts
 }
 
-#endif
-
 void startTick()
 {
 #ifdef DRV8838
@@ -213,21 +182,6 @@ void endTick()
 #endif
 }
 
-#ifndef USE_TIMER
-void tickDelay(uint16_t duration, uint16_t count)
-{
-    if (count == 0)
-    {
-        count = 1;
-    }
-
-    for (uint16_t i = 0; i < count; ++i)
-    {
-        delayMicroseconds(duration);
-    }
-}
-#endif
-
 // advance the position
 void advancePosition() {
     position += 1;
@@ -240,20 +194,14 @@ void advancePosition() {
 //
 //  Advance the clock by one second.
 //
-void advanceClock(uint16_t duration, uint16_t count)
+void advanceClock(uint16_t duration)
 {
     advancePosition();
     // placeholder for advance clock - for now just toggle LED
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 
     startTick();
-
-#ifdef USE_TIMER
     startTimer(duration, &endTick);
-#else
-    tickDelay(duration, count);
-    endTick();
-#endif
 }
 
 //
@@ -270,7 +218,7 @@ void tick()
         }
         else
         {
-            advanceClock(tp_duration, tp_count);
+            advanceClock(tp_duration);
         }
     }
 }
@@ -283,17 +231,9 @@ void setup()
     Serial.println("Startup!");
 #endif
 
-#ifdef USE_TIMER
     tp_duration = DEFAULT_TP_DURATION_MS;
     ap_duration = DEFAULT_AP_DURATION_MS;
-    ap_delay = DEFAULT_AP_DELAY_MS;
-#else
-    tp_duration = DEFAULT_TP_DURATION;
-    tp_count = DEFAULT_TP_COUNT;
-    ap_duration = DEFAULT_AP_DURATION;
-    ap_count = DEFAULT_AP_COUNT;
-    ap_delay = DEFAULT_AP_DELAY;
-#endif
+    ap_delay    = DEFAULT_AP_DELAY_MS;
 
     WireBegin(I2C_ADDRESS);
     WireOnReceive(&i2creceive);
@@ -316,14 +256,10 @@ void loop()
 {
     if (adjustment > 0)
     {
-#ifdef USE_TIMER
         advancePosition();
         startTick();
         delay(ap_duration);
         endTick();
-#else
-        advanceClock(ap_duration, ap_count);
-#endif
         delay(ap_delay);
         --adjustment;
     }

@@ -137,22 +137,6 @@ void handleTPDuration()
   HTTP.send(200, "text/plain", String(value));
 }
 
-void handleTPCount()
-{
-  uint16_t value;
-  if (HTTP.hasArg("set"))
-  {
-    value = getValidCount("set");
-    Serial.print("setting tp_count:");
-    Serial.println(value);
-    setClockTPCount(value);
-  }
-
-  value = getClockTPCount();
-
-  HTTP.send(200, "text/plain", String(value));
-}
-
 void handleAPDuration()
 {
   uint16_t value;
@@ -165,22 +149,6 @@ void handleAPDuration()
   }
 
   value = getClockAPDuration();
-
-  HTTP.send(200, "text/plain", String(value));
-}
-
-void handleAPCount()
-{
-  uint16_t value;
-  if (HTTP.hasArg("set"))
-  {
-    value = getValidCount("set");
-    Serial.print("setting ap_count:");
-    Serial.println(value);
-    setClockAPCount(value);
-  }
-
-  value = getClockAPCount();
 
   HTTP.send(200, "text/plain", String(value));
 }
@@ -309,9 +277,7 @@ void setup()
   HTTP.on("/adjust", HTTP_GET, handleAdjustment);
   HTTP.on("/position", HTTP_GET, handlePosition);
   HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
-  HTTP.on("/tp_count", HTTP_GET, handleTPCount);
   HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
-  HTTP.on("/ap_count", HTTP_GET, handleAPCount);
   HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
   HTTP.on("/enable", HTTP_GET, handleEnable);
   HTTP.on("/rtc", HTTP_GET, handleRTC);
@@ -443,16 +409,6 @@ void setClockTPDuration(uint16_t value)
   writeClock16(CMD_TP_DURATION, value);
 }
 
-uint16_t getClockTPCount()
-{
-  return readClock16(CMD_TP_COUNT);
-}
-
-void setClockTPCount(uint16_t value)
-{
-  writeClock16(CMD_TP_COUNT, value);
-}
-
 uint16_t getClockAPDuration()
 {
   return readClock16(CMD_AP_DURATION);
@@ -461,16 +417,6 @@ uint16_t getClockAPDuration()
 void setClockAPDuration(uint16_t value)
 {
   writeClock16(CMD_AP_DURATION, value);
-}
-
-uint16_t getClockAPCount()
-{
-  return readClock16(CMD_AP_COUNT);
-}
-
-void setClockAPCount(uint16_t value)
-{
-  writeClock16(CMD_AP_COUNT, value);
 }
 
 uint16_t getClockAPDelay()
