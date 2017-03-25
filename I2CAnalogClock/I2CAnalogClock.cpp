@@ -2,9 +2,9 @@
 
 volatile uint16_t position; // This is the position that we believe the clock is in.
 volatile uint16_t adjustment;   // This is the adjustment to be made.
-volatile uint16_t tp_duration;
-volatile uint16_t ap_duration;
-volatile uint16_t ap_delay;     // delay in ms between ticks during adjustment
+volatile uint8_t tp_duration;
+volatile uint8_t ap_duration;
+volatile uint8_t ap_delay;     // delay in ms between ticks during adjustment
 
 volatile uint8_t control;       // This is our control "register".
 volatile uint8_t status;        // status register
@@ -33,13 +33,13 @@ void i2creceive(int size)
             adjustment = WireRead() | WireRead() << 8;
             break;
         case CMD_TP_DURATION:
-            tp_duration = WireRead() | WireRead() << 8;
+            tp_duration = WireRead();
             break;
         case CMD_AP_DURATION:
-            ap_duration = WireRead() | WireRead() << 8;
+            ap_duration = WireRead();
             break;
         case CMD_AP_DELAY:
-            ap_delay = WireRead() | WireRead() << 8;
+            ap_delay = WireRead();
             break;
         case CMD_CONTROL:
             control = WireRead();
@@ -72,18 +72,15 @@ void i2crequest()
         break;
     case CMD_TP_DURATION:
         value = tp_duration;
-        WireWrite(value & 0xff);
-        WireWrite(value >> 8);
+        WireWrite(value);
         break;
     case CMD_AP_DURATION:
         value = ap_duration;
-        WireWrite(value & 0xff);
-        WireWrite(value >> 8);
+        WireWrite(value);
         break;
     case CMD_AP_DELAY:
         value = ap_delay;
-        WireWrite(value & 0xff);
-        WireWrite(value >> 8);
+        WireWrite(value);
         break;
     case CMD_CONTROL:
         WireWrite(control);

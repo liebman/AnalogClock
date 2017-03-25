@@ -33,8 +33,7 @@
 #define SYNC_PIN        D5          // pin tied to 1hz square wave from RTC
 
 uint16_t getValidPosition(String name);
-uint16_t getValidCount(String name);
-uint16_t getValidDuration(String name);
+uint8_t getValidDuration(String name);
 boolean getValidBoolean(String name);
 void handleAdjustment();
 void handlePosition();
@@ -53,19 +52,17 @@ uint16_t getClockAdjustment();
 void setClockAdjustment(uint16_t value);
 uint16_t getClockPosition();
 void setClockPosition(uint16_t value);
-uint16_t getClockTPDuration();
-void setClockTPDuration(uint16_t value);
-uint16_t getClockTPCount();
-void setClockTPCount(uint16_t value);
-uint16_t getClockAPDuration();
-void setClockAPDuration(uint16_t value);
-uint16_t getClockAPCount();
-void setClockAPCount(uint16_t value);
-uint16_t getClockAPDelay();
-void setClockAPDelay(uint16_t value);
+uint8_t getClockTPDuration();
+void setClockTPDuration(uint8_t value);
+uint8_t getClockAPDuration();
+void setClockAPDuration(uint8_t value);
+uint8_t getClockAPDelay();
+void setClockAPDelay(uint8_t value);
 boolean getClockEnable();
 void setClockEnable(boolean enable);
 uint16_t readClock16(uint8_t command);
 void writeClock16(uint8_t command, uint16_t value);
+uint8_t readClock8(uint8_t command);
+void writeClock8(uint8_t command, uint8_t value);
 
 #endif /* _SynchroClock_H_ */

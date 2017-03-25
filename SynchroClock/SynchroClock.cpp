@@ -44,30 +44,18 @@ uint16_t getValidPosition(String name)
     return result;
 }
 
-uint16_t getValidCount(String name)
-{
-  int i = HTTP.arg(name).toInt();
-  if (i < 0 || i > 100)
-  {
-    Serial.println(
-        "invalid value for " + name + ": " + HTTP.arg(name)
-            + " using 0 instead!");
-    i = 0;
-  }
-  return i;
-}
 
-uint16_t getValidDuration(String name)
+uint8_t getValidDuration(String name)
 {
   int i = HTTP.arg(name).toInt();
-  if (i < 0 || i > 32767)
+  if (i < 0 || i > 255)
   {
     Serial.println(
         "invalid value for " + name + ": " + HTTP.arg(name)
-            + " using 32000 instead!");
-    i = 32000;
+            + " using 32 instead!");
+    i = 32;
   }
-  return i;
+  return (uint8_t)i;
 }
 
 boolean getValidBoolean(String name)
@@ -123,7 +111,7 @@ void handlePosition()
 
 void handleTPDuration()
 {
-  uint16_t value;
+  uint8_t value;
   if (HTTP.hasArg("set"))
   {
     value = getValidDuration("set");
@@ -139,7 +127,7 @@ void handleTPDuration()
 
 void handleAPDuration()
 {
-  uint16_t value;
+  uint8_t value;
   if (HTTP.hasArg("set"))
   {
     value = getValidDuration("set");
@@ -155,10 +143,10 @@ void handleAPDuration()
 
 void handleAPDelay()
 {
-  uint16_t value;
+  uint8_t value;
   if (HTTP.hasArg("set"))
   {
-    value = getValidCount("set");
+    value = getValidDuration("set");
     Serial.print("setting ap_delay:");
     Serial.println(value);
     setClockAPDelay(value);
@@ -399,34 +387,34 @@ void setClockPosition(uint16_t value)
   writeClock16(CMD_POSITION, value);
 }
 
-uint16_t getClockTPDuration()
+uint8_t getClockTPDuration()
 {
-  return readClock16(CMD_TP_DURATION);
+  return readClock8(CMD_TP_DURATION);
 }
 
-void setClockTPDuration(uint16_t value)
+void setClockTPDuration(uint8_t value)
 {
-  writeClock16(CMD_TP_DURATION, value);
+  writeClock8(CMD_TP_DURATION, value);
 }
 
-uint16_t getClockAPDuration()
+uint8_t getClockAPDuration()
 {
-  return readClock16(CMD_AP_DURATION);
+  return readClock8(CMD_AP_DURATION);
 }
 
-void setClockAPDuration(uint16_t value)
+void setClockAPDuration(uint8_t value)
 {
-  writeClock16(CMD_AP_DURATION, value);
+  writeClock8(CMD_AP_DURATION, value);
 }
 
-uint16_t getClockAPDelay()
+uint8_t getClockAPDelay()
 {
-  return readClock16(CMD_AP_DELAY);
+  return readClock8(CMD_AP_DELAY);
 }
 
-void setClockAPDelay(uint16_t value)
+void setClockAPDelay(uint8_t value)
 {
-  writeClock16(CMD_AP_DELAY, value);
+  writeClock8(CMD_AP_DELAY, value);
 }
 
 boolean getClockEnable()
@@ -484,4 +472,24 @@ void writeClock16(uint8_t command, uint16_t value)
   Wire.endTransmission();
 }
 
+// send a command, read a 8 bit value
+uint8_t readClock8(uint8_t command)
+{
+  Wire.beginTransmission(I2C_ADDRESS);
+  Wire.write(command);
+  Wire.endTransmission();
+  uint8_t value;
+  Wire.requestFrom(I2C_ADDRESS, sizeof(value));
+  Wire.readBytes((uint8_t*) &value, sizeof(value));
+  return (value);
+}
+
+// send a command with a 16 bit value
+void writeClock8(uint8_t command, uint8_t value)
+{
+  Wire.beginTransmission(I2C_ADDRESS);
+  Wire.write(command);
+  Wire.write(value);
+  Wire.endTransmission();
+}
 
