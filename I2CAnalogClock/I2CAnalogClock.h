@@ -7,14 +7,27 @@
 #ifndef _I2CAnalogClock_H_
 #define _I2CAnalogClock_H_
 #include "Arduino.h"
+
+#ifdef __AVR_ATtinyX5__
+#include "TinyWireS.h"
+#else
 #include "Wire.h"
+#endif
 
 //#define DEBUG_I2CAC
 
+#ifdef __AVR_ATtinyX5__
+#define INT_PIN         1
+#define A_PIN           3
+#define B_PIN           4
+#define LED_PIN         LED_BUILTIN
+#else
 #define INT_PIN         3
 #define A_PIN           4
 #define B_PIN           5
 #define LED_PIN         LED_BUILTIN
+#endif
+
 #define MAX_SECONDS     43200
 
 #define TICK_ON         HIGH
@@ -37,6 +50,20 @@
 #define isEnabled()     (control & BIT_ENABLE)
 #define isTick()        (status  & BIT_TICK)
 #define toggleTick()    (status ^= BIT_TICK)
+
+#ifdef __AVR_ATtinyX5__
+#define WireBegin(x)     TinyWireS.begin(x)
+#define WireOnReceive(x) TinyWireS.onReceive(x)
+#define WireOnRequest(x) TinyWireS.onRequest(x)
+#define WireRead()       TinyWireS.receive()
+#define WireWrite(x)     TinyWireS.send(x)
+#else
+#define WireBegin(x)     Wire.begin(x)
+#define WireOnReceive(x) Wire.onReceive(x)
+#define WireOnRequest(x) Wire.onRequest(x)
+#define WireRead()       Wire.read()
+#define WireWrite(x)     Wire.write(x)
+#endif
 
 //
 // Timing defaults

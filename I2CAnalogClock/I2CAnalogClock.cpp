@@ -22,7 +22,7 @@ volatile unsigned int errors;
 void i2creceive(int size)
 {
   ++receives;
-  command = Wire.read();
+  command = WireRead();
   --size;
   // check for a write command
   if (size > 0)
@@ -30,31 +30,31 @@ void i2creceive(int size)
     switch (command)
     {
     case CMD_POSITION:
-      position = Wire.read() | Wire.read() << 8;
+      position = WireRead() | WireRead() << 8;
       break;
     case CMD_ADJUSTMENT:
-      adjustment = Wire.read() | Wire.read() << 8;
+      adjustment = WireRead() | WireRead() << 8;
       break;
     case CMD_TP_DURATION:
-      tp_duration = Wire.read() | Wire.read() << 8;
+      tp_duration = WireRead() | WireRead() << 8;
       break;
     case CMD_TP_COUNT:
-      tp_count = Wire.read() | Wire.read() << 8;
+      tp_count = WireRead() | WireRead() << 8;
       break;
     case CMD_AP_DURATION:
-      ap_duration = Wire.read() | Wire.read() << 8;
+      ap_duration = WireRead() | WireRead() << 8;
       break;
     case CMD_AP_COUNT:
-      ap_count = Wire.read() | Wire.read() << 8;
+      ap_count = WireRead() | WireRead() << 8;
       break;
     case CMD_AP_DELAY:
-      ap_delay = Wire.read() | Wire.read() << 8;
+      ap_delay = WireRead() | WireRead() << 8;
       break;
     case CMD_CONTROL:
-      control = Wire.read();
+      control = WireRead();
       break;
     case CMD_STATUS:
-      status = Wire.read();
+      status = WireRead();
       break;
     default:
       ++errors;
@@ -71,44 +71,44 @@ void i2crequest()
   {
   case CMD_POSITION:
     value = position;
-    Wire.write(value & 0xff);
-    Wire.write(value >> 8);
+    WireWrite(value & 0xff);
+    WireWrite(value >> 8);
     break;
   case CMD_ADJUSTMENT:
     value = adjustment;
-    Wire.write(value & 0xff);
-    Wire.write(value >> 8);
+    WireWrite(value & 0xff);
+    WireWrite(value >> 8);
     break;
   case CMD_TP_DURATION:
     value = tp_duration;
-    Wire.write(value & 0xff);
-    Wire.write(value >> 8);
+    WireWrite(value & 0xff);
+    WireWrite(value >> 8);
     break;
   case CMD_TP_COUNT:
     value = tp_count;
-    Wire.write(value & 0xff);
-    Wire.write(value >> 8);
+    WireWrite(value & 0xff);
+    WireWrite(value >> 8);
     break;
   case CMD_AP_DURATION:
     value = ap_duration;
-    Wire.write(value & 0xff);
-    Wire.write(value >> 8);
+    WireWrite(value & 0xff);
+    WireWrite(value >> 8);
     break;
   case CMD_AP_COUNT:
     value = ap_count;
-    Wire.write(value & 0xff);
-    Wire.write(value >> 8);
+    WireWrite(value & 0xff);
+    WireWrite(value >> 8);
     break;
   case CMD_AP_DELAY:
-    value = ap_delay;
-    Wire.write(value & 0xff);
-    Wire.write(value >> 8);
+   	value = ap_delay;
+    WireWrite(value & 0xff);
+    WireWrite(value >> 8);
     break;
   case CMD_CONTROL:
-    Wire.write(control);
+	WireWrite(control);
     break;
   case CMD_STATUS:
-    Wire.write(status);
+    WireWrite(status);
     break;
   default:
     ++errors;
@@ -198,9 +198,9 @@ void setup()
   ap_count = DEFAULT_AP_COUNT;
   ap_delay = DEFAULT_AP_DELAY;
 
-  Wire.begin(I2C_ADDRESS);
-  Wire.onReceive(&i2creceive);
-  Wire.onRequest(&i2crequest);
+  WireBegin(I2C_ADDRESS);
+  WireOnReceive(&i2creceive);
+  WireOnRequest(&i2crequest);
 
   digitalWrite(B_PIN, TICK_OFF);
   digitalWrite(A_PIN, TICK_OFF);
