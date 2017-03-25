@@ -1,13 +1,14 @@
 #include "I2CAnalogClock.h"
 
-
 volatile uint16_t position; // This is the position that we believe the clock is in.
 volatile uint16_t adjustment;   // This is the adjustment to be made.
 volatile uint16_t tp_duration;
-volatile uint16_t tp_count;
 volatile uint16_t ap_duration;
-volatile uint16_t ap_count;
 volatile uint16_t ap_delay;     // delay in ms between ticks during adjustment
+#ifndef USE_TIMER
+volatile uint16_t tp_count;
+volatile uint16_t ap_count;
+#endif
 
 volatile uint8_t control;       // This is our control "register".
 volatile uint8_t status;        // status register
@@ -21,138 +22,237 @@ volatile unsigned int errors;
 // i2c receive handler
 void i2creceive(int size)
 {
-  ++receives;
-  command = WireRead();
-  --size;
-  // check for a write command
-  if (size > 0)
-  {
-    switch (command)
+    ++receives;
+    command = WireRead();
+    --size;
+    // check for a write command
+    if (size > 0)
     {
-    case CMD_POSITION:
-      position = WireRead() | WireRead() << 8;
-      break;
-    case CMD_ADJUSTMENT:
-      adjustment = WireRead() | WireRead() << 8;
-      break;
-    case CMD_TP_DURATION:
-      tp_duration = WireRead() | WireRead() << 8;
-      break;
-    case CMD_TP_COUNT:
-      tp_count = WireRead() | WireRead() << 8;
-      break;
-    case CMD_AP_DURATION:
-      ap_duration = WireRead() | WireRead() << 8;
-      break;
-    case CMD_AP_COUNT:
-      ap_count = WireRead() | WireRead() << 8;
-      break;
-    case CMD_AP_DELAY:
-      ap_delay = WireRead() | WireRead() << 8;
-      break;
-    case CMD_CONTROL:
-      control = WireRead();
-      break;
-    case CMD_STATUS:
-      status = WireRead();
-      break;
-    default:
-      ++errors;
+        switch (command)
+        {
+        case CMD_POSITION:
+            position = WireRead() | WireRead() << 8;
+            break;
+        case CMD_ADJUSTMENT:
+            adjustment = WireRead() | WireRead() << 8;
+            break;
+        case CMD_TP_DURATION:
+            tp_duration = WireRead() | WireRead() << 8;
+            break;
+#ifndef USE_TIMER
+            case CMD_TP_COUNT:
+            tp_count = WireRead() | WireRead() << 8;
+            break;
+#endif
+        case CMD_AP_DURATION:
+            ap_duration = WireRead() | WireRead() << 8;
+            break;
+#ifndef USE_TIMER
+            case CMD_AP_COUNT:
+            ap_count = WireRead() | WireRead() << 8;
+            break;
+#endif
+        case CMD_AP_DELAY:
+            ap_delay = WireRead() | WireRead() << 8;
+            break;
+        case CMD_CONTROL:
+            control = WireRead();
+            break;
+        case CMD_STATUS:
+            status = WireRead();
+            break;
+        default:
+            ++errors;
+        }
     }
-  }
 }
 
 // i2c request handler
 void i2crequest()
 {
-  ++requests;
-  uint16_t value;
-  switch (command)
-  {
-  case CMD_POSITION:
-    value = position;
-    WireWrite(value & 0xff);
-    WireWrite(value >> 8);
-    break;
-  case CMD_ADJUSTMENT:
-    value = adjustment;
-    WireWrite(value & 0xff);
-    WireWrite(value >> 8);
-    break;
-  case CMD_TP_DURATION:
-    value = tp_duration;
-    WireWrite(value & 0xff);
-    WireWrite(value >> 8);
-    break;
-  case CMD_TP_COUNT:
-    value = tp_count;
-    WireWrite(value & 0xff);
-    WireWrite(value >> 8);
-    break;
-  case CMD_AP_DURATION:
-    value = ap_duration;
-    WireWrite(value & 0xff);
-    WireWrite(value >> 8);
-    break;
-  case CMD_AP_COUNT:
-    value = ap_count;
-    WireWrite(value & 0xff);
-    WireWrite(value >> 8);
-    break;
-  case CMD_AP_DELAY:
-   	value = ap_delay;
-    WireWrite(value & 0xff);
-    WireWrite(value >> 8);
-    break;
-  case CMD_CONTROL:
-	WireWrite(control);
-    break;
-  case CMD_STATUS:
-    WireWrite(status);
-    break;
-  default:
-    ++errors;
-  }
+    ++requests;
+    uint16_t value;
+    switch (command)
+    {
+    case CMD_POSITION:
+        value = position;
+        WireWrite(value & 0xff);
+        WireWrite(value >> 8);
+        break;
+    case CMD_ADJUSTMENT:
+        value = adjustment;
+        WireWrite(value & 0xff);
+        WireWrite(value >> 8);
+        break;
+    case CMD_TP_DURATION:
+        value = tp_duration;
+        WireWrite(value & 0xff);
+        WireWrite(value >> 8);
+        break;
+#ifndef USE_TIMER
+        case CMD_TP_COUNT:
+        value = tp_count;
+        WireWrite(value & 0xff);
+        WireWrite(value >> 8);
+        break;
+#endif
+    case CMD_AP_DURATION:
+        value = ap_duration;
+        WireWrite(value & 0xff);
+        WireWrite(value >> 8);
+        break;
+#ifndef USE_TIMER
+        case CMD_AP_COUNT:
+        value = ap_count;
+        WireWrite(value & 0xff);
+        WireWrite(value >> 8);
+        break;
+#endif
+    case CMD_AP_DELAY:
+        value = ap_delay;
+        WireWrite(value & 0xff);
+        WireWrite(value >> 8);
+        break;
+    case CMD_CONTROL:
+        WireWrite(control);
+        break;
+    case CMD_STATUS:
+        WireWrite(status);
+        break;
+    default:
+        ++errors;
+    }
 }
 
+#ifdef USE_TIMER
+void (*timer_cb)();
+volatile bool timer_running;
+volatile unsigned int start_time;
+#ifdef DEBUG_TIMER
+volatile unsigned int starts;
+volatile unsigned int stops;
+volatile unsigned int ints;
+volatile unsigned int last_duration;
+volatile unsigned int stop_time;
+#endif
+
+ISR(TIMER1_COMPA_vect)
+{
+    unsigned int int_time = millis();
+#ifdef DEBUG_TIMER
+    ints += 1;
+#endif
+
+    // why to we get an immediate interrupt? (ignore it)
+    if (int_time == start_time)
+    {
+        return;
+    }
+
+    digitalWrite(LED_PIN, digitalRead(LED_PIN) ^ 1);
+    TIMSK1 &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
+    timer_running = false;
+    if (timer_cb != NULL)
+    {
+#ifdef DEBUG_TIMER
+        stops+= 1;
+        stop_time = int_time;
+#endif
+        timer_cb();
+    }
+}
+
+void startTimer(int ms, void (*func)())
+{
+#ifdef DEBUG_TIMER
+    starts += 1;
+    last_duration = ms;
+    digitalWrite (LED_PIN, digitalRead (LED_PIN)^1);
+#endif
+    start_time = millis();
+    uint16_t timer = ms2Timer(ms);
+    // initialize timer1
+    noInterrupts();
+    // disable all interrupts
+    timer_cb = func;
+    TCCR1A = 0;
+    TCCR1B = 0;
+    TCNT1 = 0;
+
+    OCR1A = timer;   // compare match register
+    TCCR1B |= (1 << WGM12);   // CTC mode
+    TCCR1B |= (1 << CS12);    // 256 prescaler
+    TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
+    // clear any already pending interrupt?  does not work :-(
+    TIFR1 &= ~(1 << OCIE1A);
+    timer_running = true;
+    interrupts();
+    // enable all interrupts
+}
+
+#endif
+
+void startTick()
+{
+#ifdef DRV8838
+    digitalWrite(DRV_PHASE, isTick());
+    digitalWrite(DRV_ENABLE, TICK_ON);
+#else
+    // toggle the pins.
+    digitalWrite(A_PIN, !digitalRead(A_PIN));
+#endif
+}
+
+void endTick()
+{
+#ifdef DRV8838
+    digitalWrite(DRV_ENABLE, TICK_OFF);
+    toggleTick();
+#else
+    digitalWrite(B_PIN, !digitalRead(B_PIN));
+#endif
+}
+
+#ifndef USE_TIMER
 void tickDelay(uint16_t duration, uint16_t count)
 {
-  if (count == 0)
-  {
-    count = 1;
-  }
+    if (count == 0)
+    {
+        count = 1;
+    }
 
-  for (uint16_t i = 0; i < count; ++i)
-  {
-    delayMicroseconds(duration);
-  }
+    for (uint16_t i = 0; i < count; ++i)
+    {
+        delayMicroseconds(duration);
+    }
 }
+#endif
 
-//
-//  Advance the clock by one second.
-//
-
-void advanceClock(uint16_t duration, uint16_t count)
-{
+// advance the position
+void advancePosition() {
     position += 1;
     if (position >= MAX_SECONDS)
     {
         position = 0;
     }
+}
+
+//
+//  Advance the clock by one second.
+//
+void advanceClock(uint16_t duration, uint16_t count)
+{
+    advancePosition();
     // placeholder for advance clock - for now just toggle LED
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 
-#ifdef DRV8838
-    digitalWrite(DRV_PHASE,  isTick());
-    digitalWrite(DRV_ENABLE, TICK_ON);
-    tickDelay(duration, count);
-    digitalWrite(DRV_ENABLE, TICK_OFF);
-    toggleTick();
+    startTick();
+
+#ifdef USE_TIMER
+    startTimer(duration, &endTick);
 #else
-    // toggle the pins.
-    digitalWrite(A_PIN, !digitalRead(A_PIN));
     tickDelay(duration, count);
-    digitalWrite(B_PIN, !digitalRead(B_PIN));
+    endTick();
 #endif
 }
 
@@ -161,44 +261,50 @@ void advanceClock(uint16_t duration, uint16_t count)
 //
 void tick()
 {
-  if (isEnabled())
-  {
+    if (isEnabled())
+    {
 
-    if (adjustment > 0)
-    {
-      ++adjustment;
+        if (adjustment > 0)
+        {
+            ++adjustment;
+        }
+        else
+        {
+            advanceClock(tp_duration, tp_count);
+        }
     }
-    else
-    {
-      advanceClock(tp_duration, tp_count);
-    }
-  }
 }
 
 void setup()
 {
 #ifdef DEBUG_I2CAC
-  Serial.begin(115200);
-  Serial.println("");
-  Serial.println("Startup!");
+    Serial.begin(115200);
+    Serial.println("");
+    Serial.println("Startup!");
 #endif
 
-  tp_duration = DEFAULT_TP_DURATION;
-  tp_count = DEFAULT_TP_COUNT;
-  ap_duration = DEFAULT_AP_DURATION;
-  ap_count = DEFAULT_AP_COUNT;
-  ap_delay = DEFAULT_AP_DELAY;
+#ifdef USE_TIMER
+    tp_duration = DEFAULT_TP_DURATION_MS;
+    ap_duration = DEFAULT_AP_DURATION_MS;
+    ap_delay = DEFAULT_AP_DELAY_MS;
+#else
+    tp_duration = DEFAULT_TP_DURATION;
+    tp_count = DEFAULT_TP_COUNT;
+    ap_duration = DEFAULT_AP_DURATION;
+    ap_count = DEFAULT_AP_COUNT;
+    ap_delay = DEFAULT_AP_DELAY;
+#endif
 
-  WireBegin(I2C_ADDRESS);
-  WireOnReceive(&i2creceive);
-  WireOnRequest(&i2crequest);
+    WireBegin(I2C_ADDRESS);
+    WireOnReceive(&i2creceive);
+    WireOnRequest(&i2crequest);
 
-  digitalWrite(B_PIN, TICK_OFF);
-  digitalWrite(A_PIN, TICK_OFF);
-  pinMode(A_PIN, OUTPUT);
-  pinMode(B_PIN, OUTPUT);
-  pinMode(INT_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(INT_PIN), &tick, FALLING);
+    digitalWrite(B_PIN, TICK_OFF);
+    digitalWrite(A_PIN, TICK_OFF);
+    pinMode(A_PIN, OUTPUT);
+    pinMode(B_PIN, OUTPUT);
+    pinMode(INT_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(INT_PIN), &tick, FALLING);
 }
 
 #ifdef DEBUG_I2CAC
@@ -208,46 +314,43 @@ uint16_t last_pos = -1;
 
 void loop()
 {
-  if (adjustment > 0)
-  {
-    advanceClock(ap_duration, ap_count);
-    delay(ap_delay);
-    --adjustment;
-  }
+    if (adjustment > 0)
+    {
+#ifdef USE_TIMER
+        advancePosition();
+        startTick();
+        delay(ap_duration);
+        endTick();
+#else
+        advanceClock(ap_duration, ap_count);
+#endif
+        delay(ap_delay);
+        --adjustment;
+    }
 
 #ifdef DEBUG_I2CAC
-  unsigned long now = millis();
-
-  if (last_pos != position && (now - last_print) > 60000)
-  {
-    last_pos = position;
-    last_print = now;
-    Serial.print("position:");
-    Serial.print(position);
-    Serial.print(" adjustment:");
-    Serial.print(adjustment);
-    Serial.print(" control:");
-    Serial.print(control);
-//    Serial.print(" tp_duraation:");
-//    Serial.print(tp_duration);
-//    Serial.print(" tp_count:");
-//    Serial.print(tp_count);
-//    Serial.print(" ap_duraation:");
-//    Serial.print(ap_duration);
-//    Serial.print(" ap_count:");
-//    Serial.print(ap_count);
-//    Serial.print(" ap_delay:");
-//    Serial.print(ap_delay);
-//    Serial.print(" receives: ");
-//    Serial.print(receives);
-//    Serial.print(" requests: ");
-//    Serial.print(requests);
-//    Serial.print(" errors: ");
-//    Serial.print(errors);
-    Serial.print(" seconds: ");
-    Serial.print(position % 60);
-    Serial.println();
-  }
+    unsigned long now = millis();
+    char buffer[128];
+    if (last_pos != position && (now - last_print) > 1000)
+    {
+        last_pos = position;
+        last_print = now;
+#ifdef DEBUG_TIMER
+        if (timer_running)
+        {
+            Serial.println("timer running, adding delay!");
+            delay(33);
+        }
+        int last_actual = stop_time - start_time;
+        snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
+                starts, stops, ints, last_duration, last_actual);
+        Serial.print(buffer);
 #endif
-  delay(1);
+        snprintf(buffer, 127,
+                "position:%d adjustment:%d control:%d seconds:%d\n", position,
+                adjustment, control, position % 60);
+        Serial.print(buffer);
+    }
+#endif
+    delay(1);
 }
