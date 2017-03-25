@@ -134,35 +134,26 @@ void tickDelay(uint16_t duration, uint16_t count)
 
 void advanceClock(uint16_t duration, uint16_t count)
 {
-  position += 1;
-  if (position >= MAX_SECONDS)
-  {
-    position = 0;
-  }
-  // placeholder for advance clock - for now just toggle LED
-  digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+    position += 1;
+    if (position >= MAX_SECONDS)
+    {
+        position = 0;
+    }
+    // placeholder for advance clock - for now just toggle LED
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 
-  // toggle the pins.
-  digitalWrite(A_PIN, !digitalRead(A_PIN));
-  tickDelay(duration, count);
-  digitalWrite(B_PIN, !digitalRead(B_PIN));
-  /*
-   if (isTick())
-   {
-   // tick
-   digitalWrite (A_PIN, TICK_ON);
-   tickDelay(duration, count);
-   digitalWrite (A_PIN, TICK_OFF);
-   }
-   else
-   {
-   // tock
-   digitalWrite (B_PIN, TICK_ON);
-   tickDelay(duration, count);
-   digitalWrite (B_PIN, TICK_OFF);
-   }
-   toggleTick();
-   */
+#ifdef DRV8838
+    digitalWrite(DRV_PHASE,  isTick());
+    digitalWrite(DRV_ENABLE, TICK_ON);
+    tickDelay(duration, count);
+    digitalWrite(DRV_ENABLE, TICK_OFF);
+    toggleTick();
+#else
+    // toggle the pins.
+    digitalWrite(A_PIN, !digitalRead(A_PIN));
+    tickDelay(duration, count);
+    digitalWrite(B_PIN, !digitalRead(B_PIN));
+#endif
 }
 
 //

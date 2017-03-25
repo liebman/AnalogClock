@@ -28,6 +28,13 @@
 #define LED_PIN         LED_BUILTIN
 #endif
 
+#define DRV8838         1
+
+#ifdef DRV8838
+#define DRV_PHASE       A_PIN
+#define DRV_ENABLE      B_PIN
+#endif
+
 #define MAX_SECONDS     43200
 
 #define TICK_ON         HIGH
@@ -46,10 +53,11 @@
 
 // control register bits
 #define BIT_ENABLE      0x80
+#define BIT_TICK        0x01
 
-#define isEnabled()     (control & BIT_ENABLE)
-#define isTick()        (status  & BIT_TICK)
-#define toggleTick()    (status ^= BIT_TICK)
+#define isEnabled()     (control &  BIT_ENABLE)
+#define isTick()        (control &  BIT_TICK)
+#define toggleTick()    (control ^= BIT_TICK)
 
 #ifdef __AVR_ATtinyX5__
 #define WireBegin(x)     TinyWireS.begin(x)
@@ -68,11 +76,11 @@
 //
 // Timing defaults
 //
-#define DEFAULT_TP_DURATION 32000 // pulse duration in us.
-#define DEFAULT_TP_COUNT    3     // pulse duration multiplier
-#define DEFAULT_AP_DURATION 16000 // pulse duration during adjust
-#define DEFAULT_AP_COUNT    3     // pulse duration multiplier during adjust
-#define DEFAULT_AP_DELAY    16    // delay between adjust pulses in ms.
+#define DEFAULT_TP_DURATION 15000 // pulse duration in us.
+#define DEFAULT_TP_COUNT    2     // pulse duration multiplier
+#define DEFAULT_AP_DURATION 15000 // pulse duration during adjust
+#define DEFAULT_AP_COUNT    2     // pulse duration multiplier during adjust
+#define DEFAULT_AP_DELAY    15    // delay between adjust pulses in ms.
 
 void tickDelay(uint16_t duration, uint16_t count);
 void advanceClock(uint16_t duration, uint16_t count);
