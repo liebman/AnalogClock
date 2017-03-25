@@ -76,11 +76,11 @@
 //
 // Timing defaults
 //
-#define DEFAULT_TP_DURATION 15000 // pulse duration in us.
+#define DEFAULT_TP_DURATION 16000 // pulse duration in us.
 #define DEFAULT_TP_COUNT    2     // pulse duration multiplier
-#define DEFAULT_AP_DURATION 15000 // pulse duration during adjust
+#define DEFAULT_AP_DURATION 16000 // pulse duration during adjust
 #define DEFAULT_AP_COUNT    2     // pulse duration multiplier during adjust
-#define DEFAULT_AP_DELAY    15    // delay between adjust pulses in ms.
+#define DEFAULT_AP_DELAY    16    // delay between adjust pulses in ms.
 
 void tickDelay(uint16_t duration, uint16_t count);
 void advanceClock(uint16_t duration, uint16_t count);

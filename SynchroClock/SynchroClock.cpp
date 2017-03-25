@@ -10,15 +10,38 @@ uint8_t last_pin = 0;
 
 uint16_t getValidPosition(String name)
 {
-  int i = HTTP.arg(name).toInt();
-  if (i < 0 || i > 43199)
-  {
-    Serial.println(
-        "invalid value for " + name + ": " + HTTP.arg(name)
-            + " using 0 instead!");
-    i = 0;
-  }
-  return i;
+    int result = 0;
+
+    char value[10];
+    strncpy(value, HTTP.arg(name).c_str(), 9);
+    if (strchr(value, ':') != NULL)
+    {
+        char* s = strtok(value, ":");
+
+        if (s != NULL) {
+            result += atoi(s) * 3600; // hours to seconds
+            s = strtok(NULL, ":");
+        }
+        if (s != NULL) {
+            result += atoi(s) * 60; // minutes to seconds
+            s = strtok(NULL, ":");
+        }
+        if (s != NULL) {
+            result += atoi(s);
+        }
+    }
+    else
+    {
+        result = atoi(value);
+        if (result < 0 || result > 43199)
+        {
+            Serial.println(
+                    "invalid value for " + name + ": " + HTTP.arg(name)
+                    + " using 0 instead!");
+            result = 0;
+        }
+    }
+    return result;
 }
 
 uint16_t getValidCount(String name)
@@ -90,7 +113,12 @@ void handlePosition()
 
   pos = getClockPosition();
 
-  HTTP.send(200, "text/Plain", String(pos));
+  int hours = pos / 3600;
+  int minutes = (pos - (hours*3600)) / 60;
+  int seconds = pos - (hours*3600) - (minutes*60);
+  char message[64];
+  sprintf(message, "%d (%02d:%02d:%02d)\n", pos, hours, minutes, seconds);
+  HTTP.send(200, "text/Plain", message);
 }
 
 void handleTPDuration()
