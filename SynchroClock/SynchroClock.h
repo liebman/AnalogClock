@@ -28,6 +28,8 @@
 #define SquareWavePin_ModeNone DS1307SquareWaveOut_High
 #endif
 
+#define EPOCH_1970to2000 946684800
+
 // pin definitions
 #define LED_PIN         BUILTIN_LED
 #define SYNC_PIN        D5          // pin tied to 1hz square wave from RTC

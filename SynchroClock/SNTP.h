@@ -25,7 +25,7 @@
 #define MODE_CONTROL   6
 #define MODE_PRIVATE   7
 
-#define SNTP_VERSION    3
+#define SNTP_VERSION    4
 
 #define setLI(value)      ((value&0x03)<<6)
 #define setVERS(value)    ((value&0x07)<<3)

@@ -10,7 +10,7 @@ RtcDS1307<TwoWire> rtc(Wire);
 
 FeedbackLED        feedback(LED_PIN);
 ESP8266WebServer   HTTP(80);
-SNTP               ntp("time.apple.com", 123);
+SNTP               ntp("pool.ntp.org", 123);
 Clock              clock;
 
 bool    syncing  = false;
@@ -252,12 +252,9 @@ void setup()
 
     if (!enabled)
     {
+        Serial.println("starting 1hz square wave");
 #ifdef DS3231
-        Serial.println("set 1Hz");
         rtc.SetSquareWavePinClockFrequency(DS3231SquareWaveClock_1Hz);
-#endif
-        Serial.println("starting square wave");
-#ifdef DS3231
         rtc.SetSquareWavePin(DS3231SquareWavePin_ModeClock);
 #endif
 #ifdef DS1307
@@ -293,29 +290,41 @@ void loop()
     if (syncing && last_pin == 1 && pin == 0)
     {
         EpochTime start;
-        start.seconds = rtc.GetDateTime().Epoch32Time();
+        start.seconds = rtc.GetDateTime() + EPOCH_1970to2000;
         start.fraction = 0;
+        Serial.printf("start (loop):    %u.%u\n",  start.seconds, start.fraction);
         EpochTime end = ntp.getTime(start);
 
-        // compute the delay to the next second
-
-        uint32_t msdelay = 1000 - (((uint64_t) end.fraction * 1000) >> 32);
-        Serial.print("msdelay: ");
-        Serial.println(msdelay);
-        // wait for the next second
-        if (msdelay > 0 && msdelay < 1000)
+        // check for valid ntp result
+        if (end.seconds != 0)
         {
-            delay(msdelay);
+            // compute the delay to the next second
+
+            uint32_t msdelay = 1000 - (((uint64_t) end.fraction * 1000) >> 32);
+            Serial.print("msdelay: ");
+            Serial.println(msdelay);
+            // wait for the next second
+            if (msdelay > 0 && msdelay < 1000)
+            {
+                delay(msdelay);
+            }
+            RtcDateTime dt(end.seconds - EPOCH_1970to2000 + 1); // +1 because we waited for the next second
+            rtc.SetDateTime(dt);
+            syncing = false;
+            last_pin = 0;
+            delay(500);
+            Serial.println("rtc updated, starting clock!");
+            clock.setEnable(true);
+            Serial.println("syncing clock to RTC");
+            syncClockToRTC();
         }
-        RtcDateTime dt(end.seconds + 1); // +1 because we waited for the next second
-        rtc.SetDateTime(dt);
-        syncing = false;
-        last_pin = 0;
-        delay(500);
-        Serial.println("rtc updated, starting clock!");
-        clock.setEnable(true);
-        Serial.println("syncing clock to RTC");
-        syncClockToRTC();
+        else
+        {
+            Serial.println("NTP failed!!!!!");
+            syncing = false;
+            last_pin = 0;
+            clock.setEnable(true);
+        }
     }
     else
     {
@@ -325,10 +334,11 @@ void loop()
 
 void syncClockToRTC()
 {
+    // TODO: should wait for falling 1hz edge!
     uint16_t rtc_pos = getRTCTimeAsPosition();
-    Serial.printf("RTC position:%d", rtc_pos);
+    Serial.printf("RTC position:%d\n", rtc_pos);
     uint16_t clock_pos = clock.getPosition();
-    Serial.printf("clock position:%d", clock_pos);
+    Serial.printf("clock position:%d\n", clock_pos);
     if (clock_pos != rtc_pos)
     {
         int adj = rtc_pos - clock_pos;
