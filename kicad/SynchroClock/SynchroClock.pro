@@ -1,4 +1,4 @@
-update=Wednesday, March 22, 2017 'PMt' 07:30:16 PM
+update=Sunday, March 26, 2017 'AMt' 07:12:53 AM
 version=1
 last_client=kicad
 [pcbnew]
@@ -37,7 +37,7 @@ SpiceUseNetNumbers=0
 LabSize=60
 [eeschema]
 version=1
-LibDir=/Users/liebman/Documents/kicad/libraries/kicad-schlib/library;/Users/liebman/Documents/kicad/libraries/kicad-ESP8266
+LibDir=/Users/liebman/Documents/kicad/libraries/kicad-schlib/library;/Users/liebman/Documents/kicad/libraries/kicad-ESP8266;/Users/liebman/Documents/kicad/libraries/liebman
 [eeschema/libraries]
 LibName1=power
 LibName2=device
@@ -73,3 +73,4 @@ LibName31=maxim
 LibName32=semi-trans-generic
 LibName33=diode
 LibName34=semi-diode-generic
+LibName35=drv8838-pololu
