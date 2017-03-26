@@ -25,7 +25,13 @@ uint16_t getValidPosition(String name)
         char* s = strtok(value, ":");
 
         if (s != NULL) {
-            result += atoi(s) * 3600; // hours to seconds
+            int h = atoi(s);
+            while (h > 11)
+            {
+                h -= 12;
+            }
+
+            result += h * 3600; // hours to seconds
             s = strtok(NULL, ":");
         }
         if (s != NULL) {
@@ -259,8 +265,8 @@ void setup()
 
   if (!enabled)
   {
-    Serial.println("setting clock position");
-    setClockPosition(0);
+//    Serial.println("setting clock position");
+//    setClockPosition(0);
     Serial.println("enabling clock");
     setClockEnable(true);
     Serial.println("starting square wave");
@@ -333,6 +339,7 @@ void syncClockToRTC()
   uint16_t rtc_pos = getRTCTimeAsPosition();
   Serial.printf("RTC position:%d", rtc_pos);
   uint16_t clock_pos = getClockPosition();
+  Serial.printf("clock position:%d", clock_pos);
   if (clock_pos != rtc_pos)
   {
     int adj = rtc_pos - clock_pos;
