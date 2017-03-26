@@ -14,10 +14,10 @@
 #include "Wire.h"
 #endif
 
-#define DEBUG_I2CAC     1
+//#define DEBUG_I2CAC     1
+//#define DEBUG_TIMER     1
 #define DRV8838         1
 
-#define DEBUG_TIMER     1
 
 #ifdef __AVR_ATtinyX5__
 #define INT_PIN         1
