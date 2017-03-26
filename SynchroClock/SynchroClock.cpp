@@ -95,11 +95,11 @@ void handleAdjustment()
             adj = getValidPosition("set");
             Serial.print("setting adjustment:");
             Serial.println(adj);
-            clock.setClockAdjustment(adj);
+            clock.setAdjustment(adj);
         }
     }
 
-    adj = clock.getClockAdjustment();
+    adj = clock.getAdjustment();
 
     HTTP.send(200, "text/plain", String(adj));
 }
@@ -112,10 +112,10 @@ void handlePosition()
         pos = getValidPosition("set");
         Serial.print("setting position:");
         Serial.println(pos);
-        clock.setClockPosition(pos);
+        clock.setPosition(pos);
     }
 
-    pos = clock.getClockPosition();
+    pos = clock.getPosition();
 
     int hours = pos / 3600;
     int minutes = (pos - (hours * 3600)) / 60;
@@ -133,10 +133,10 @@ void handleTPDuration()
         value = getValidDuration("set");
         Serial.print("setting tp_duration:");
         Serial.println(value);
-        clock.setClockTPDuration(value);
+        clock.setTPDuration(value);
     }
 
-    value = clock.getClockTPDuration();
+    value = clock.getTPDuration();
 
     HTTP.send(200, "text/plain", String(value));
 }
@@ -149,10 +149,10 @@ void handleAPDuration()
         value = getValidDuration("set");
         Serial.print("setting ap_duration:");
         Serial.println(value);
-        clock.setClockAPDuration(value);
+        clock.setAPDuration(value);
     }
 
-    value = clock.getClockAPDuration();
+    value = clock.getAPDuration();
 
     HTTP.send(200, "text/plain", String(value));
 }
@@ -165,10 +165,10 @@ void handleAPDelay()
         value = getValidDuration("set");
         Serial.print("setting ap_delay:");
         Serial.println(value);
-        clock.setClockAPDelay(value);
+        clock.setAPDelay(value);
     }
 
-    value = clock.getClockAPDelay();
+    value = clock.getAPDelay();
 
     HTTP.send(200, "text/plain", String(value));
 }
@@ -179,9 +179,9 @@ void handleEnable()
     if (HTTP.hasArg("set"))
     {
         enable = getValidBoolean("set");
-        clock.setClockEnable(enable);
+        clock.setEnable(enable);
     }
-    enable = clock.getClockEnable();
+    enable = clock.getEnable();
     HTTP.send(200, "text/Plain", String(enable));
 }
 
@@ -194,7 +194,7 @@ void handleRTC()
 void handleNTP()
 {
     Serial.println("disabling the clock!");
-    clock.setClockEnable(false);
+    clock.setEnable(false);
     syncing = true;
     Serial.println("syncing now true!");
     HTTP.send(200, "text/Plain", "OK\n");
@@ -247,7 +247,7 @@ void setup()
     rtc.Enable32kHzPin(false);
 #endif
 
-    boolean enabled = clock.getClockEnable();
+    boolean enabled = clock.getEnable();
     Serial.println("clock enable is:" + String(enabled));
 
     if (!enabled)
@@ -264,7 +264,7 @@ void setup()
         rtc.SetSquareWavePin(DS1307SquareWaveOut_1Hz);
 #endif
         Serial.println("enabling clock");
-        clock.setClockEnable(true);
+        clock.setEnable(true);
     }
     else
     {
@@ -313,7 +313,7 @@ void loop()
         last_pin = 0;
         delay(500);
         Serial.println("rtc updated, starting clock!");
-        clock.setClockEnable(true);
+        clock.setEnable(true);
         Serial.println("syncing clock to RTC");
         syncClockToRTC();
     }
@@ -327,7 +327,7 @@ void syncClockToRTC()
 {
     uint16_t rtc_pos = getRTCTimeAsPosition();
     Serial.printf("RTC position:%d", rtc_pos);
-    uint16_t clock_pos = clock.getClockPosition();
+    uint16_t clock_pos = clock.getPosition();
     Serial.printf("clock position:%d", clock_pos);
     if (clock_pos != rtc_pos)
     {
@@ -337,7 +337,7 @@ void syncClockToRTC()
             adj += 43200;
         }
         Serial.printf("sending adjustment of %d\n", adj);
-        clock.setClockAdjustment(adj);
+        clock.setAdjustment(adj);
     }
 }
 

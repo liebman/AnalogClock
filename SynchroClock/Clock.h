@@ -28,23 +28,23 @@ class Clock
 {
 public:
     Clock();
-    uint16_t getClockAdjustment();
-    void setClockAdjustment(uint16_t value);
-    uint16_t getClockPosition();
-    void setClockPosition(uint16_t value);
-    uint8_t getClockTPDuration();
-    void setClockTPDuration(uint8_t value);
-    uint8_t getClockAPDuration();
-    void setClockAPDuration(uint8_t value);
-    uint8_t getClockAPDelay();
-    void setClockAPDelay(uint8_t value);
-    boolean getClockEnable();
-    void setClockEnable(boolean enable);
+    uint16_t getAdjustment();
+    void setAdjustment(uint16_t value);
+    uint16_t getPosition();
+    void setPosition(uint16_t value);
+    uint8_t getTPDuration();
+    void setTPDuration(uint8_t value);
+    uint8_t getAPDuration();
+    void setAPDuration(uint8_t value);
+    uint8_t getAPDelay();
+    void setAPDelay(uint8_t value);
+    boolean getEnable();
+    void setEnable(boolean enable);
 private:
-    uint16_t readClock16(uint8_t command);
-    void writeClock16(uint8_t command, uint16_t value);
-    uint8_t readClock8(uint8_t command);
-    void writeClock8(uint8_t command, uint8_t value);
+    uint16_t read16(uint8_t command);
+    void write16(uint8_t command, uint16_t value);
+    uint8_t read8(uint8_t command);
+    void write8(uint8_t command, uint8_t value);
 
 };
 
