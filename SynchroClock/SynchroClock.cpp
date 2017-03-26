@@ -1,7 +1,13 @@
 // Do not remove the include below
 #include "SynchroClock.h"
 
+#ifdef DS3231
 RtcDS3231<TwoWire> rtc(Wire);
+#endif
+#ifdef DS1307
+RtcDS1307<TwoWire> rtc(Wire);
+#endif
+
 FeedbackLED feedback(LED_PIN);
 ESP8266WebServer HTTP(80);
 SNTP ntp("time.apple.com", 123);
@@ -218,7 +224,9 @@ void setup()
 
   // never assume the Rtc was last configured by you, so
   // just clear them to your needed state
+#ifdef DS3231
   rtc.Enable32kHzPin(false);
+#endif
 
   boolean enabled = getClockEnable();
   Serial.println("clock enable is:" + String(enabled));
@@ -226,9 +234,11 @@ void setup()
   if (!enabled)
   {
     Serial.println("set mode none");
-    rtc.SetSquareWavePin(DS3231SquareWavePin_ModeNone);
+    rtc.SetSquareWavePin(SquareWavePin_ModeNone);
+#ifdef DS3231
     Serial.println("set 1Hz");
     rtc.SetSquareWavePinClockFrequency(DS3231SquareWaveClock_1Hz);
+#endif
   }
   else
   {
@@ -254,7 +264,12 @@ void setup()
     Serial.println("enabling clock");
     setClockEnable(true);
     Serial.println("starting square wave");
+#ifdef DS3231
     rtc.SetSquareWavePin(DS3231SquareWavePin_ModeClock);
+#endif
+#ifdef DS1307
+    rtc.SetSquareWavePin(DS1307SquareWaveOut_1Hz);
+#endif
   }
   else
   {

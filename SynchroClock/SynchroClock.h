@@ -6,15 +6,26 @@
 
 #ifndef _SynchroClock_H_
 #define _SynchroClock_H_
-#include "Arduino.h"
 
 #include "Arduino.h"
 #include <WiFiManager.h>
 #include "FeedbackLED.h"
 #include <Wire.h>
-#include <RtcDS3231.h>
 #include <ESP8266WebServer.h>
 #include "SNTP.h"
+
+#define DS1307
+
+#ifdef DS3231
+#include <RtcDS3231.h>
+#define SquareWavePin_ModeNone DS3231SquareWavePin_ModeNone
+#endif
+#ifdef DS1307
+// hack because min is not defined :-/
+#define min(x,y) _min(x,y)
+#include <RtcDS1307.h>
+#define SquareWavePin_ModeNone DS1307SquareWaveOut_High
+#endif
 
 #define I2C_ADDRESS     0x09
 #define CMD_POSITION    0x01
