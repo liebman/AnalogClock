@@ -1,4 +1,4 @@
-update=Sunday, March 26, 2017 'AMt' 07:12:53 AM
+update=Sunday, March 26, 2017 'PMt' 03:05:24 PM
 version=1
 last_client=kicad
 [pcbnew]
@@ -74,3 +74,5 @@ LibName32=semi-trans-generic
 LibName33=diode
 LibName34=semi-diode-generic
 LibName35=drv8838-pololu
+LibName36=mechanical
+LibName37=switches
