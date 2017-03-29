@@ -287,6 +287,8 @@ void loop()
 {
     HTTP.handleClient();
     uint8_t pin = digitalRead(SYNC_PIN);
+    // TODO: add ability to print result and not set time.
+    // TODO: use time "offset" instead and be smart about adjusting time.
     if (syncing && last_pin == 1 && pin == 0)
     {
         EpochTime start;
