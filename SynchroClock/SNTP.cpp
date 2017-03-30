@@ -29,7 +29,8 @@ void dumpNTPPacket(SNTPPacket* ntp)
 }
 
 #define toUINT64(x) (((uint64_t)(x.seconds)<<32) + x.fraction)
-#define ms2Fraction(x) (uint32_t)((uint64_t)x*(uint64_t)(2^32)/(uint64_t)(10^3))
+#define ms2Fraction(x) (uint32_t)((uint64_t)x*(uint64_t)(4294967296L)/(uint64_t)(1000L))
+#define fraction2Ms(x) (uint32_t)((uint64_t)x/(uint64_t)(4294967296L)/(uint64_t)(1000L))
 
 void print64(const char *label, uint64_t value)
 {

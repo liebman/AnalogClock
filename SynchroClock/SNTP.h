@@ -36,8 +36,8 @@
 #define getMODE(value)    (value&0x07)
 
 #define SEVENTY_YEARS     2208988800L
-#define toEPOCH(t)        (t-SEVENTY_YEARS)
-#define toNTP(t)          (t+SEVENTY_YEARS)
+#define toEPOCH(t)        ((uint32_t)t-SEVENTY_YEARS)
+#define toNTP(t)          ((uint32_t)t+SEVENTY_YEARS)
 
 typedef struct ntp_time {
   uint32_t seconds;
