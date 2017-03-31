@@ -18,11 +18,20 @@ bool    dryrun     = false;
 int     ntp_offset = 0;  //  offset to force on NTP time returned
 uint8_t last_pin = 0;
 
+#ifdef DEBUG_SYNCHRO_CLOCK
+unsigned int snprintf(char*,unsigned int, ...);
 #define DBP_BUF_SIZE 256
 char    dbp_buf[DBP_BUF_SIZE];
+#define dbbegin(x)    Serial.begin(x);
 #define dbprintf(...) {snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
 #define dbprint(x) Serial.print(x)
 #define dbprintln(x) Serial.println(x)
+#else
+#define dbbegin(x)
+#define dbprintf(...)
+#define dbprint(x)
+#define dbprintln(x)
+#endif
 
 uint16_t getValidPosition(String name)
 {
@@ -222,7 +231,7 @@ void handleNTP()
 
 void setup()
 {
-    Serial.begin(115200);
+    dbbegin(115200);
     dbprintln("");
     dbprintln("Startup!");
 
@@ -231,8 +240,7 @@ void setup()
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
     WiFiManager wifi;
-    wifi.setAPCallback([](WiFiManager *)
-    {   feedback.blink(FEEDBACK_LED_FAST);});
+    wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
     String ssid = "SynchroClock" + String(ESP.getChipId());
     wifi.autoConnect(ssid.c_str(), NULL);
     feedback.off();
@@ -342,8 +350,8 @@ void loop()
                 unsigned long int setms = millis() - endms - computems;
                 // print these after the clock was set to not add delay!
                 dbprintf("msdelay: %u\n", msdelay);
-                Serial.printf("elapsed:%lu elapsedms:%lu\n", elapsed, elapsedms);
-                Serial.printf("computems:%lu setms:%lu\n", computems, setms);
+                dbprintf("elapsed:%lu elapsedms:%lu\n", elapsed, elapsedms);
+                dbprintf("computems:%lu setms:%lu\n", computems, setms);
 
                 syncing = false;
                 last_pin = 0;
@@ -413,16 +421,4 @@ uint16_t getRTCTimeAsPosition()
     }
     uint16_t position = hour * 60 * 60 + minute * 60 + second;
     return position;
-}
-
-#define countof(a) (sizeof(a) / sizeof(a[0]))
-
-void printDateTime(const RtcDateTime& dt)
-{
-    char datestring[20];
-
-    snprintf_P(datestring, countof(datestring),
-            PSTR("%02u/%02u/%04u %02u:%02u:%02u"), dt.Month(), dt.Day(),
-            dt.Year(), dt.Hour(), dt.Minute(), dt.Second());
-    Serial.print(datestring);
 }

@@ -16,6 +16,7 @@
 #include "Clock.h"
 
 #define DS3231
+#define DEBUG_SYNCHRO_CLOCK
 
 #ifdef DS3231
 #include <RtcDS3231.h>
@@ -49,6 +50,5 @@ void handleRTC();
 void handleNTP();
 void syncClockToRTC();
 uint16_t getRTCTimeAsPosition();
-void printDateTime(const RtcDateTime& dt);
 
 #endif /* _SynchroClock_H_ */
