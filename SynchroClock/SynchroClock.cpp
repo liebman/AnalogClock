@@ -14,6 +14,8 @@ SNTP               ntp("pool.ntp.org", 123);
 Clock              clock;
 
 bool    syncing  = false;
+bool    dryrun   = false;
+int     ntp_offset = 0;  //  offset to force on NTP time returned
 uint8_t last_pin = 0;
 
 uint16_t getValidPosition(String name)
@@ -193,8 +195,21 @@ void handleRTC()
 
 void handleNTP()
 {
-    Serial.println("disabling the clock!");
-    clock.setEnable(false);
+    dryrun = false;
+    ntp_offset = 0;
+    if (HTTP.hasArg("offset")) {
+        ntp_offset = HTTP.arg("offset").toInt();
+        Serial.printf("setting ntp_offset:%d\n", ntp_offset);
+    }
+
+    if (HTTP.hasArg("dryrun")) {
+        Serial.println("NTP dryrun!");
+        dryrun = true;
+    }
+    if (!dryrun) {
+        Serial.println("disabling the clock!");
+        clock.setEnable(false);
+    }
     syncing = true;
     Serial.println("syncing now true!");
     HTTP.send(200, "text/Plain", "OK\n");
@@ -295,37 +310,47 @@ void loop()
         start.seconds = rtc.GetDateTime() + EPOCH_1970to2000;
         start.fraction = 0;
         Serial.printf("start (loop):    %u.%u\n",  start.seconds, start.fraction);
-        EpochTime end = ntp.getTime(start);
+        OffsetTime offset;
+        EpochTime end = ntp.getTime(start, &offset);
 
-        // check for valid ntp result
-        if (end.seconds != 0)
-        {
-            // compute the delay to the next second
+        Serial.printf("OFFSET: %d.%03d\n", offset.seconds, fraction2Ms(offset.fraction));
 
-            uint32_t msdelay = 1000 - (((uint64_t) end.fraction * 1000) >> 32);
-            Serial.print("msdelay: ");
-            Serial.println(msdelay);
-            // wait for the next second
-            if (msdelay > 0 && msdelay < 1000)
+        if (!dryrun) {
+            // check for valid ntp result
+            if (end.seconds != 0)
             {
-                delay(msdelay);
+                // compute the delay to the next second
+
+                uint32_t msdelay = 1000 - (((uint64_t) end.fraction * 1000) >> 32);
+                Serial.print("msdelay: ");
+                Serial.println(msdelay);
+                // wait for the next second
+                if (msdelay > 0 && msdelay < 1000)
+                {
+                    delay(msdelay);
+                }
+                RtcDateTime dt(end.seconds + ntp_offset - EPOCH_1970to2000 + 1); // +1 because we waited for the next second
+                rtc.SetDateTime(dt);
+                syncing = false;
+                last_pin = 0;
+                delay(500);
+                Serial.println("rtc updated, starting clock!");
+                clock.setEnable(true);
+                Serial.println("syncing clock to RTC");
+                syncClockToRTC();
             }
-            RtcDateTime dt(end.seconds - EPOCH_1970to2000 + 1); // +1 because we waited for the next second
-            rtc.SetDateTime(dt);
-            syncing = false;
-            last_pin = 0;
-            delay(500);
-            Serial.println("rtc updated, starting clock!");
-            clock.setEnable(true);
-            Serial.println("syncing clock to RTC");
-            syncClockToRTC();
+            else
+            {
+                Serial.println("NTP failed!!!!!");
+                syncing = false;
+                last_pin = 0;
+                clock.setEnable(true);
+            }
         }
-        else
-        {
-            Serial.println("NTP failed!!!!!");
+        else {
+            Serial.println("DRYRUN complete!");
             syncing = false;
             last_pin = 0;
-            clock.setEnable(true);
         }
     }
     else

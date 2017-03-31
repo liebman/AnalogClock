@@ -38,11 +38,18 @@
 #define SEVENTY_YEARS     2208988800L
 #define toEPOCH(t)        ((uint32_t)t-SEVENTY_YEARS)
 #define toNTP(t)          ((uint32_t)t+SEVENTY_YEARS)
+#define ms2Fraction(x) (uint32_t)((uint64_t)x*(uint64_t)(4294967296L)/(uint64_t)(1000L))
+#define fraction2Ms(x) (uint32_t)((uint64_t)x/((uint64_t)(4294967296L)/(uint64_t)(1000L)))
 
 typedef struct ntp_time {
   uint32_t seconds;
   uint32_t fraction;
 } NTPTime, EpochTime;
+
+typedef struct offset_time {
+    int32_t  seconds;
+    uint32_t fraction;
+} OffsetTime;
 
 typedef struct ntp_packet
 {
@@ -64,7 +71,7 @@ class SNTP
 public:
   SNTP (const char* server, uint16_t port);
   void      begin(uint16_t local_port);
-  EpochTime getTime(EpochTime now);
+  EpochTime getTime(EpochTime now, OffsetTime* offset);
 
 private:
   const char *server;
