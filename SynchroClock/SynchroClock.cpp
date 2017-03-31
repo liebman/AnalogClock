@@ -13,10 +13,16 @@ ESP8266WebServer   HTTP(80);
 SNTP               ntp("pool.ntp.org", 123);
 Clock              clock;
 
-bool    syncing  = false;
-bool    dryrun   = false;
+bool    syncing    = false;
+bool    dryrun     = false;
 int     ntp_offset = 0;  //  offset to force on NTP time returned
 uint8_t last_pin = 0;
+
+#define DBP_BUF_SIZE 256
+char    dbp_buf[DBP_BUF_SIZE];
+#define dbprintf(...) {snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
+#define dbprint(x) Serial.print(x)
+#define dbprintln(x) Serial.println(x)
 
 uint16_t getValidPosition(String name)
 {
@@ -54,9 +60,8 @@ uint16_t getValidPosition(String name)
         result = atoi(value);
         if (result < 0 || result > 43199)
         {
-            Serial.println(
-                    "invalid value for " + name + ": " + HTTP.arg(name)
-                            + " using 0 instead!");
+            dbprintln("invalid value for " + name + ": " + HTTP.arg(name)
+                      + " using 0 instead!");
             result = 0;
         }
     }
@@ -68,9 +73,8 @@ uint8_t getValidDuration(String name)
     int i = HTTP.arg(name).toInt();
     if (i < 0 || i > 255)
     {
-        Serial.println(
-                "invalid value for " + name + ": " + HTTP.arg(name)
-                        + " using 32 instead!");
+        dbprintln("invalid value for " + name + ": " + HTTP.arg(name)
+                  + " using 32 instead!");
         i = 32;
     }
     return (uint8_t) i;
@@ -89,21 +93,21 @@ void handleAdjustment()
     {
         if (HTTP.arg("set").equalsIgnoreCase("auto"))
         {
-            Serial.println("Auto Adjust!");
+            dbprintln("Auto Adjust!");
             syncClockToRTC();
         }
         else
         {
             adj = getValidPosition("set");
-            Serial.print("setting adjustment:");
-            Serial.println(adj);
+            dbprint("setting adjustment:");
+            dbprintln(adj);
             clock.setAdjustment(adj);
         }
     }
 
     adj = clock.getAdjustment();
 
-    HTTP.send(200, "text/plain", String(adj));
+    HTTP.send(200, "text/plain", String(adj)+"\n");
 }
 
 void handlePosition()
@@ -112,8 +116,8 @@ void handlePosition()
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
-        Serial.print("setting position:");
-        Serial.println(pos);
+        dbprint("setting position:");
+        dbprintln(pos);
         clock.setPosition(pos);
     }
 
@@ -133,14 +137,14 @@ void handleTPDuration()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        Serial.print("setting tp_duration:");
-        Serial.println(value);
+        dbprint("setting tp_duration:");
+        dbprintln(value);
         clock.setTPDuration(value);
     }
 
     value = clock.getTPDuration();
 
-    HTTP.send(200, "text/plain", String(value));
+    HTTP.send(200, "text/plain", String(value)+"\n");
 }
 
 void handleAPDuration()
@@ -149,14 +153,14 @@ void handleAPDuration()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        Serial.print("setting ap_duration:");
-        Serial.println(value);
+        dbprint("setting ap_duration:");
+        dbprintln(value);
         clock.setAPDuration(value);
     }
 
     value = clock.getAPDuration();
 
-    HTTP.send(200, "text/plain", String(value));
+    HTTP.send(200, "text/plain", String(value)+"\n");
 }
 
 void handleAPDelay()
@@ -165,14 +169,14 @@ void handleAPDelay()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        Serial.print("setting ap_delay:");
-        Serial.println(value);
+        dbprint("setting ap_delay:");
+        dbprintln(value);
         clock.setAPDelay(value);
     }
 
     value = clock.getAPDelay();
 
-    HTTP.send(200, "text/plain", String(value));
+    HTTP.send(200, "text/plain", String(value)+"\n");
 }
 
 void handleEnable()
@@ -184,42 +188,43 @@ void handleEnable()
         clock.setEnable(enable);
     }
     enable = clock.getEnable();
-    HTTP.send(200, "text/Plain", String(enable));
+    HTTP.send(200, "text/Plain", String(enable)+"\n");
 }
 
 void handleRTC()
 {
     uint16_t value = getRTCTimeAsPosition();
-    HTTP.send(200, "text/plain", String(value));
+    HTTP.send(200, "text/plain", String(value)+"\n");
 }
 
 void handleNTP()
 {
-    dryrun = false;
+    dryrun     = false;
     ntp_offset = 0;
+    
     if (HTTP.hasArg("offset")) {
         ntp_offset = HTTP.arg("offset").toInt();
-        Serial.printf("setting ntp_offset:%d\n", ntp_offset);
+        dbprintf("setting ntp_offset:%d\n", ntp_offset);
     }
 
     if (HTTP.hasArg("dryrun")) {
-        Serial.println("NTP dryrun!");
+        dbprintln("NTP dryrun!");
         dryrun = true;
     }
     if (!dryrun) {
-        Serial.println("disabling the clock!");
+        dbprintln("disabling the clock!");
         clock.setEnable(false);
     }
     syncing = true;
-    Serial.println("syncing now true!");
+    dbprintln("syncing now true!");
     HTTP.send(200, "text/Plain", "OK\n");
 }
 
 void setup()
 {
     Serial.begin(115200);
-    Serial.println("");
-    Serial.println("Startup!");
+    dbprintln("");
+    dbprintln("Startup!");
 
     pinMode(SYNC_PIN, INPUT);
 
@@ -241,7 +246,7 @@ void setup()
         //    1) first time you ran and the device wasn't running yet
         //    2) the battery on the device is low or even missing
 
-        Serial.println("RTC lost confidence in the DateTime!");
+        dbprintln("RTC lost confidence in the DateTime!");
 
         // following line sets the RTC to the date & time this sketch was compiled
         // it will also reset the valid flag internally unless the Rtc device is
@@ -252,7 +257,7 @@ void setup()
 
     if (!rtc.GetIsRunning())
     {
-        Serial.println("RTC was not actively running, starting now");
+        dbprintln("RTC was not actively running, starting now");
         rtc.SetIsRunning(true);
     }
 
@@ -263,11 +268,11 @@ void setup()
 #endif
 
     boolean enabled = clock.getEnable();
-    Serial.println("clock enable is:" + String(enabled));
+    dbprintln("clock enable is:" + String(enabled));
 
     if (!enabled)
     {
-        Serial.println("starting 1hz square wave");
+        dbprintln("starting 1hz square wave");
 #ifdef DS3231
         rtc.SetSquareWavePinClockFrequency(DS3231SquareWaveClock_1Hz);
         rtc.SetSquareWavePin(DS3231SquareWavePin_ModeClock);
@@ -275,15 +280,15 @@ void setup()
 #ifdef DS1307
         rtc.SetSquareWavePin(DS1307SquareWaveOut_1Hz);
 #endif
-        Serial.println("enabling clock");
+        dbprintln("enabling clock");
         clock.setEnable(true);
     }
     else
     {
-        Serial.println("clock is enabled, skipping init of RTC");
+        dbprintln("clock is enabled, skipping init of RTC");
     }
 
-    Serial.println("starting HTTP");
+    dbprintln("starting HTTP");
     HTTP.on("/adjust", HTTP_GET, handleAdjustment);
     HTTP.on("/position", HTTP_GET, handlePosition);
     HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
@@ -302,18 +307,19 @@ void loop()
 {
     HTTP.handleClient();
     uint8_t pin = digitalRead(SYNC_PIN);
-    // TODO: add ability to print result and not set time.
-    // TODO: use time "offset" instead and be smart about adjusting time.
+
     if (syncing && last_pin == 1 && pin == 0)
     {
-        EpochTime start;
-        start.seconds = rtc.GetDateTime() + EPOCH_1970to2000;
-        start.fraction = 0;
-        Serial.printf("start (loop):    %u.%u\n",  start.seconds, start.fraction);
+        RtcDateTime dt = rtc.GetDateTime();
+        unsigned long int startms = millis();
+        EpochTime start_epoch;
+        start_epoch.seconds = dt.Epoch32Time();
+        start_epoch.fraction = 0;
+        dbprintf("start_epoch (loop):    %u.%u\n",  start_epoch.seconds, start_epoch.fraction);
         OffsetTime offset;
-        EpochTime end = ntp.getTime(start, &offset);
+        EpochTime end = ntp.getTime(start_epoch, &offset);
 
-        Serial.printf("OFFSET: %d.%03d\n", offset.seconds, fraction2Ms(offset.fraction));
+        dbprintf("OFFSET: %d.%03d\n", offset.seconds, fraction2Ms(offset.fraction));
 
         if (!dryrun) {
             // check for valid ntp result
@@ -322,33 +328,42 @@ void loop()
                 // compute the delay to the next second
 
                 uint32_t msdelay = 1000 - (((uint64_t) end.fraction * 1000) >> 32);
-                Serial.print("msdelay: ");
-                Serial.println(msdelay);
                 // wait for the next second
                 if (msdelay > 0 && msdelay < 1000)
                 {
                     delay(msdelay);
                 }
-                RtcDateTime dt(end.seconds + ntp_offset - EPOCH_1970to2000 + 1); // +1 because we waited for the next second
+                unsigned long int endms = millis();
+                unsigned long int elapsedms = endms - startms;
+                unsigned long int elapsed = elapsedms / 1000;
+                dt += offset.seconds + elapsed + ntp_offset + 1; // +1 because we waited for the next second
+                unsigned long int computems = millis() - endms;
                 rtc.SetDateTime(dt);
+                unsigned long int setms = millis() - endms - computems;
+                // print these after the clock was set to not add delay!
+                dbprintf("msdelay: %u\n", msdelay);
+                Serial.printf("elapsed:%lu elapsedms:%lu\n", elapsed, elapsedms);
+                Serial.printf("computems:%lu setms:%lu\n", computems, setms);
+
                 syncing = false;
                 last_pin = 0;
                 delay(500);
-                Serial.println("rtc updated, starting clock!");
+                dbprintln("rtc updated, starting clock!");
                 clock.setEnable(true);
-                Serial.println("syncing clock to RTC");
+                dbprintln("syncing clock to RTC");
                 syncClockToRTC();
             }
             else
             {
-                Serial.println("NTP failed!!!!!");
+                dbprintln("NTP failed!!!!!");
                 syncing = false;
                 last_pin = 0;
                 clock.setEnable(true);
             }
         }
-        else {
-            Serial.println("DRYRUN complete!");
+        else
+        {
+            dbprintln("DRYRUN complete!");
             syncing = false;
             last_pin = 0;
         }
@@ -363,9 +378,9 @@ void syncClockToRTC()
 {
     // TODO: should wait for falling 1hz edge!
     uint16_t rtc_pos = getRTCTimeAsPosition();
-    Serial.printf("RTC position:%d\n", rtc_pos);
+    dbprintf("RTC position:%d\n", rtc_pos);
     uint16_t clock_pos = clock.getPosition();
-    Serial.printf("clock position:%d\n", clock_pos);
+    dbprintf("clock position:%d\n", clock_pos);
     if (clock_pos != rtc_pos)
     {
         int adj = rtc_pos - clock_pos;
@@ -373,7 +388,7 @@ void syncClockToRTC()
         {
             adj += 43200;
         }
-        Serial.printf("sending adjustment of %d\n", adj);
+        dbprintf("sending adjustment of %d\n", adj);
         clock.setAdjustment(adj);
     }
 }
@@ -390,11 +405,11 @@ uint16_t getRTCTimeAsPosition()
     if (hour > 11)
     {
         hour -= 12;
-        Serial.printf("%02d:%02d:%02d (CORRECTED)\n", hour, minute, second);
+        dbprintf("%02d:%02d:%02d (CORRECTED)\n", hour, minute, second);
     }
     else
     {
-        Serial.printf("%02d:%02d:%02d\n", hour, minute, second);
+        dbprintf("%02d:%02d:%02d\n", hour, minute, second);
     }
     uint16_t position = hour * 60 * 60 + minute * 60 + second;
     return position;
