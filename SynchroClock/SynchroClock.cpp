@@ -307,8 +307,10 @@ void setup()
     HTTP.on("/ntp", HTTP_GET, handleNTP);
     HTTP.begin();
     ntp.begin(1235);
-    syncing = false;
-    last_pin = 0;
+    syncing    = false;
+    dryrun     = false;
+    ntp_offset = 0;
+    last_pin   = 0;
 }
 
 void loop()
