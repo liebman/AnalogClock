@@ -1,4 +1,4 @@
-update=Sunday, March 26, 2017 'PMt' 03:05:24 PM
+update=Wednesday, April 19, 2017 'PMt' 04:14:52 PM
 version=1
 last_client=kicad
 [pcbnew]
@@ -25,19 +25,9 @@ version=1
 NetIExt=net
 [general]
 version=1
-[schematic_editor]
-version=1
-PageLayoutDescrFile=
-PlotDirectoryName=
-SubpartIdSeparator=0
-SubpartFirstId=65
-NetFmtName=
-SpiceForceRefPrefix=0
-SpiceUseNetNumbers=0
-LabSize=60
 [eeschema]
 version=1
-LibDir=/Users/liebman/Documents/kicad/libraries/kicad-schlib/library;/Users/liebman/Documents/kicad/libraries/kicad-ESP8266;/Users/liebman/Documents/kicad/libraries/liebman
+LibDir=/Users/liebman/Documents/kicad/libraries/kicad-schlib/library;/Users/liebman/Documents/kicad/libraries/kicad-ESP8266;/Users/liebman/Documents/kicad/libraries/liebman;/Users/liebman/Documents/kicad/libraries
 [eeschema/libraries]
 LibName1=power
 LibName2=device
@@ -76,3 +66,15 @@ LibName34=semi-diode-generic
 LibName35=drv8838-pololu
 LibName36=mechanical
 LibName37=switches
+LibName38=lm1117v33
+LibName39=ds3231-module
+[schematic_editor]
+version=1
+PageLayoutDescrFile=
+PlotDirectoryName=
+SubpartIdSeparator=0
+SubpartFirstId=65
+NetFmtName=
+SpiceForceRefPrefix=0
+SpiceUseNetNumbers=0
+LabSize=60
