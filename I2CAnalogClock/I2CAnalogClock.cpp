@@ -118,7 +118,11 @@ ISR(TIMER1_COMPA_vect)
     }
 
     digitalWrite(LED_PIN, digitalRead(LED_PIN) ^ 1);
+#ifdef __AVR_ATtinyX5__
+    TIMSK &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
+#else
     TIMSK1 &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
+#endif
     timer_running = false;
     if (timer_cb != NULL)
     {
@@ -143,6 +147,17 @@ void startTimer(int ms, void (*func)())
     noInterrupts();
     // disable all interrupts
     timer_cb = func;
+#ifdef __AVR_ATtinyX5__
+    TCCR1 = 0;
+    TCNT1 = 0;
+
+    OCR1A = timer;   // compare match register
+    TCCR1 |= (1 << CTC1);   // CTC mode
+    TCCR1 |= PRESCALE_BITS;
+    TIMSK |= (1 << OCIE1A);  // enable timer compare interrupt
+    // clear any already pending interrupt?  does not work :-(
+    TIFR &= ~(1 << OCIE1A);
+#else
     TCCR1A = 0;
     TCCR1B = 0;
     TCNT1 = 0;
@@ -153,6 +168,7 @@ void startTimer(int ms, void (*func)())
     TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
     // clear any already pending interrupt?  does not work :-(
     TIFR1 &= ~(1 << OCIE1A);
+#endif
     timer_running = true;
     interrupts();
     // enable all interrupts
