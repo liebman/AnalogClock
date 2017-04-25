@@ -16,7 +16,7 @@ volatile unsigned int requests;
 volatile unsigned int errors;
 
 // i2c receive handler
-void i2creceive(int size)
+void i2creceive(WireRecType size)
 {
     ++receives;
     command = WireRead();
@@ -164,7 +164,7 @@ void startTimer(int ms, void (*func)())
 
     OCR1A = timer;   // compare match register
     TCCR1B |= (1 << WGM12);   // CTC mode
-    TCCR1B |= (1 << CS12);    // 256 prescaler
+    TCCR1B |= PRESCALE_BITS;
     TIMSK1 |= (1 << OCIE1A);  // enable timer compare interrupt
     // clear any already pending interrupt?  does not work :-(
     TIFR1 &= ~(1 << OCIE1A);
