@@ -60,12 +60,14 @@
 #define toggleTick()    (control ^= BIT_TICK)
 
 #ifdef __AVR_ATtinyX5__
+#define WireRecType      uint8_t
 #define WireBegin(x)     TinyWireS.begin(x)
 #define WireOnReceive(x) TinyWireS.onReceive(x)
 #define WireOnRequest(x) TinyWireS.onRequest(x)
 #define WireRead()       TinyWireS.receive()
 #define WireWrite(x)     TinyWireS.send(x)
 #else
+#define WireRecType      int
 #define WireBegin(x)     Wire.begin(x)
 #define WireOnReceive(x) Wire.onReceive(x)
 #define WireOnRequest(x) Wire.onRequest(x)
@@ -86,6 +88,7 @@
 #else
 #define CLOCK_HZ        16000000
 #define PRESCALE        256
+#define PRESCALE_BITS   (1 << CS12) // 256 prescaler
 #define ms2Timer(x) ((uint16_t)(CLOCK_HZ /(PRESCALE * (1/((double)x/1000)))))
 #endif
 
