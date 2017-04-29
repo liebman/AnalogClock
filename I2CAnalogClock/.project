@@ -32,19 +32,24 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>PinChangeInterrupt</name>
+			<type>2</type>
+			<location>/Users/liebman/src/PinChangeInterrupt</location>
+		</link>
+		<link>
+			<name>TinyWireS</name>
+			<type>2</type>
+			<location>/Users/liebman/src/TinyWire/TinyWireS</location>
+		</link>
+		<link>
 			<name>core/core</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/arduino/hardware/avr/1.6.17/cores/arduino</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/ATTinyCore/hardware/avr/1.1.2/cores/tiny</locationURI>
 		</link>
 		<link>
 			<name>core/variant</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/arduino/hardware/avr/1.6.17/variants/eightanaloginputs</locationURI>
-		</link>
-		<link>
-			<name>libraries/Wire</name>
-			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/arduino/hardware/avr/1.6.17/libraries/Wire</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/packages/ATTinyCore/hardware/avr/1.1.2/variants/tinyX5</locationURI>
 		</link>
 	</linkedResources>
 </projectDescription>

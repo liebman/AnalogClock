@@ -117,10 +117,10 @@ ISR(TIMER1_COMPA_vect)
         return;
     }
 
-    digitalWrite(LED_PIN, digitalRead(LED_PIN) ^ 1);
 #ifdef __AVR_ATtinyX5__
     TIMSK &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #else
+    digitalWrite(LED_PIN, digitalRead(LED_PIN) ^ 1);
     TIMSK1 &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #endif
     timer_running = false;
@@ -139,7 +139,6 @@ void startTimer(int ms, void (*func)())
 #ifdef DEBUG_TIMER
     starts += 1;
     last_duration = ms;
-    digitalWrite (LED_PIN, digitalRead (LED_PIN)^1);
 #endif
     start_time = millis();
     uint16_t timer = ms2Timer(ms);
@@ -210,9 +209,9 @@ void advancePosition() {
 void advanceClock(uint16_t duration)
 {
     advancePosition();
-    // placeholder for advance clock - for now just toggle LED
+#ifndef __AVR_ATtinyX5__
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-
+#endif
     startTick();
     startTimer(duration, &endTick);
 }
@@ -239,7 +238,7 @@ void tick()
 void setup()
 {
 #ifdef DEBUG_I2CAC
-    Serial.begin(115200);
+    Serial.begin(SERIAL_BAUD);
     Serial.println("");
     Serial.println("Startup!");
 #endif
@@ -247,6 +246,8 @@ void setup()
     tp_duration = DEFAULT_TP_DURATION_MS;
     ap_duration = DEFAULT_AP_DURATION_MS;
     ap_delay    = DEFAULT_AP_DELAY_MS;
+
+    //control = BIT_ENABLE;
 
     WireBegin(I2C_ADDRESS);
     WireOnReceive(&i2creceive);
@@ -257,7 +258,7 @@ void setup()
     pinMode(A_PIN, OUTPUT);
     pinMode(B_PIN, OUTPUT);
     pinMode(INT_PIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(INT_PIN), &tick, FALLING);
+    attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
 }
 
 #ifdef DEBUG_I2CAC
@@ -280,25 +281,32 @@ void loop()
 #ifdef DEBUG_I2CAC
     unsigned long now = millis();
     char buffer[128];
-    if (last_pos != position && (now - last_print) > 1000)
-    {
-        last_pos = position;
+    if ((now - last_print) > 1000) {
         last_print = now;
-#ifdef DEBUG_TIMER
-        if (timer_running)
+        if (last_pos != position)
         {
-            Serial.println("timer running, adding delay!");
-            delay(33);
+            last_pos = position;
+    #ifdef DEBUG_TIMER
+            if (timer_running)
+            {
+                Serial.println("timer running, adding delay!");
+                delay(33);
+            }
+            int last_actual = stop_time - start_time;
+            snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
+                    starts, stops, ints, last_duration, last_actual);
+            Serial.print(buffer);
+    #endif
+            snprintf(buffer, 127,
+                    "position:%d adjustment:%d control:%d seconds:%d\n", position,
+                    adjustment, control, position % 60);
+            Serial.print(buffer);
         }
-        int last_actual = stop_time - start_time;
-        snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
-                starts, stops, ints, last_duration, last_actual);
+#ifdef DEBUG_I2C
+        snprintf(buffer, 127, "receives:%d requests:%d errors: %d\n",
+                receives, requests, errors);
         Serial.print(buffer);
 #endif
-        snprintf(buffer, 127,
-                "position:%d adjustment:%d control:%d seconds:%d\n", position,
-                adjustment, control, position % 60);
-        Serial.print(buffer);
     }
 #endif
     delay(1);
