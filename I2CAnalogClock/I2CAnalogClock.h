@@ -8,17 +8,18 @@
 #define _I2CAnalogClock_H_
 #include "Arduino.h"
 #include "PinChangeInterrupt.h"
+#include <avr/sleep.h>
 
 #ifdef __AVR_ATtinyX5__
 //#include "TinyWireS.h"
 #include "USIWire.h"
 #else
 //#include "Wire.h"
-#endif
-
 //#define DEBUG_I2CAC     1
 //#define DEBUG_I2C       1
 //#define DEBUG_TIMER     1
+#endif
+
 #define DRV8838         1
 #define SERIAL_BAUD     38400
 

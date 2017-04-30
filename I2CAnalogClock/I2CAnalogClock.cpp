@@ -243,6 +243,11 @@ void setup()
     Serial.println("Startup!");
 #endif
 
+
+    ADCSRA &= ~(1<<ADEN); // Disable ADC as we don't use it, saves ~230uA
+    PRR    |= (1<<PRADC); // Turn off ADC clock
+    //set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+
     tp_duration = DEFAULT_TP_DURATION_MS;
     ap_duration = DEFAULT_AP_DURATION_MS;
     ap_delay    = DEFAULT_AP_DELAY_MS;
@@ -277,6 +282,10 @@ void loop()
         delay(ap_delay);
         --adjustment;
     }
+    else
+    {
+        sleep_mode();
+    }
 
 #ifdef DEBUG_I2CAC
     unsigned long now = millis();
@@ -309,5 +318,5 @@ void loop()
 #endif
     }
 #endif
-    delay(1);
+    //delay(1);
 }
