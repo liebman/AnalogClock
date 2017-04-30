@@ -24,6 +24,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/TinyWireS}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/libraries/SoftwareSerial}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.cpp.sketch.input.935723235" name="CPP source files" superClass="io.sloeber.compiler.cpp.sketch.input"/>
 							</tool>
@@ -34,6 +37,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/TinyWireS}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/libraries/SoftwareSerial}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.c.sketch.input.110457270" name="C Source Files" superClass="io.sloeber.compiler.c.sketch.input"/>
 							</tool>
@@ -44,6 +50,9 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/TinyWireS}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/libraries/SoftwareSerial}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.S.sketch.input.498214699" name="Assembly source files" superClass="io.sloeber.compiler.S.sketch.input"/>
 							</tool>

@@ -10,7 +10,8 @@
 #include "PinChangeInterrupt.h"
 
 #ifdef __AVR_ATtinyX5__
-#include "TinyWireS.h"
+//#include "TinyWireS.h"
+#include "USIWire.h"
 #else
 //#include "Wire.h"
 #endif
@@ -61,26 +62,9 @@
 #define isTick()        (control &  BIT_TICK)
 #define toggleTick()    (control ^= BIT_TICK)
 
-#ifdef __AVR_ATtinyX5__
-#define WireRecType      uint8_t
-#define WireBegin(x)     TinyWireS.begin(x)
-#define WireOnReceive(x) TinyWireS.onReceive(x)
-#define WireOnRequest(x) TinyWireS.onRequest(x)
-#define WireRead()       TinyWireS.receive()
-#define WireWrite(x)     TinyWireS.send(x)
-#else
-#define WireRecType      int
-#define WireBegin(x)     Wire.begin(x)
-#define WireOnReceive(x) Wire.onReceive(x)
-#define WireOnRequest(x) Wire.onRequest(x)
-#define WireRead()       Wire.read()
-#define WireWrite(x)     Wire.write(x)
-#endif
-
 //
 // Timing defaults
 //
-
 
 #ifdef __AVR_ATtinyX5__
 #define CLOCK_HZ        8000000
