@@ -8,6 +8,7 @@
 #define _SynchroClock_H_
 
 #include "Arduino.h"
+#include <ESP8266WiFi.h>
 #include <WiFiManager.h>
 #include "FeedbackLED.h"
 #include <Wire.h>
@@ -34,6 +35,11 @@
 // pin definitions
 #define LED_PIN         BUILTIN_LED
 #define SYNC_PIN        D5          // pin tied to 1hz square wave from RTC
+
+#define PIN_EDGE_RISING  1
+#define PIN_EDGE_FALLING 0
+
+void waitForEdge(int pin, int edge);
 
 uint16_t getValidPosition(String name);
 uint8_t getValidDuration(String name);

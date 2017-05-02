@@ -23,7 +23,6 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/core/variant}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Ticker}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/WiFiManager}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Wire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/DNSServer}&quot;"/>
@@ -32,6 +31,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WebServer/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WiFi}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.cpp.sketch.input.1361281027" name="CPP source files" superClass="io.sloeber.compiler.cpp.sketch.input"/>
 							</tool>
@@ -41,7 +41,6 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/core/variant}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Ticker}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/WiFiManager}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Wire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/DNSServer}&quot;"/>
@@ -50,6 +49,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WebServer/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WiFi}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.c.sketch.input.566236366" name="C Source Files" superClass="io.sloeber.compiler.c.sketch.input"/>
 							</tool>
@@ -59,7 +59,6 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/core/variant}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Ticker}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/WiFiManager}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Wire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/DNSServer}&quot;"/>
@@ -68,6 +67,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WebServer/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WiFi}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/ESP8266WiFi/src}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SynchroClock/libraries/Rtc_by_Makuna/src}&quot;"/>
 								</option>
 								<inputType id="io.sloeber.compiler.S.sketch.input.1750353870" name="Assembly source files" superClass="io.sloeber.compiler.S.sketch.input"/>
 							</tool>

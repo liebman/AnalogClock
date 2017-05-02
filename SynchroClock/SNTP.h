@@ -8,8 +8,11 @@
 #ifndef SNTP_H_
 #define SNTP_H_
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <lwip/def.h> // htonl() & ntohl()
+
+//#define SNTP_DEBUG     1
 
 #define LI_NONE        0
 #define LI_SIXTY_ONE   1
@@ -72,9 +75,11 @@ public:
   SNTP (const char* server, uint16_t port);
   void      begin(uint16_t local_port);
   EpochTime getTime(EpochTime now, OffsetTime* offset);
+  EpochTime getTime(const char* server, EpochTime now, OffsetTime* offset);
+  EpochTime getTime(IPAddress server, EpochTime now, OffsetTime* offset);
 
 private:
-  const char *server;
+  const char *default_server;
   uint16_t   port;
   WiFiUDP    udp;
   SNTPPacket  ntp;

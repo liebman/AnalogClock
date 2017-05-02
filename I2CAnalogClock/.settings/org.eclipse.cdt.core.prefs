@@ -160,10 +160,10 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.DT
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.DTS/value=3600
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.LOCAL/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.LOCAL/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.LOCAL/value=1493484363
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.LOCAL/value=1493540321
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.UTC/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.UTC/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.UTC/value=1493509563
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.UTC/value=1493565521
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.ZONE/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.ZONE/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.EXTRA.TIME.ZONE/value=-28800
@@ -223,7 +223,7 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.PROTOCOL/oper
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.PROTOCOL/value=usbtiny
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-ar" rcs 
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-ar" rcs 
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN.2/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN.2/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN.2/value=\ 
@@ -235,7 +235,7 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PAT
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.AR.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.AR.CMD}" ${A.COMPILER.AR.FLAGS} ${A.COMPILER.AR.EXTRA_FLAGS} "${A.ARCHIVE_FILE_PATH}" "${A.OBJECT_FILE}"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-gcc" -Wall -Wextra -Os -Wl,--gc-sections -mmcu\=attiny85 -o "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf" 
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-gcc" -Wall -Wextra -Os -Wl,--gc-sections -mmcu\=attiny85 -o "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf" 
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN.2/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN.2/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN.2/value=\ 
@@ -247,7 +247,7 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMB
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.COMBINE.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.C.ELF.CMD}" ${A.COMPILER.C.ELF.FLAGS} -mmcu\=${A.BUILD.MCU} ${A.COMPILER.C.ELF.EXTRA_FLAGS} -o "${A.BUILD.PATH}/${A.BUILD.PROJECT_NAME}.elf" ${A.OBJECT_FILES} "${A.BUILD.PATH}/${A.ARCHIVE_FILE}" "-L${A.BUILD.PATH}" -lm
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-gcc" -c -g -Os -Wall -Wextra -std\=gnu11 -ffunction-sections -fdata-sections -mmcu\=attiny85 -DF_CPU\=8000000L -DARDUINO\=10802 -DARDUINO_AVR_ATTINYX5 -DARDUINO_ARCH_AVR  
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-gcc" -c -g -Os -Wall -Wextra -std\=gnu11 -ffunction-sections -fdata-sections -mmcu\=attiny85 -DF_CPU\=8000000L -DARDUINO\=10802 -DARDUINO_AVR_ATTINYX5 -DARDUINO_ARCH_AVR  
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN.2/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN.2/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN.2/value=\ -o 
@@ -259,7 +259,7 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PA
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.C.O.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.C.CMD}" ${A.COMPILER.C.FLAGS} -mmcu\=${A.BUILD.MCU} -DF_CPU\=${A.BUILD.F_CPU} -DARDUINO\=${A.RUNTIME.IDE.VERSION} -DARDUINO_${A.BUILD.BOARD} -DARDUINO_ARCH_${A.BUILD.ARCH} ${A.COMPILER.C.EXTRA_FLAGS} ${A.BUILD.EXTRA_FLAGS} ${A.INCLUDES} "${A.SOURCE_FILE}" -o "${A.OBJECT_FILE}"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-g++" -c -g -Os -Wall -Wextra -std\=gnu++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -mmcu\=attiny85 -DF_CPU\=8000000L -DARDUINO\=10802 -DARDUINO_AVR_ATTINYX5 -DARDUINO_ARCH_AVR  
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-g++" -c -g -Os -Wall -Wextra -std\=gnu++11 -fpermissive -fno-exceptions -ffunction-sections -fdata-sections -fno-threadsafe-statics -mmcu\=attiny85 -DF_CPU\=8000000L -DARDUINO\=10802 -DARDUINO_AVR_ATTINYX5 -DARDUINO_ARCH_AVR  
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN.2/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN.2/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN.2/value=\ -o 
@@ -271,13 +271,13 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.CPP.O.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.CPP.CMD}" ${A.COMPILER.CPP.FLAGS} -mmcu\=${A.BUILD.MCU} -DF_CPU\=${A.BUILD.F_CPU} -DARDUINO\=${A.RUNTIME.IDE.VERSION} -DARDUINO_${A.BUILD.BOARD} -DARDUINO_ARCH_${A.BUILD.ARCH} ${A.COMPILER.CPP.EXTRA_FLAGS} ${A.BUILD.EXTRA_FLAGS} ${A.INCLUDES} "${A.SOURCE_FILE}" -o "${A.OBJECT_FILE}"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.EEP.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.EEP.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.EEP.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-objcopy" -O ihex -j .eeprom --set-section-flags\=.eeprom\=alloc,load --no-change-warnings --change-section-lma .eeprom\=0 "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf" "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.eep"
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.EEP.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-objcopy" -O ihex -j .eeprom --set-section-flags\=.eeprom\=alloc,load --no-change-warnings --change-section-lma .eeprom\=0 "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf" "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.eep"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.EEP.PATTERN/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.EEP.PATTERN/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.EEP.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.OBJCOPY.CMD}" ${A.COMPILER.OBJCOPY.EEP.FLAGS} ${A.COMPILER.OBJCOPY.EEP.EXTRA_FLAGS} "${A.BUILD.PATH}/${A.BUILD.PROJECT_NAME}.elf" "${A.BUILD.PATH}/${A.BUILD.PROJECT_NAME}.eep"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.HEX.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.HEX.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.HEX.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-objcopy" -O ihex -R .eeprom "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf" "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.hex"
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.HEX.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-objcopy" -O ihex -R .eeprom "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf" "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.hex"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.HEX.PATTERN/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.HEX.PATTERN/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.OBJCOPY.HEX.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.ELF2HEX.CMD}" ${A.COMPILER.ELF2HEX.FLAGS} ${A.COMPILER.ELF2HEX.EXTRA_FLAGS} "${A.BUILD.PATH}/${A.BUILD.PROJECT_NAME}.elf" "${A.BUILD.PATH}/${A.BUILD.PROJECT_NAME}.hex"
@@ -295,7 +295,7 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.PREPRO
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.PREPROC.MACROS/value="${A.COMPILER.PATH}${A.COMPILER.CPP.CMD}" ${A.COMPILER.CPP.FLAGS} ${A.PREPROC.MACROS.FLAGS} -mmcu\=${A.BUILD.MCU} -DF_CPU\=${A.BUILD.F_CPU} -DARDUINO\=${A.RUNTIME.IDE.VERSION} -DARDUINO_${A.BUILD.BOARD} -DARDUINO_ARCH_${A.BUILD.ARCH} ${A.COMPILER.CPP.EXTRA_FLAGS} ${A.BUILD.EXTRA_FLAGS} ${A.INCLUDES} "${A.SOURCE_FILE}" -o "${A.PREPROCESSED_FILE_PATH}"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-gcc" -c -g -x assembler-with-cpp -mmcu\=attiny85 -DF_CPU\=8000000L -DARDUINO\=10802 -DARDUINO_AVR_ATTINYX5 -DARDUINO_ARCH_AVR  
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-gcc" -c -g -x assembler-with-cpp -mmcu\=attiny85 -DF_CPU\=8000000L -DARDUINO\=10802 -DARDUINO_AVR_ATTINYX5 -DARDUINO_ARCH_AVR  
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN.2/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN.2/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN.2/value=\ -o 
@@ -307,7 +307,7 @@ environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PA
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.S.O.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.C.CMD}" ${A.COMPILER.S.FLAGS} -mmcu\=${A.BUILD.MCU} -DF_CPU\=${A.BUILD.F_CPU} -DARDUINO\=${A.RUNTIME.IDE.VERSION} -DARDUINO_${A.BUILD.BOARD} -DARDUINO_ARCH_${A.BUILD.ARCH} ${A.COMPILER.S.EXTRA_FLAGS} ${A.BUILD.EXTRA_FLAGS} ${A.INCLUDES} "${A.SOURCE_FILE}" -o "${A.OBJECT_FILE}"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.SIZE.PATTERN.1/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.SIZE.PATTERN.1/operation=replace
-environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.SIZE.PATTERN.1/value="/Applications/eclipse/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-size" -A "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf"
+environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.SIZE.PATTERN.1/value="/Applications/cpp-neon-nightly/Eclipse.app/Contents/Eclipse//arduinoPlugin/packages/arduino/tools/avr-gcc/4.9.2-atmel3.5.4-arduino2/bin/avr-size" -A "/Users/liebman/src/AnalogClock/I2CAnalogClock/Release/I2CAnalogClock.elf"
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.SIZE.PATTERN/delimiter=\:
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.SIZE.PATTERN/operation=replace
 environment/project/io.sloeber.core.toolChain.release.1887676240/A.RECIPE.SIZE.PATTERN/value="${A.COMPILER.PATH}${A.COMPILER.SIZE.CMD}" -A "${A.BUILD.PATH}/${A.BUILD.PROJECT_NAME}.elf"

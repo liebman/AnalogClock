@@ -21,10 +21,8 @@
 								<option id="io.sloeber.compiler.cpp.sketch.option.incpath.280127113" name="Include Paths (-I)" superClass="io.sloeber.compiler.cpp.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/core/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/TinyWireS}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/libraries/SoftwareSerial}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire/src}&quot;"/>
 								</option>
@@ -34,10 +32,8 @@
 								<option id="io.sloeber.compiler.c.sketch.option.incpath.770249391" name="Include Paths (-I)" superClass="io.sloeber.compiler.c.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/core/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/TinyWireS}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/libraries/SoftwareSerial}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire/src}&quot;"/>
 								</option>
@@ -47,10 +43,8 @@
 								<option id="io.sloeber.compiler.asm.sketch.option.incpath.936717032" name="Include Paths (-I)" superClass="io.sloeber.compiler.asm.sketch.option.incpath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/core/core}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/core/variant}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/TinyWireS}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/PinChangeInterrupt/src}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/libraries/SoftwareSerial}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/I2CAnalogClock/USIWire/src}&quot;"/>
 								</option>

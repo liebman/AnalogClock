@@ -13,11 +13,6 @@ ESP8266WebServer   HTTP(80);
 SNTP               ntp("pool.ntp.org", 123);
 Clock              clock;
 
-bool    syncing    = false;
-bool    dryrun     = false;
-int     ntp_offset = 0;  //  offset to force on NTP time returned
-uint8_t last_pin = 0;
-
 #ifdef DEBUG_SYNCHRO_CLOCK
 unsigned int snprintf(char*,unsigned int, ...);
 #define DBP_BUF_SIZE 256
@@ -202,31 +197,141 @@ void handleEnable()
 
 void handleRTC()
 {
+    if (HTTP.hasArg("sync"))
+    {
+        syncClockToRTC();
+    }
     uint16_t value = getRTCTimeAsPosition();
-    HTTP.send(200, "text/plain", String(value)+"\n");
+    int hours = value / 3600;
+    int minutes = (value - (hours * 3600)) / 60;
+    int seconds = value - (hours * 3600) - (minutes * 60);
+    char message[64];
+    sprintf(message, "%d (%02d:%02d:%02d)\n", value, hours, minutes, seconds);
+    HTTP.send(200, "text/plain", message);
 }
 
-void handleNTP()
+void waitForFallingEdge(int pin) {
+    while (digitalRead(pin) != 1) {
+        delay(1);
+    }
+    while (digitalRead(pin) != 0) {
+        delay(1);
+    }
+}
+
+#define PIN_EDGE_RISING  1
+#define PIN_EDGE_FALLING 0
+
+void waitForEdge(int pin, int edge) {
+    while (digitalRead(pin) == edge) {
+        delay(1);
+    }
+    while (digitalRead(pin) != edge) {
+        delay(1);
+    }
+}
+
+int getNTPOffset(const char* server, OffsetTime* offset)
 {
-    dryrun     = false;
-    ntp_offset = 0;
-    
-    if (HTTP.hasArg("offset")) {
-        ntp_offset = HTTP.arg("offset").toInt();
-        dbprintf("setting ntp_offset:%d\n", ntp_offset);
+    // Look up the address before we start
+    IPAddress address;
+    if (!WiFi.hostByName(server, address))
+    {
+        dbprintf("DNS lookup on %s failed!\n", server);
+        return 0;
+    }
+
+    dbprintf("address: %s\n", address.toString().c_str());
+
+    // wait for the next falling edge of the 1hz square wave
+    waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
+
+    RtcDateTime dt = rtc.GetDateTime();
+    EpochTime start_epoch;
+    start_epoch.seconds = dt.Epoch32Time();
+    start_epoch.fraction = 0;
+    EpochTime end = ntp.getTime(address, start_epoch, offset);
+
+    if (end.seconds == 0) {
+        return 0;
+    }
+
+    return 1;
+}
+
+void handleNTP() {
+    char server[64] = "pool.ntp.org";
+    boolean dryrun = false;
+
+    if (HTTP.hasArg("server")) {
+        dbprintf("SERVER: %s\n", HTTP.arg("server").c_str());
+        strncpy(server, HTTP.arg("server").c_str(), 63);
+        server[63] = 0;
     }
 
     if (HTTP.hasArg("dryrun")) {
         dbprintln("NTP dryrun!");
         dryrun = true;
     }
-    if (!dryrun) {
-        dbprintln("disabling the clock!");
-        clock.setEnable(false);
+
+    dbprintf("using server: %s\n", server);
+
+    // Look up the address before we start
+    IPAddress address;
+    if (!WiFi.hostByName(server, address))
+    {
+        dbprintf("DNS lookup on %s failed!\n", server);
+        HTTP.send(500, "text/Plain", "DNS lookup failed!\n");
+        return;
     }
-    syncing = true;
-    dbprintln("syncing now true!");
-    HTTP.send(200, "text/Plain", "OK\n");
+
+    dbprintf("address: %s\n", address.toString().c_str());
+
+    // wait for the next falling edge of the 1hz square wave
+    waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
+
+    RtcDateTime dt = rtc.GetDateTime();
+    EpochTime start_epoch;
+    start_epoch.seconds = dt.Epoch32Time();
+    start_epoch.fraction = 0;
+    dbprintf("start_epoch: %u.%u\n",  start_epoch.seconds, start_epoch.fraction);
+    OffsetTime offset;
+    EpochTime end = ntp.getTime(address, start_epoch, &offset);
+    if (end.seconds == 0) {
+        dbprintf("NTP Failed!\n");
+        HTTP.send(500, "text/Plain", "NTP Failed!\n");
+        return;
+    }
+
+    uint32_t offset_ms = fraction2Ms(offset.fraction);
+    if (abs(offset.seconds) > 0 || offset_ms > 100)
+    {
+        dbprintf("offset > 100ms, updating RTC!\n");
+        uint32_t msdelay = 1000 - offset_ms;
+        dbprintf("msdelay: %u\n", msdelay);
+
+        waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
+        dt = rtc.GetDateTime();
+
+        // wait for where the next second should start
+        if (msdelay > 0 && msdelay < 1000)
+        {
+            delay(msdelay);
+        }
+
+        if (!dryrun)
+        {
+            dt += offset.seconds + 1; // +1 because we waited for the next second
+            rtc.SetDateTime(dt);
+            delay(100); // delay in case there was just a tick
+            syncClockToRTC();
+        }
+
+    }
+    char message[64];
+    snprintf(message, 64, "OFFSET: %d.%03d (%s)\n", offset.seconds, offset_ms, address.toString().c_str());
+    dbprintf(message);
+    HTTP.send(200, "text/Plain", message);
 }
 
 void setup()
@@ -307,81 +412,12 @@ void setup()
     HTTP.on("/ntp", HTTP_GET, handleNTP);
     HTTP.begin();
     ntp.begin(1235);
-    syncing    = false;
-    dryrun     = false;
-    ntp_offset = 0;
-    last_pin   = 0;
 }
 
 void loop()
 {
     HTTP.handleClient();
-    uint8_t pin = digitalRead(SYNC_PIN);
-
-    if (syncing && last_pin == 1 && pin == 0)
-    {
-        RtcDateTime dt = rtc.GetDateTime();
-        unsigned long int startms = millis();
-        EpochTime start_epoch;
-        start_epoch.seconds = dt.Epoch32Time();
-        start_epoch.fraction = 0;
-        dbprintf("start_epoch (loop):    %u.%u\n",  start_epoch.seconds, start_epoch.fraction);
-        OffsetTime offset;
-        EpochTime end = ntp.getTime(start_epoch, &offset);
-
-        dbprintf("OFFSET: %d.%03d\n", offset.seconds, fraction2Ms(offset.fraction));
-
-        if (!dryrun) {
-            // check for valid ntp result
-            if (end.seconds != 0)
-            {
-                // compute the delay to the next second
-
-                uint32_t msdelay = 1000 - (((uint64_t) end.fraction * 1000) >> 32);
-                // wait for the next second
-                if (msdelay > 0 && msdelay < 1000)
-                {
-                    delay(msdelay);
-                }
-                unsigned long int endms = millis();
-                unsigned long int elapsedms = endms - startms;
-                unsigned long int elapsed = elapsedms / 1000;
-                dt += offset.seconds + elapsed + ntp_offset + 1; // +1 because we waited for the next second
-                unsigned long int computems = millis() - endms;
-                rtc.SetDateTime(dt);
-                unsigned long int setms = millis() - endms - computems;
-                // print these after the clock was set to not add delay!
-                dbprintf("msdelay: %u\n", msdelay);
-                dbprintf("elapsed:%lu elapsedms:%lu\n", elapsed, elapsedms);
-                dbprintf("computems:%lu setms:%lu\n", computems, setms);
-
-                syncing = false;
-                last_pin = 0;
-                delay(500);
-                dbprintln("rtc updated, starting clock!");
-                clock.setEnable(true);
-                dbprintln("syncing clock to RTC");
-                syncClockToRTC();
-            }
-            else
-            {
-                dbprintln("NTP failed!!!!!");
-                syncing = false;
-                last_pin = 0;
-                clock.setEnable(true);
-            }
-        }
-        else
-        {
-            dbprintln("DRYRUN complete!");
-            syncing = false;
-            last_pin = 0;
-        }
-    }
-    else
-    {
-        last_pin = pin;
-    }
+    delay(100);
 }
 
 void syncClockToRTC()

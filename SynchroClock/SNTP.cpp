@@ -80,8 +80,8 @@ OffsetTime computeOffset(NTPTime start, unsigned int millis_delta, SNTPPacket * 
 
 SNTP::SNTP (const char* server, uint16_t port)
 {
-  this->server = server;
-  this->port   = port;
+  this->default_server = server;
+  this->port           = port;
 }
 
 void SNTP::begin(uint16_t local_port)
@@ -90,6 +90,24 @@ void SNTP::begin(uint16_t local_port)
 }
 
 EpochTime SNTP::getTime(EpochTime now, OffsetTime* offset)
+{
+    return getTime(default_server, now, offset);
+}
+
+EpochTime SNTP::getTime(const char* server, EpochTime now, OffsetTime* offset)
+{
+    IPAddress address;
+    if (WiFi.hostByName(server, address))
+    {
+        return getTime(address, now, offset);
+    }
+    EpochTime etime; // we will return this
+    etime.seconds  = 0;
+    etime.fraction = 0;
+    return etime;
+}
+
+EpochTime SNTP::getTime(IPAddress server, EpochTime now, OffsetTime* offset)
 {
   EpochTime etime; // we will return this
 

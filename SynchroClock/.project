@@ -59,7 +59,7 @@
 		<link>
 			<name>libraries/Rtc_by_Makuna</name>
 			<type>2</type>
-			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Rtc_by_Makuna/2.0.0</locationURI>
+			<locationURI>ECLIPSE_HOME/arduinoPlugin/libraries/Rtc_by_Makuna/2.0.1</locationURI>
 		</link>
 		<link>
 			<name>libraries/Ticker</name>
