@@ -1,4 +1,4 @@
-update=Wednesday, April 19, 2017 'PMt' 07:02:18 PM
+update=Sunday, April 23, 2017 'PMt' 12:43:52 PM
 version=1
 last_client=kicad
 [pcbnew]
@@ -27,7 +27,7 @@ NetIExt=net
 version=1
 [eeschema]
 version=1
-LibDir=/Users/liebman/Documents/kicad/libraries/kicad-schlib/library;/Users/liebman/Documents/kicad/libraries/kicad-ESP8266;/Users/liebman/Documents/kicad/libraries/liebman;/Users/liebman/Documents/kicad/libraries
+LibDir=../libraries
 [eeschema/libraries]
 LibName1=power
 LibName2=device
@@ -58,23 +58,19 @@ LibName26=opto
 LibName27=atmel
 LibName28=contrib
 LibName29=valves
-LibName30=ESP8266
-LibName31=maxim
-LibName32=semi-trans-generic
-LibName33=diode
-LibName34=semi-diode-generic
-LibName35=drv8838-pololu
-LibName36=mechanical
-LibName37=switches
-LibName38=lm1117v33
-LibName39=ds3231-module
+LibName30=/Users/liebman/src/AnalogClock/kicad/libraries/drv8838-pololu
+LibName31=/Users/liebman/src/AnalogClock/kicad/libraries/ESP8266-12E
+LibName32=maxim
+LibName33=mcp1702
+LibName34=tc1262
+LibName35=switches
 [schematic_editor]
 version=1
 PageLayoutDescrFile=
 PlotDirectoryName=
 SubpartIdSeparator=0
 SubpartFirstId=65
-NetFmtName=
+NetFmtName=Pcbnew
 SpiceForceRefPrefix=0
 SpiceUseNetNumbers=0
 LabSize=60
