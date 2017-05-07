@@ -7,14 +7,16 @@
 #ifndef _SynchroClock_H_
 #define _SynchroClock_H_
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiManager.h>
-#include "FeedbackLED.h"
 #include <Wire.h>
 #include <ESP8266WebServer.h>
+#include <EEPROM.h>
+#include "FeedbackLED.h"
 #include "SNTP.h"
 #include "Clock.h"
+#include "ESP8266FactoryReset.h"
 
 #define DS3231
 #define DEBUG_SYNCHRO_CLOCK
@@ -32,18 +34,26 @@
 
 #define EPOCH_1970to2000 946684800
 
+#define MAX_SECONDS     43200 // seconds in 12 hours
+
 // pin definitions
-#define LED_PIN         BUILTIN_LED
-#define SYNC_PIN        D5          // pin tied to 1hz square wave from RTC
+#define LED_PIN           D7          // D7 (GPIO13) when using device!
+//#define LED_PIN           BUILTIN_LED // BUILTIN_LED when using dev board!
+#define SYNC_PIN          D5          // (GPIO14) pin tied to 1hz square wave from RTC
+#define FACTORY_RESET_PIN D6          // (GPIO12)
 
 #define PIN_EDGE_RISING  1
 #define PIN_EDGE_FALLING 0
 
 void waitForEdge(int pin, int edge);
 
+int parseOffset(const char* offset_string);
+uint16_t parsePosition(const char* position_string);
+int getValidOffset(String name);
 uint16_t getValidPosition(String name);
 uint8_t getValidDuration(String name);
 boolean getValidBoolean(String name);
+void handleOffset();
 void handleAdjustment();
 void handlePosition();
 void handleTPDuration();
@@ -56,5 +66,7 @@ void handleRTC();
 void handleNTP();
 void syncClockToRTC();
 uint16_t getRTCTimeAsPosition();
+void saveConfig();
+void loadConfig();
 
 #endif /* _SynchroClock_H_ */

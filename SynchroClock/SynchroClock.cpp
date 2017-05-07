@@ -8,10 +8,25 @@ RtcDS3231<TwoWire> rtc(Wire);
 RtcDS1307<TwoWire> rtc(Wire);
 #endif
 
-FeedbackLED        feedback(LED_PIN);
-ESP8266WebServer   HTTP(80);
-SNTP               ntp("pool.ntp.org", 123);
-Clock              clock;
+typedef struct {
+    int seconds_offset; // time offset in seconds from UTC
+} Config;
+
+typedef struct {
+  uint32_t crc;
+  uint8_t  data[sizeof(Config)];
+} EEConfig;
+
+Config       config;
+
+FeedbackLED         feedback(LED_PIN);
+ESP8266FactoryReset reset(FACTORY_RESET_PIN);
+ESP8266WebServer    HTTP(80);
+SNTP                ntp("pool.ntp.org", 123);
+Clock               clock;
+WiFiManager wifi;
+bool save_config = false; // used by wifi manager when settings were updated.
+
 
 #ifdef DEBUG_SYNCHRO_CLOCK
 unsigned int snprintf(char*,unsigned int, ...);
@@ -28,12 +43,65 @@ char    dbp_buf[DBP_BUF_SIZE];
 #define dbprintln(x)
 #endif
 
-uint16_t getValidPosition(String name)
+
+int parseOffset(const char* offset_string)
 {
     int result = 0;
+    char value[11];
+    strncpy(value, offset_string, 10);
+    if (strchr(value, ':') != NULL)
+    {
+        int sign = 1;
+        char* s;
 
-    char value[10];
-    strncpy(value, HTTP.arg(name).c_str(), 9);
+        if (value[0] == '-') {
+            sign = -1;
+            s = strtok(&(value[1]), ":");
+        }
+        else
+        {
+            s = strtok(value, ":");
+        }
+        if (s != NULL)
+        {
+            int h = atoi(s);
+            while (h > 11)
+            {
+                h -= 12;
+            }
+
+            result += h * 3600; // hours to seconds
+            s = strtok(NULL, ":");
+        }
+        if (s != NULL)
+        {
+            result += atoi(s) * 60; // minutes to seconds
+            s = strtok(NULL, ":");
+        }
+        if (s != NULL)
+        {
+            result += atoi(s);
+        }
+        // apply sign
+        result *= sign;
+    }
+    else
+    {
+        result = atoi(value);
+        if (result < -43199 || result > 43199)
+        {
+            dbprintf("invalid offset string %s using 0 instead!\n", offset_string);
+            result = 0;
+        }
+    }
+    return result;
+}
+
+uint16_t parsePosition(const char* position_string)
+{
+    int result = 0;
+    char value[1];
+    strncpy(value, position_string, 9);
     if (strchr(value, ':') != NULL)
     {
         char* s = strtok(value, ":");
@@ -64,11 +132,24 @@ uint16_t getValidPosition(String name)
         result = atoi(value);
         if (result < 0 || result > 43199)
         {
-            dbprintln("invalid value for " + name + ": " + HTTP.arg(name)
-                      + " using 0 instead!");
+            dbprintf("invalid position string %s using 0 instead!\n", position_string);
             result = 0;
         }
     }
+    return result;
+}
+
+int getValidOffset(String name)
+{
+    int result = parseOffset(HTTP.arg(name).c_str());
+
+    return result;
+}
+
+uint16_t getValidPosition(String name)
+{
+    int result = parsePosition(HTTP.arg(name).c_str());
+
     return result;
 }
 
@@ -90,6 +171,19 @@ boolean getValidBoolean(String name)
     return value.equalsIgnoreCase("true");
 }
 
+void handleOffset()
+{
+    if (HTTP.hasArg("set"))
+    {
+        config.seconds_offset = getValidOffset("set");
+        dbprint("seconds offset:");
+        dbprintln(config.seconds_offset);
+        saveConfig();
+    }
+
+    HTTP.send(200, "text/plain", String(config.seconds_offset)+"\n");
+}
+
 void handleAdjustment()
 {
     uint16_t adj;
@@ -105,6 +199,7 @@ void handleAdjustment()
             adj = getValidPosition("set");
             dbprint("setting adjustment:");
             dbprintln(adj);
+            waitForEdge(SYNC_PIN, PIN_EDGE_RISING);
             clock.setAdjustment(adj);
         }
     }
@@ -210,27 +305,6 @@ void handleRTC()
     HTTP.send(200, "text/plain", message);
 }
 
-void waitForFallingEdge(int pin) {
-    while (digitalRead(pin) != 1) {
-        delay(1);
-    }
-    while (digitalRead(pin) != 0) {
-        delay(1);
-    }
-}
-
-#define PIN_EDGE_RISING  1
-#define PIN_EDGE_FALLING 0
-
-void waitForEdge(int pin, int edge) {
-    while (digitalRead(pin) == edge) {
-        delay(1);
-    }
-    while (digitalRead(pin) != edge) {
-        delay(1);
-    }
-}
-
 int getNTPOffset(const char* server, OffsetTime* offset)
 {
     // Look up the address before we start
@@ -261,7 +335,7 @@ int getNTPOffset(const char* server, OffsetTime* offset)
 
 void handleNTP() {
     char server[64] = "pool.ntp.org";
-    boolean dryrun = false;
+    boolean sync = false;
 
     if (HTTP.hasArg("server")) {
         dbprintf("SERVER: %s\n", HTTP.arg("server").c_str());
@@ -269,9 +343,9 @@ void handleNTP() {
         server[63] = 0;
     }
 
-    if (HTTP.hasArg("dryrun")) {
-        dbprintln("NTP dryrun!");
-        dryrun = true;
+    if (HTTP.hasArg("sync")) {
+        dbprintln("Syncing RTC!");
+        sync = true;
     }
 
     dbprintf("using server: %s\n", server);
@@ -319,7 +393,7 @@ void handleNTP() {
             delay(msdelay);
         }
 
-        if (!dryrun)
+        if (sync)
         {
             dt += offset.seconds + 1; // +1 because we waited for the next second
             rtc.SetDateTime(dt);
@@ -334,22 +408,111 @@ void handleNTP() {
     HTTP.send(200, "text/Plain", message);
 }
 
+uint32_t calculateCRC32(const uint8_t *data, size_t length)
+{
+  uint32_t crc = 0xffffffff;
+  while (length--) {
+    uint8_t c = *data++;
+    for (uint32_t i = 0x80; i > 0; i >>= 1) {
+      bool bit = crc & 0x80000000;
+      if (c & i) {
+        bit = !bit;
+      }
+      crc <<= 1;
+      if (bit) {
+        crc ^= 0x04c11db7;
+      }
+    }
+  }
+  return crc;
+}
+
+void loadConfig() {
+    EEConfig cfg;
+    // Read struct from EEPROM
+    dbprintln("loading config from EEPROM");
+    uint8_t i;
+    uint8_t* p = (uint8_t*) &cfg;
+    for (i = 0; i < sizeof(cfg); ++i)
+    {
+        p[i] = EEPROM.read(i);
+    }
+
+    uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
+    dbprintf("CRC32 of data: %08x\n", crcOfData);
+    dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
+    if (crcOfData != cfg.crc)
+    {
+        dbprintln(
+                "CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!");
+    }
+    else
+    {
+        Serial.println("CRC32 check ok, data is probably valid.");
+        memcpy(&config, &cfg.data, sizeof(config));
+    }
+}
+
+void saveConfig() {
+    EEConfig cfg;
+    memcpy(&cfg.data, &config, sizeof(cfg.data));
+    cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
+    dbprintf("caculated CRC: %08x\n", cfg.crc);
+    dbprintln("Saving config to EEPROM");
+
+    uint8_t i;
+    uint8_t* p = (uint8_t*) &cfg;
+    for (i = 0; i < sizeof(cfg); ++i)
+    {
+        EEPROM.write(i, p[i]);
+    }
+    EEPROM.commit();
+}
+
 void setup()
 {
     dbbegin(115200);
     dbprintln("");
     dbprintln("Startup!");
+    Serial.flush();
 
     pinMode(SYNC_PIN, INPUT);
 
+    EEPROM.begin(sizeof(EEConfig));
+    delay(100);
+    loadConfig();
+    Serial.flush();
+
+    reset.setArmedCB([](){feedback.blink(FEEDBACK_LED_FAST);}); // blink fast when reset button is pressed
+    reset.setDisarmedCB([](){feedback.off();});                 // if its released before ready time turn the LED off
+    reset.setReadyCB([](){feedback.on();});                     // once its ready, put the LED on solid, when button is released, reset!
+    reset.setup();                                              // handle reset held at startup
+
+    dbprint("starting wifi feedback\n");
+
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
-    WiFiManager wifi;
+    dbprintln("create wifi manager");
+    String offset_string = String(config.seconds_offset);
+    WiFiManagerParameter seconds_offset_setting("offset", "offset", offset_string.c_str(), 10);
+    wifi.addParameter(&seconds_offset_setting);
+    wifi.setSaveConfigCallback([](){save_config = true;});
+    dbprint("setting AP callback\n");
     wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
     String ssid = "SynchroClock" + String(ESP.getChipId());
+    dbprint("calling autoConnect\n");
+    Serial.flush();
     wifi.autoConnect(ssid.c_str(), NULL);
+    dbprint("feedback off\n");
     feedback.off();
+    if (save_config)
+    {
+        const char* seconds_offset_value = seconds_offset_setting.getValue();
+        config.seconds_offset = parseOffset(seconds_offset_value);
+        saveConfig();
+    }
 
+    dbprint("starting RTC\n");
     rtc.Begin();
     RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
 
@@ -402,6 +565,7 @@ void setup()
     }
 
     dbprintln("starting HTTP");
+    HTTP.on("/offset", HTTP_GET, handleOffset);
     HTTP.on("/adjust", HTTP_GET, handleAdjustment);
     HTTP.on("/position", HTTP_GET, handlePosition);
     HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
@@ -417,12 +581,13 @@ void setup()
 void loop()
 {
     HTTP.handleClient();
+    reset.loop();
     delay(100);
 }
 
 void syncClockToRTC()
 {
-    // TODO: should wait for falling 1hz edge!
+    waitForEdge(SYNC_PIN, PIN_EDGE_RISING);
     uint16_t rtc_pos = getRTCTimeAsPosition();
     dbprintf("RTC position:%d\n", rtc_pos);
     uint16_t clock_pos = clock.getPosition();
@@ -457,6 +622,31 @@ uint16_t getRTCTimeAsPosition()
     {
         dbprintf("%02d:%02d:%02d\n", hour, minute, second);
     }
-    uint16_t position = hour * 60 * 60 + minute * 60 + second;
+    int signed_position = hour * 60 * 60 + minute * 60 + second;
+    dbprintf("position before offset: %d\n", signed_position);
+    signed_position += config.seconds_offset;
+    dbprintf("position after offset: %d\n", signed_position);
+    if (signed_position < 0) {
+        signed_position += MAX_SECONDS;
+        dbprintf("position corrected: %d\n", signed_position);
+    }
+    else if (signed_position >= MAX_SECONDS) {
+        signed_position -= MAX_SECONDS;
+        dbprintf("position corrected: %d\n", signed_position);
+    }
+    uint16_t position = (uint16_t)signed_position;
     return position;
 }
+
+//
+// Wait for an rising or falling edge of the given pin
+//
+void waitForEdge(int pin, int edge) {
+    while (digitalRead(pin) == edge) {
+        delay(1);
+    }
+    while (digitalRead(pin) != edge) {
+        delay(1);
+    }
+}
+
