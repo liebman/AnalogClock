@@ -14,7 +14,7 @@
 //#include "TinyWireS.h"
 #include "USIWire.h"
 #else
-//#include "Wire.h"
+#include "Wire.h"
 //#define DEBUG_I2CAC     1
 //#define DEBUG_I2C       1
 //#define DEBUG_TIMER     1
@@ -81,7 +81,7 @@
 
 #define DEFAULT_TP_DURATION_MS 16 // pulse duration in ms.
 #define DEFAULT_AP_DURATION_MS 16 // pulse duration during adjust
-#define DEFAULT_AP_DELAY_MS    8 // delay between adjust pulses in ms.
+#define DEFAULT_AP_DELAY_MS    12 // delay between adjust pulses in ms.
 
 
 
