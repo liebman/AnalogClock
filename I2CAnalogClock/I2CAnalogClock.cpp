@@ -273,14 +273,14 @@ uint16_t last_pos = -1;
 
 void loop()
 {
-    if (adjustment > 0)
+    if (adjustment != 0)
     {
+        --adjustment;
         advancePosition();
         startTick();
         delay(ap_duration);
         endTick();
         delay(ap_delay);
-        --adjustment;
     }
     else
     {
