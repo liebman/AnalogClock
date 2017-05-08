@@ -25,6 +25,8 @@ ESP8266WebServer    HTTP(80);
 SNTP                ntp("pool.ntp.org", 123);
 Clock               clock;
 WiFiManager wifi;
+unsigned long       setup_done = 0;
+
 bool save_config = false; // used by wifi manager when settings were updated.
 
 
@@ -34,13 +36,15 @@ unsigned int snprintf(char*,unsigned int, ...);
 char    dbp_buf[DBP_BUF_SIZE];
 #define dbbegin(x)    Serial.begin(x);
 #define dbprintf(...) {snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
-#define dbprint(x) Serial.print(x)
-#define dbprintln(x) Serial.println(x)
+#define dbprint(x)    Serial.print(x)
+#define dbprintln(x)  Serial.println(x)
+#define dbflush()     Serial.flush()
 #else
 #define dbbegin(x)
 #define dbprintf(...)
 #define dbprint(x)
 #define dbprintln(x)
+#define dbflush()
 #endif
 
 
@@ -305,49 +309,8 @@ void handleRTC()
     HTTP.send(200, "text/plain", message);
 }
 
-int getNTPOffset(const char* server, OffsetTime* offset)
+int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAddress* result_address)
 {
-    // Look up the address before we start
-    IPAddress address;
-    if (!WiFi.hostByName(server, address))
-    {
-        dbprintf("DNS lookup on %s failed!\n", server);
-        return 0;
-    }
-
-    dbprintf("address: %s\n", address.toString().c_str());
-
-    // wait for the next falling edge of the 1hz square wave
-    waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
-
-    RtcDateTime dt = rtc.GetDateTime();
-    EpochTime start_epoch;
-    start_epoch.seconds = dt.Epoch32Time();
-    start_epoch.fraction = 0;
-    EpochTime end = ntp.getTime(address, start_epoch, offset);
-
-    if (end.seconds == 0) {
-        return 0;
-    }
-
-    return 1;
-}
-
-void handleNTP() {
-    char server[64] = "pool.ntp.org";
-    boolean sync = false;
-
-    if (HTTP.hasArg("server")) {
-        dbprintf("SERVER: %s\n", HTTP.arg("server").c_str());
-        strncpy(server, HTTP.arg("server").c_str(), 63);
-        server[63] = 0;
-    }
-
-    if (HTTP.hasArg("sync")) {
-        dbprintln("Syncing RTC!");
-        sync = true;
-    }
-
     dbprintf("using server: %s\n", server);
 
     // Look up the address before we start
@@ -355,8 +318,12 @@ void handleNTP() {
     if (!WiFi.hostByName(server, address))
     {
         dbprintf("DNS lookup on %s failed!\n", server);
-        HTTP.send(500, "text/Plain", "DNS lookup failed!\n");
-        return;
+        return 0;
+    }
+
+    if (result_address)
+    {
+        *result_address = address;
     }
 
     dbprintf("address: %s\n", address.toString().c_str());
@@ -373,8 +340,12 @@ void handleNTP() {
     EpochTime end = ntp.getTime(address, start_epoch, &offset);
     if (end.seconds == 0) {
         dbprintf("NTP Failed!\n");
-        HTTP.send(500, "text/Plain", "NTP Failed!\n");
-        return;
+        return 0;
+    }
+
+    if (result_offset != NULL)
+    {
+        *result_offset = offset;
     }
 
     uint32_t offset_ms = fraction2Ms(offset.fraction);
@@ -397,120 +368,85 @@ void handleNTP() {
         {
             dt += offset.seconds + 1; // +1 because we waited for the next second
             rtc.SetDateTime(dt);
-            delay(100); // delay in case there was just a tick
-            syncClockToRTC();
         }
 
     }
+
+    return 1;
+}
+
+void handleNTP() {
+    char server[64] = "pool.ntp.org";
+    boolean sync = false;
+
+    if (HTTP.hasArg("server")) {
+        dbprintf("SERVER: %s\n", HTTP.arg("server").c_str());
+        strncpy(server, HTTP.arg("server").c_str(), 63);
+        server[63] = 0;
+    }
+
+    if (HTTP.hasArg("sync")) {
+        sync = true;
+    }
+
+    OffsetTime offset;
+    IPAddress address;
     char message[64];
-    snprintf(message, 64, "OFFSET: %d.%03d (%s)\n", offset.seconds, offset_ms, address.toString().c_str());
-    dbprintf(message);
-    HTTP.send(200, "text/Plain", message);
-}
-
-uint32_t calculateCRC32(const uint8_t *data, size_t length)
-{
-  uint32_t crc = 0xffffffff;
-  while (length--) {
-    uint8_t c = *data++;
-    for (uint32_t i = 0x80; i > 0; i >>= 1) {
-      bool bit = crc & 0x80000000;
-      if (c & i) {
-        bit = !bit;
-      }
-      crc <<= 1;
-      if (bit) {
-        crc ^= 0x04c11db7;
-      }
-    }
-  }
-  return crc;
-}
-
-void loadConfig() {
-    EEConfig cfg;
-    // Read struct from EEPROM
-    dbprintln("loading config from EEPROM");
-    uint8_t i;
-    uint8_t* p = (uint8_t*) &cfg;
-    for (i = 0; i < sizeof(cfg); ++i)
+    int code;
+    if (setTimeFromNTP(server, sync, &offset, &address))
     {
-        p[i] = EEPROM.read(i);
-    }
-
-    uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
-    dbprintf("CRC32 of data: %08x\n", crcOfData);
-    dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
-    if (crcOfData != cfg.crc)
-    {
-        dbprintln(
-                "CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!");
+        if (sync)
+        {
+            dbprintln("Syncing RTC!");
+            syncClockToRTC();
+        }
+        code = 200;
+        uint32_t offset_ms = fraction2Ms(offset.fraction);
+        snprintf(message, 64, "OFFSET: %d.%03d (%s)\n", offset.seconds, offset_ms, address.toString().c_str());
     }
     else
     {
-        Serial.println("CRC32 check ok, data is probably valid.");
-        memcpy(&config, &cfg.data, sizeof(config));
+        code = 500;
+        snprintf(message, 64, "NTP Failed!\n");
     }
+    dbprintf(message);
+    HTTP.send(code, "text/Plain", message);
+    return;
 }
 
-void saveConfig() {
-    EEConfig cfg;
-    memcpy(&cfg.data, &config, sizeof(cfg.data));
-    cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
-    dbprintf("caculated CRC: %08x\n", cfg.crc);
-    dbprintln("Saving config to EEPROM");
-
-    uint8_t i;
-    uint8_t* p = (uint8_t*) &cfg;
-    for (i = 0; i < sizeof(cfg); ++i)
+#ifdef USE_SETUP_PAGE
+void handleSetup()
+{
+    if (HTTP.method() == HTTP_GET)
     {
-        EEPROM.write(i, p[i]);
+        const char* contents =
+                "<HTML>"
+                "<HEAD><meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"><TITLE>301 Moved</TITLE></HEAD>"
+                "<BODY>"
+                "</BODY>"
+                "</HTML>";
     }
-    EEPROM.commit();
 }
+#endif
 
 void setup()
 {
     dbbegin(115200);
     dbprintln("");
     dbprintln("Startup!");
-    Serial.flush();
 
     pinMode(SYNC_PIN, INPUT);
 
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
     loadConfig();
-    Serial.flush();
 
     reset.setArmedCB([](){feedback.blink(FEEDBACK_LED_FAST);}); // blink fast when reset button is pressed
     reset.setDisarmedCB([](){feedback.off();});                 // if its released before ready time turn the LED off
     reset.setReadyCB([](){feedback.on();});                     // once its ready, put the LED on solid, when button is released, reset!
     reset.setup();                                              // handle reset held at startup
+    clock.setEnable(false);
 
-    dbprint("starting wifi feedback\n");
-
-    // setup wifi, blink let slow while connecting and fast if portal activated.
-    feedback.blink(FEEDBACK_LED_SLOW);
-    dbprintln("create wifi manager");
-    String offset_string = String(config.seconds_offset);
-    WiFiManagerParameter seconds_offset_setting("offset", "offset", offset_string.c_str(), 10);
-    wifi.addParameter(&seconds_offset_setting);
-    wifi.setSaveConfigCallback([](){save_config = true;});
-    dbprint("setting AP callback\n");
-    wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
-    String ssid = "SynchroClock" + String(ESP.getChipId());
-    dbprint("calling autoConnect\n");
-    Serial.flush();
-    wifi.autoConnect(ssid.c_str(), NULL);
-    dbprint("feedback off\n");
-    feedback.off();
-    if (save_config)
-    {
-        const char* seconds_offset_value = seconds_offset_setting.getValue();
-        config.seconds_offset = parseOffset(seconds_offset_value);
-        saveConfig();
-    }
 
     dbprint("starting RTC\n");
     rtc.Begin();
@@ -546,6 +482,49 @@ void setup()
     boolean enabled = clock.getEnable();
     dbprintln("clock enable is:" + String(enabled));
 
+    //
+    // if the clock is not running advance it to sync tick/tock
+    //
+    if (!enabled) {
+        clock.setAdjustment(1); // we don't know the initial state of the clock so tick once to sync tic/tock state
+    }
+
+    dbprint("starting wifi feedback\n");
+
+    // setup wifi, blink let slow while connecting and fast if portal activated.
+    feedback.blink(FEEDBACK_LED_SLOW);
+    dbprintln("create wifi manager");
+    String offset_string = String(config.seconds_offset);
+    WiFiManagerParameter seconds_offset_setting("offset", "Timezone Seconds", offset_string.c_str(), 10);
+    wifi.addParameter(&seconds_offset_setting);
+    WiFiManagerParameter position_setting("position", "Clock Position", "", 10);
+    wifi.addParameter(&position_setting);
+    wifi.setSaveConfigCallback([](){save_config = true;});
+    dbprint("setting AP callback\n");
+    wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
+    String ssid = "SynchroClock" + String(ESP.getChipId());
+    dbprint("calling autoConnect\n");
+    dbflush();
+    wifi.autoConnect(ssid.c_str(), NULL);
+    dbprint("feedback off\n");
+    feedback.off();
+    if (save_config)
+    {
+        const char* seconds_offset_value = seconds_offset_setting.getValue();
+        config.seconds_offset = parseOffset(seconds_offset_value);
+        saveConfig();
+        const char* position_value = position_setting.getValue();
+        if (strlen(position_value))
+        {
+            uint16_t position = parsePosition(position_value);
+            dbprintf("setting position to %d\n", position);
+            clock.setPosition(position);
+        }
+    }
+
+    ntp.begin(1235);
+    delay(1000);
+
     if (!enabled)
     {
         dbprintln("starting 1hz square wave");
@@ -564,6 +543,9 @@ void setup()
         dbprintln("clock is enabled, skipping init of RTC");
     }
 
+    dbprintln("syncing clock to RTC!");
+    syncClockToRTC();
+
     dbprintln("starting HTTP");
     HTTP.on("/offset", HTTP_GET, handleOffset);
     HTTP.on("/adjust", HTTP_GET, handleAdjustment);
@@ -574,19 +556,53 @@ void setup()
     HTTP.on("/enable", HTTP_GET, handleEnable);
     HTTP.on("/rtc", HTTP_GET, handleRTC);
     HTTP.on("/ntp", HTTP_GET, handleNTP);
+#ifdef USE_SETUP_PAGE
+    HTTP.on("/ntp", HTTP_ANY, handleSetup);
+#endif
     HTTP.begin();
-    ntp.begin(1235);
+
+    setup_done = millis();
+    dbprintf("setup_done: %lu \n", setup_done);
 }
+
+unsigned long last_ntp_sync = 0;
 
 void loop()
 {
     HTTP.handleClient();
     reset.loop();
     delay(100);
+
+#ifdef WHY_DOES_THIS_FAIL_BUT_WORK_FROM_HTTP
+    // sync NTP after a bit, then deep sleep
+    unsigned long now = millis();
+    if (last_ntp_sync == 0 || (now - last_ntp_sync) > NTP_SYNC_INTERVAL)
+    {
+        last_ntp_sync = now;
+
+        // sync the RTC with NTP
+        dbprintln("syncing RTC to NTP!");
+        if (setTimeFromNTP("ntp.pool.org", true, NULL, NULL))
+        {
+            dbprintln("syncing clock to RTC!");
+            syncClockToRTC();
+        }
+#ifdef USE_DEEP_SLEEP
+        dbprintln("Deep Sleep Time!\n");
+        dbflush();
+        ESP.deepSleep(DEEP_SLEEP_TIME);
+#endif
+    }
+#endif
 }
 
 void syncClockToRTC()
 {
+    // if there is already an adjustment in progress then stop it.
+    if (clock.getAdjustment() > 0)
+    {
+        clock.setAdjustment(0);
+    }
     waitForEdge(SYNC_PIN, PIN_EDGE_RISING);
     uint16_t rtc_pos = getRTCTimeAsPosition();
     dbprintf("RTC position:%d\n", rtc_pos);
@@ -650,3 +666,64 @@ void waitForEdge(int pin, int edge) {
     }
 }
 
+
+uint32_t calculateCRC32(const uint8_t *data, size_t length)
+{
+  uint32_t crc = 0xffffffff;
+  while (length--) {
+    uint8_t c = *data++;
+    for (uint32_t i = 0x80; i > 0; i >>= 1) {
+      bool bit = crc & 0x80000000;
+      if (c & i) {
+        bit = !bit;
+      }
+      crc <<= 1;
+      if (bit) {
+        crc ^= 0x04c11db7;
+      }
+    }
+  }
+  return crc;
+}
+
+void loadConfig() {
+    EEConfig cfg;
+    // Read struct from EEPROM
+    dbprintln("loading config from EEPROM");
+    uint8_t i;
+    uint8_t* p = (uint8_t*) &cfg;
+    for (i = 0; i < sizeof(cfg); ++i)
+    {
+        p[i] = EEPROM.read(i);
+    }
+
+    uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
+    dbprintf("CRC32 of data: %08x\n", crcOfData);
+    dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
+    if (crcOfData != cfg.crc)
+    {
+        dbprintln(
+                "CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!");
+    }
+    else
+    {
+        Serial.println("CRC32 check ok, data is probably valid.");
+        memcpy(&config, &cfg.data, sizeof(config));
+    }
+}
+
+void saveConfig() {
+    EEConfig cfg;
+    memcpy(&cfg.data, &config, sizeof(cfg.data));
+    cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
+    dbprintf("caculated CRC: %08x\n", cfg.crc);
+    dbprintln("Saving config to EEPROM");
+
+    uint8_t i;
+    uint8_t* p = (uint8_t*) &cfg;
+    for (i = 0; i < sizeof(cfg); ++i)
+    {
+        EEPROM.write(i, p[i]);
+    }
+    EEPROM.commit();
+}

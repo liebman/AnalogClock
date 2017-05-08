@@ -20,6 +20,7 @@
 
 #define DS3231
 #define DEBUG_SYNCHRO_CLOCK
+//#define USE_DEEP_SLEEP
 
 #ifdef DS3231
 #include <RtcDS3231.h>
@@ -44,6 +45,9 @@
 
 #define PIN_EDGE_RISING  1
 #define PIN_EDGE_FALLING 0
+
+#define NTP_SYNC_INTERVAL   (300 * 1000)
+#define DEEP_SLEEP_TIME  (300*1000000)
 
 void waitForEdge(int pin, int edge);
 
