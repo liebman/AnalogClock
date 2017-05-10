@@ -9,7 +9,13 @@ RtcDS1307<TwoWire> rtc(Wire);
 #endif
 
 typedef struct {
-    int seconds_offset; // time offset in seconds from UTC
+    int      sleep_duration; // deep sleep duration in seconds
+    int      tz_offset;      // time offset in seconds from UTC
+    uint8_t  tp_duration;    // tick pulse duration in ms
+    uint8_t  ap_duration;    // adjust pulse duration in ms
+    uint8_t  ap_delay;       // delay in ms between ticks during adjust
+    uint8_t  pad;
+    char     ntp_server[64];
 } Config;
 
 typedef struct {
@@ -20,15 +26,15 @@ typedef struct {
 Config       config;
 
 FeedbackLED         feedback(LED_PIN);
-ESP8266FactoryReset reset(FACTORY_RESET_PIN);
 ESP8266WebServer    HTTP(80);
 SNTP                ntp("pool.ntp.org", 123);
 Clock               clock;
 WiFiManager wifi;
 unsigned long       setup_done = 0;
 
-bool save_config = false; // used by wifi manager when settings were updated.
-
+boolean save_config  = false; // used by wifi manager when settings were updated.
+boolean force_config = false; // reset handler sets this to force into config
+boolean stay_awake   = false; // don't use deep sleep
 
 #ifdef DEBUG_SYNCHRO_CLOCK
 unsigned int snprintf(char*,unsigned int, ...);
@@ -179,13 +185,13 @@ void handleOffset()
 {
     if (HTTP.hasArg("set"))
     {
-        config.seconds_offset = getValidOffset("set");
+        config.tz_offset = getValidOffset("set");
         dbprint("seconds offset:");
-        dbprintln(config.seconds_offset);
+        dbprintln(config.tz_offset);
         saveConfig();
     }
 
-    HTTP.send(200, "text/plain", String(config.seconds_offset)+"\n");
+    HTTP.send(200, "text/plain", String(config.tz_offset)+"\n");
 }
 
 void handleAdjustment()
@@ -376,7 +382,8 @@ int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPA
 }
 
 void handleNTP() {
-    char server[64] = "pool.ntp.org";
+    char server[64];
+    strcpy(server, config.ntp_server);
     boolean sync = false;
 
     if (HTTP.hasArg("server")) {
@@ -414,40 +421,7 @@ void handleNTP() {
     return;
 }
 
-#ifdef USE_SETUP_PAGE
-void handleSetup()
-{
-    if (HTTP.method() == HTTP_GET)
-    {
-        const char* contents =
-                "<HTML>"
-                "<HEAD><meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"><TITLE>301 Moved</TITLE></HEAD>"
-                "<BODY>"
-                "</BODY>"
-                "</HTML>";
-    }
-}
-#endif
-
-void setup()
-{
-    dbbegin(115200);
-    dbprintln("");
-    dbprintln("Startup!");
-
-    pinMode(SYNC_PIN, INPUT);
-
-    EEPROM.begin(sizeof(EEConfig));
-    delay(100);
-    loadConfig();
-
-    reset.setArmedCB([](){feedback.blink(FEEDBACK_LED_FAST);}); // blink fast when reset button is pressed
-    reset.setDisarmedCB([](){feedback.off();});                 // if its released before ready time turn the LED off
-    reset.setReadyCB([](){feedback.on();});                     // once its ready, put the LED on solid, when button is released, reset!
-    reset.setup();                                              // handle reset held at startup
-    clock.setEnable(false);
-
-
+void initRTC() {
     dbprint("starting RTC\n");
     rtc.Begin();
     RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
@@ -473,11 +447,179 @@ void setup()
         rtc.SetIsRunning(true);
     }
 
-    // never assume the Rtc was last configured by you, so
-    // just clear them to your needed state
+    // don't need the 32khz pin active
 #ifdef DS3231
     rtc.Enable32kHzPin(false);
 #endif
+
+    dbprintln("starting 1hz square wave");
+#ifdef DS3231
+    rtc.SetSquareWavePinClockFrequency(DS3231SquareWaveClock_1Hz);
+    rtc.SetSquareWavePin(DS3231SquareWavePin_ModeClock);
+#endif
+#ifdef DS1307
+    rtc.SetSquareWavePin(DS1307SquareWaveOut_1Hz);
+#endif
+}
+
+void initWiFi()
+{
+    dbprint("starting wifi feedback\n");
+    char tp_duration_str[8];
+    char ap_duration_str[8];
+    char ap_delay_str[8];
+    char sleep_duration_str[12];
+    sprintf(tp_duration_str,    "%u", config.tp_duration);
+    sprintf(ap_duration_str,    "%u", config.ap_duration);
+    sprintf(ap_delay_str,       "%u", config.ap_delay);
+    sprintf(sleep_duration_str, "%u", config.sleep_duration);
+
+    // setup wifi, blink let slow while connecting and fast if portal activated.
+    feedback.blink(FEEDBACK_LED_SLOW);
+    dbprintln("create wifi manager");
+    String offset_string = String(config.tz_offset);
+    WiFiManagerParameter seconds_offset_setting("offset", "Time Zone Seconds", offset_string.c_str(), 10);
+    wifi.addParameter(&seconds_offset_setting);
+    WiFiManagerParameter position_setting("position", "Clock Position", "", 10);
+    wifi.addParameter(&position_setting);
+    WiFiManagerParameter ntp_server_setting("ntp_server", "NTP Server", config.ntp_server, 32);
+    wifi.addParameter(&ntp_server_setting);
+    WiFiManagerParameter stay_awake_setting("stay_awake", "Stay Awake 'true'", "", 6);
+    wifi.addParameter(&stay_awake_setting);
+    WiFiManagerParameter sleep_duration_setting("sleep_duration", "Sleep Duration", sleep_duration_str, 6);
+    wifi.addParameter(&sleep_duration_setting);
+    WiFiManagerParameter tp_duration_setting("tp_duration", "Tick Pulse", tp_duration_str, 5);
+    wifi.addParameter(&tp_duration_setting);
+    WiFiManagerParameter ap_duration_setting("ap_duration", "Adjust Pulse", ap_duration_str, 5);
+    wifi.addParameter(&ap_duration_setting);
+    WiFiManagerParameter ap_delay_setting("ap_delay", "Adjust Delay", ap_delay_str, 5);
+    wifi.addParameter(&ap_delay_setting);
+    wifi.setSaveConfigCallback([](){save_config = true;});
+    dbprint("setting AP callback\n");
+    wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
+    String ssid = "SynchroClock" + String(ESP.getChipId());
+    dbprint("calling autoConnect\n");
+    dbflush();
+    if (force_config)
+    {
+        wifi.startConfigPortal(ssid.c_str(), NULL);
+    }
+    else
+    {
+        wifi.autoConnect(ssid.c_str(), NULL);
+    }
+    dbprint("feedback off\n");
+    feedback.off();
+
+    //
+    //  Config was set from captive portal!
+    //
+    if (save_config)
+    {
+        //
+        // update any clock config changes
+        //
+
+        dbprintf("clock settings: tp:%s ap:%s,%s\n", tp_duration_setting.getValue(), ap_duration_setting.getValue(), ap_delay_setting.getValue());
+
+        int i = atoi(tp_duration_setting.getValue());
+        if (i != config.tp_duration)
+        {
+            config.tp_duration = i;
+            clock.setTPDuration(config.tp_duration);
+        }
+
+        i = atoi(ap_duration_setting.getValue());
+        if (i != config.ap_duration)
+        {
+            config.ap_duration = i;
+            clock.setAPDuration(config.ap_duration);
+        }
+
+        i = atoi(ap_delay_setting.getValue());
+        if (i != config.ap_delay)
+        {
+            config.ap_delay = i;
+            clock.setAPDelay(config.ap_delay);
+        }
+
+        i = atoi(sleep_duration_setting.getValue());
+        if (i != config.sleep_duration)
+        {
+            config.sleep_duration = i;
+        }
+
+        dbprintf("ntp setting: %s\n", ntp_server_setting.getValue());
+        strncpy(config.ntp_server, ntp_server_setting.getValue(), sizeof(config.ntp_server)-1);
+
+        const char* seconds_offset_value = seconds_offset_setting.getValue();
+        config.tz_offset = parseOffset(seconds_offset_value);
+
+        const char* position_value = position_setting.getValue();
+        if (strlen(position_value))
+        {
+            uint16_t position = parsePosition(position_value);
+            dbprintf("setting position to %d\n", position);
+            clock.setPosition(position);
+        }
+
+        if (strcmp(stay_awake_setting.getValue(), "true") == 0)
+        {
+            stay_awake = true;
+        }
+
+        saveConfig();
+    }
+}
+
+
+void setup()
+{
+    dbbegin(115200);
+    dbprintln("");
+    dbprintln("Startup!");
+
+    pinMode(SYNC_PIN, INPUT);
+    pinMode(FACTORY_RESET_PIN, INPUT);
+
+    //
+    // initialize the RTC - note this starts Wire (i2c) as well.
+    initRTC();
+
+    //
+    // initialize config to defaults then load.
+    memset(&config, 0, sizeof(config));
+    config.sleep_duration = DEFAULT_SLEEP_DURATION;
+    config.tz_offset   = 0;
+    config.tp_duration = clock.getTPDuration();
+    config.ap_duration = clock.getAPDuration();
+    config.ap_delay    = clock.getAPDelay();
+    strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server)-1);
+    config.ntp_server[sizeof(config.ntp_server)-1] = 0;
+
+    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay, config.ntp_server);
+
+    EEPROM.begin(sizeof(EEConfig));
+    delay(100);
+    // if the saved config was not good then force config.
+    if (!loadConfig())
+    {
+        force_config = true;
+    }
+
+    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay, config.ntp_server);
+
+    //
+    // clock parameters could have changed, set them
+    clock.setTPDuration(config.tp_duration);
+    clock.setAPDuration(config.ap_duration);
+    clock.setAPDelay(config.ap_delay);
+
+    // if the config button is pressed then force config
+    if (digitalRead(FACTORY_RESET_PIN) == 0)
+    {
+        force_config = true;
+    }
 
     boolean enabled = clock.getEnable();
     dbprintln("clock enable is:" + String(enabled));
@@ -487,54 +629,16 @@ void setup()
     //
     if (!enabled) {
         clock.setAdjustment(1); // we don't know the initial state of the clock so tick once to sync tic/tock state
+        force_config = true;    // force the config portal to set the position if the clock is not running
     }
 
-    dbprint("starting wifi feedback\n");
-
-    // setup wifi, blink let slow while connecting and fast if portal activated.
-    feedback.blink(FEEDBACK_LED_SLOW);
-    dbprintln("create wifi manager");
-    String offset_string = String(config.seconds_offset);
-    WiFiManagerParameter seconds_offset_setting("offset", "Timezone Seconds", offset_string.c_str(), 10);
-    wifi.addParameter(&seconds_offset_setting);
-    WiFiManagerParameter position_setting("position", "Clock Position", "", 10);
-    wifi.addParameter(&position_setting);
-    wifi.setSaveConfigCallback([](){save_config = true;});
-    dbprint("setting AP callback\n");
-    wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
-    String ssid = "SynchroClock" + String(ESP.getChipId());
-    dbprint("calling autoConnect\n");
-    dbflush();
-    wifi.autoConnect(ssid.c_str(), NULL);
-    dbprint("feedback off\n");
-    feedback.off();
-    if (save_config)
-    {
-        const char* seconds_offset_value = seconds_offset_setting.getValue();
-        config.seconds_offset = parseOffset(seconds_offset_value);
-        saveConfig();
-        const char* position_value = position_setting.getValue();
-        if (strlen(position_value))
-        {
-            uint16_t position = parsePosition(position_value);
-            dbprintf("setting position to %d\n", position);
-            clock.setPosition(position);
-        }
-    }
+    initWiFi();
 
     ntp.begin(1235);
     delay(1000);
 
     if (!enabled)
     {
-        dbprintln("starting 1hz square wave");
-#ifdef DS3231
-        rtc.SetSquareWavePinClockFrequency(DS3231SquareWaveClock_1Hz);
-        rtc.SetSquareWavePin(DS3231SquareWavePin_ModeClock);
-#endif
-#ifdef DS1307
-        rtc.SetSquareWavePin(DS1307SquareWaveOut_1Hz);
-#endif
         dbprintln("enabling clock");
         clock.setEnable(true);
     }
@@ -543,57 +647,42 @@ void setup()
         dbprintln("clock is enabled, skipping init of RTC");
     }
 
+    dbprintln("syncing RTC from NTP!");
+    setTimeFromNTP(config.ntp_server, true, NULL, NULL);
+
     dbprintln("syncing clock to RTC!");
     syncClockToRTC();
 
-    dbprintln("starting HTTP");
-    HTTP.on("/offset", HTTP_GET, handleOffset);
-    HTTP.on("/adjust", HTTP_GET, handleAdjustment);
-    HTTP.on("/position", HTTP_GET, handlePosition);
-    HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
-    HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
-    HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
-    HTTP.on("/enable", HTTP_GET, handleEnable);
-    HTTP.on("/rtc", HTTP_GET, handleRTC);
-    HTTP.on("/ntp", HTTP_GET, handleNTP);
-#ifdef USE_SETUP_PAGE
-    HTTP.on("/ntp", HTTP_ANY, handleSetup);
-#endif
-    HTTP.begin();
-
-    setup_done = millis();
-    dbprintf("setup_done: %lu \n", setup_done);
+    if (stay_awake)
+    {
+        dbprintln("starting HTTP");
+        HTTP.on("/offset", HTTP_GET, handleOffset);
+        HTTP.on("/adjust", HTTP_GET, handleAdjustment);
+        HTTP.on("/position", HTTP_GET, handlePosition);
+        HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
+        HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
+        HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
+        HTTP.on("/enable", HTTP_GET, handleEnable);
+        HTTP.on("/rtc", HTTP_GET, handleRTC);
+        HTTP.on("/ntp", HTTP_GET, handleNTP);
+        HTTP.begin();
+    }
+    else
+    {
+        dbprintf("Deep Sleep Time: %d\n", config.sleep_duration);
+        dbflush();
+        ESP.deepSleep(config.sleep_duration * 1000000);
+    }
 }
 
-unsigned long last_ntp_sync = 0;
 
 void loop()
 {
-    HTTP.handleClient();
-    reset.loop();
-    delay(100);
-
-#ifdef WHY_DOES_THIS_FAIL_BUT_WORK_FROM_HTTP
-    // sync NTP after a bit, then deep sleep
-    unsigned long now = millis();
-    if (last_ntp_sync == 0 || (now - last_ntp_sync) > NTP_SYNC_INTERVAL)
+    if (stay_awake)
     {
-        last_ntp_sync = now;
-
-        // sync the RTC with NTP
-        dbprintln("syncing RTC to NTP!");
-        if (setTimeFromNTP("ntp.pool.org", true, NULL, NULL))
-        {
-            dbprintln("syncing clock to RTC!");
-            syncClockToRTC();
-        }
-#ifdef USE_DEEP_SLEEP
-        dbprintln("Deep Sleep Time!\n");
-        dbflush();
-        ESP.deepSleep(DEEP_SLEEP_TIME);
-#endif
+        HTTP.handleClient();
     }
-#endif
+    delay(100);
 }
 
 void syncClockToRTC()
@@ -640,7 +729,7 @@ uint16_t getRTCTimeAsPosition()
     }
     int signed_position = hour * 60 * 60 + minute * 60 + second;
     dbprintf("position before offset: %d\n", signed_position);
-    signed_position += config.seconds_offset;
+    signed_position += config.tz_offset;
     dbprintf("position after offset: %d\n", signed_position);
     if (signed_position < 0) {
         signed_position += MAX_SECONDS;
@@ -686,7 +775,7 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length)
   return crc;
 }
 
-void loadConfig() {
+boolean loadConfig() {
     EEConfig cfg;
     // Read struct from EEPROM
     dbprintln("loading config from EEPROM");
@@ -702,14 +791,12 @@ void loadConfig() {
     dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
     if (crcOfData != cfg.crc)
     {
-        dbprintln(
-                "CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!");
+        dbprintln("CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!");
+        return false;
     }
-    else
-    {
-        Serial.println("CRC32 check ok, data is probably valid.");
-        memcpy(&config, &cfg.data, sizeof(config));
-    }
+    Serial.println("CRC32 check ok, data is probably valid.");
+    memcpy(&config, &cfg.data, sizeof(config));
+    return true;
 }
 
 void saveConfig() {

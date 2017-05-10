@@ -16,7 +16,6 @@
 #include "FeedbackLED.h"
 #include "SNTP.h"
 #include "Clock.h"
-#include "ESP8266FactoryReset.h"
 
 #define DS3231
 #define DEBUG_SYNCHRO_CLOCK
@@ -46,8 +45,9 @@
 #define PIN_EDGE_RISING  1
 #define PIN_EDGE_FALLING 0
 
-#define NTP_SYNC_INTERVAL   (300 * 1000)
-#define DEEP_SLEEP_TIME  (300*1000000)
+#define DEFAULT_TZ_OFFSET      0              // default timzezone offset in seconds
+#define DEFAULT_NTP_SERVER     "pool.ntp.org" // default NTP server
+#define DEFAULT_SLEEP_DURATION 3600           // default is 1hr
 
 void waitForEdge(int pin, int edge);
 
@@ -71,6 +71,6 @@ void handleNTP();
 void syncClockToRTC();
 uint16_t getRTCTimeAsPosition();
 void saveConfig();
-void loadConfig();
+boolean loadConfig();
 
 #endif /* _SynchroClock_H_ */
