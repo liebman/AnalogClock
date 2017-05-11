@@ -100,7 +100,6 @@ int parseOffset(const char* offset_string)
         result = atoi(value);
         if (result < -43199 || result > 43199)
         {
-            dbprintf("invalid offset string %s using 0 instead!\n", offset_string);
             result = 0;
         }
     }
@@ -142,7 +141,6 @@ uint16_t parsePosition(const char* position_string)
         result = atoi(value);
         if (result < 0 || result > 43199)
         {
-            dbprintf("invalid position string %s using 0 instead!\n", position_string);
             result = 0;
         }
     }
@@ -341,7 +339,6 @@ int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPA
     EpochTime start_epoch;
     start_epoch.seconds = dt.Epoch32Time();
     start_epoch.fraction = 0;
-    dbprintf("start_epoch: %u.%u\n",  start_epoch.seconds, start_epoch.fraction);
     OffsetTime offset;
     EpochTime end = ntp.getTime(address, start_epoch, &offset);
     if (end.seconds == 0) {
@@ -359,7 +356,7 @@ int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPA
     {
         dbprintf("offset > 100ms, updating RTC!\n");
         uint32_t msdelay = 1000 - offset_ms;
-        dbprintf("msdelay: %u\n", msdelay);
+        //dbprintf("msdelay: %u\n", msdelay);
 
         waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
         dt = rtc.GetDateTime();
@@ -452,7 +449,7 @@ void initRTC() {
     rtc.Enable32kHzPin(false);
 #endif
 
-    dbprintln("starting 1hz square wave");
+    //dbprintln("starting 1hz square wave");
 #ifdef DS3231
     rtc.SetSquareWavePinClockFrequency(DS3231SquareWaveClock_1Hz);
     rtc.SetSquareWavePin(DS3231SquareWavePin_ModeClock);
@@ -465,10 +462,12 @@ void initRTC() {
 void initWiFi()
 {
     dbprint("starting wifi feedback\n");
+    char tz_offset_str[32];
     char tp_duration_str[8];
     char ap_duration_str[8];
     char ap_delay_str[8];
     char sleep_duration_str[12];
+    sprintf(tz_offset_str,      "%d", config.tz_offset);
     sprintf(tp_duration_str,    "%u", config.tp_duration);
     sprintf(ap_duration_str,    "%u", config.ap_duration);
     sprintf(ap_delay_str,       "%u", config.ap_delay);
@@ -477,28 +476,27 @@ void initWiFi()
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
     dbprintln("create wifi manager");
-    String offset_string = String(config.tz_offset);
-    WiFiManagerParameter seconds_offset_setting("offset", "Time Zone Seconds", offset_string.c_str(), 10);
+    WiFiManagerParameter seconds_offset_setting("offset", "Time Zone", tz_offset_str, 32);
     wifi.addParameter(&seconds_offset_setting);
-    WiFiManagerParameter position_setting("position", "Clock Position", "", 10);
+    WiFiManagerParameter position_setting("position", "Clock Position", "", 32);
     wifi.addParameter(&position_setting);
     WiFiManagerParameter ntp_server_setting("ntp_server", "NTP Server", config.ntp_server, 32);
     wifi.addParameter(&ntp_server_setting);
-    WiFiManagerParameter stay_awake_setting("stay_awake", "Stay Awake 'true'", "", 6);
+    WiFiManagerParameter warning_label("<p>Advanced Settings!</p>");
+    wifi.addParameter(&warning_label);
+    WiFiManagerParameter stay_awake_setting("stay_awake", "Stay Awake 'true'", "", 32);
     wifi.addParameter(&stay_awake_setting);
-    WiFiManagerParameter sleep_duration_setting("sleep_duration", "Sleep Duration", sleep_duration_str, 6);
+    WiFiManagerParameter sleep_duration_setting("sleep_duration", "Sleep", sleep_duration_str, 32);
     wifi.addParameter(&sleep_duration_setting);
-    WiFiManagerParameter tp_duration_setting("tp_duration", "Tick Pulse", tp_duration_str, 5);
+    WiFiManagerParameter tp_duration_setting("tp_duration", "Tick Pulse", tp_duration_str, 32);
     wifi.addParameter(&tp_duration_setting);
-    WiFiManagerParameter ap_duration_setting("ap_duration", "Adjust Pulse", ap_duration_str, 5);
+    WiFiManagerParameter ap_duration_setting("ap_duration", "Adjust Pulse", ap_duration_str, 32);
     wifi.addParameter(&ap_duration_setting);
-    WiFiManagerParameter ap_delay_setting("ap_delay", "Adjust Delay", ap_delay_str, 5);
+    WiFiManagerParameter ap_delay_setting("ap_delay", "Adjust Delay", ap_delay_str, 32);
     wifi.addParameter(&ap_delay_setting);
     wifi.setSaveConfigCallback([](){save_config = true;});
-    dbprint("setting AP callback\n");
     wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
     String ssid = "SynchroClock" + String(ESP.getChipId());
-    dbprint("calling autoConnect\n");
     dbflush();
     if (force_config)
     {
@@ -508,7 +506,6 @@ void initWiFi()
     {
         wifi.autoConnect(ssid.c_str(), NULL);
     }
-    dbprint("feedback off\n");
     feedback.off();
 
     //
@@ -516,13 +513,14 @@ void initWiFi()
     //
     if (save_config)
     {
+        int i;
         //
         // update any clock config changes
         //
 
         dbprintf("clock settings: tp:%s ap:%s,%s\n", tp_duration_setting.getValue(), ap_duration_setting.getValue(), ap_delay_setting.getValue());
 
-        int i = atoi(tp_duration_setting.getValue());
+        i = atoi(tp_duration_setting.getValue());
         if (i != config.tp_duration)
         {
             config.tp_duration = i;
@@ -552,6 +550,7 @@ void initWiFi()
         dbprintf("ntp setting: %s\n", ntp_server_setting.getValue());
         strncpy(config.ntp_server, ntp_server_setting.getValue(), sizeof(config.ntp_server)-1);
 
+        dbprintf("seconds_offset_setting: %s\n", seconds_offset_setting.getValue());
         const char* seconds_offset_value = seconds_offset_setting.getValue();
         config.tz_offset = parseOffset(seconds_offset_value);
 
@@ -563,7 +562,7 @@ void initWiFi()
             clock.setPosition(position);
         }
 
-        if (strcmp(stay_awake_setting.getValue(), "true") == 0)
+        if (strcmp(stay_awake_setting.getValue(), "true") == 0 || strcmp(stay_awake_setting.getValue(), "True") == 0)
         {
             stay_awake = true;
         }
