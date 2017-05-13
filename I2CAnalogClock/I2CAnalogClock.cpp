@@ -266,6 +266,7 @@ void setup()
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
 }
 
+
 #ifdef DEBUG_I2CAC
 unsigned long last_print;
 uint16_t last_pos = -1;
@@ -275,12 +276,23 @@ void loop()
 {
     if (adjustment != 0)
     {
-        --adjustment;
-        advancePosition();
+    	noInterrupts();
+        advancePosition(); // this must be done with interrupts disabled when not in an ISR!
+        interrupts();
+
         startTick();
         delay(ap_duration);
         endTick();
         delay(ap_delay);
+
+    	//
+    	// this must be done with interrupts disabled when not in an ISR!
+    	//
+    	noInterrupts();
+    	if (adjustment != 0) {
+    		--adjustment;
+    	}
+    	interrupts();
     }
     else
     {
