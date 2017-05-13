@@ -1,8 +1,17 @@
 .metadata
 .DS_Store
 .ino.cpp
+I2CAnalogClock/I2CAnalogClock.ino
+I2CAnalogClock/.project
+I2CAnalogClock/.cproject
+I2CAnalogClock/.settings
+SynchroClock/SynchroClock.ino
+SynchroClock/.project
+SynchroClock/.cproject
+SynchroClock/.settings
 */Release
 */libraries
 */core
 *.bak
 *-bak
+RemoteSystemsTempFiles
