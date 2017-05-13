@@ -5,6 +5,9 @@ volatile uint16_t adjustment;   // This is the adjustment to be made.
 volatile uint8_t tp_duration;
 volatile uint8_t ap_duration;
 volatile uint8_t ap_delay;     // delay in ms between ticks during adjustment
+#ifdef DRV8838
+volatile uint8_t sleep_delay;  // delay to sleep the DEV8838
+#endif
 
 volatile uint8_t control;       // This is our control "register".
 volatile uint8_t status;        // status register
@@ -40,6 +43,9 @@ void i2creceive(int size)
             break;
         case CMD_AP_DELAY:
             ap_delay = Wire.read();
+            break;
+        case CMD_SLEEP_DELAY:
+            sleep_delay = Wire.read();
             break;
         case CMD_CONTROL:
             control = Wire.read();
@@ -82,6 +88,10 @@ void i2crequest()
         value = ap_delay;
         Wire.write(value);
         break;
+    case CMD_SLEEP_DELAY:
+        value = sleep_delay;
+        Wire.write(value);
+        break;
     case CMD_CONTROL:
         Wire.write(control);
         break;
@@ -120,7 +130,7 @@ ISR(TIMER1_COMPA_vect)
 #ifdef __AVR_ATtinyX5__
     TIMSK &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #else
-    digitalWrite(LED_PIN, digitalRead(LED_PIN) ^ 1);
+    //digitalWrite(LED_PIN, digitalRead(LED_PIN) ^ 1);
     TIMSK1 &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #endif
     timer_running = false;
@@ -176,6 +186,8 @@ void startTimer(int ms, void (*func)())
 void startTick()
 {
 #ifdef DRV8838
+	digitalWrite(DRV_SLEEP, HIGH);
+	delayMicroseconds(30); // data sheet says the DRV8838 take 30us to wake from sleep
     digitalWrite(DRV_PHASE, isTick());
     digitalWrite(DRV_ENABLE, TICK_ON);
 #else
@@ -188,9 +200,22 @@ void endTick()
 {
 #ifdef DRV8838
     digitalWrite(DRV_ENABLE, TICK_OFF);
+    digitalWrite(DRV_PHASE, LOW); // per DRV8838 datasheet this reduces power usage
     toggleTick();
+    startTimer(sleep_delay, &sleepDRV8838);
 #else
     digitalWrite(B_PIN, !digitalRead(B_PIN));
+#endif
+}
+
+void sleepDRV8838()
+{
+#ifdef DRV8838
+	// only sleep the chip if we are not adjusting
+	if (adjustment == 0)
+	{
+		digitalWrite(DRV_SLEEP, LOW);
+	}
 #endif
 }
 
@@ -251,6 +276,7 @@ void setup()
     tp_duration = DEFAULT_TP_DURATION_MS;
     ap_duration = DEFAULT_AP_DURATION_MS;
     ap_delay    = DEFAULT_AP_DELAY_MS;
+    sleep_delay = DEFAULT_SLEEP_DELAY;
 
     //control = BIT_ENABLE;
 
@@ -260,8 +286,10 @@ void setup()
 
     digitalWrite(B_PIN, TICK_OFF);
     digitalWrite(A_PIN, TICK_OFF);
+    digitalWrite(DRV_SLEEP, LOW);
     pinMode(A_PIN, OUTPUT);
     pinMode(B_PIN, OUTPUT);
+    pinMode(DRV_SLEEP, OUTPUT);
     pinMode(INT_PIN, INPUT);
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
 }
@@ -292,6 +320,10 @@ void loop()
     	if (adjustment != 0) {
     		--adjustment;
     	}
+    	if (adjustment == 0)
+    	{
+    	    startTimer(sleep_delay, &sleepDRV8838);
+    	}
     	interrupts();
     }
     else
@@ -319,8 +351,8 @@ void loop()
             Serial.print(buffer);
     #endif
             snprintf(buffer, 127,
-                    "position:%d adjustment:%d control:%d seconds:%d\n", position,
-                    adjustment, control, position % 60);
+                    "position:%u adjustment:%u control:%d seconds:%d drvsleep:%d\n", position,
+                    adjustment, control, position % 60, digitalRead(DRV_SLEEP));
             Serial.print(buffer);
         }
 #ifdef DEBUG_I2C
