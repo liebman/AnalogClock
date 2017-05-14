@@ -659,14 +659,12 @@ void setup()
     // if the clock is not running advance it to sync tick/tock
     //
     if (!enabled) {
-        clock.setAdjustment(1); // we don't know the initial state of the clock so tick once to sync tic/tock state
         force_config = true;    // force the config portal to set the position if the clock is not running
     }
 
     initWiFi();
 
     ntp.begin(1235);
-    delay(1000);
 
     if (!enabled)
     {
