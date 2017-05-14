@@ -14,7 +14,7 @@ typedef struct {
     uint8_t  tp_duration;    // tick pulse duration in ms
     uint8_t  ap_duration;    // adjust pulse duration in ms
     uint8_t  ap_delay;       // delay in ms between ticks during adjust
-    uint8_t  pad;
+    uint8_t  sleep_delay;    // delay in ms before sleeping DR8838
     char     ntp_server[64];
 } Config;
 
@@ -286,6 +286,22 @@ void handleAPDelay()
     HTTP.send(200, "text/plain", String(value)+"\n");
 }
 
+void handleSleepDelay()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidDuration("set");
+        dbprint("setting sleep_delay:");
+        dbprintln(value);
+        clock.setSleepDelay(value);
+    }
+
+    value = clock.getSleepDelay();
+
+    HTTP.send(200, "text/plain", String(value)+"\n");
+}
+
 void handleEnable()
 {
     boolean enable;
@@ -466,11 +482,13 @@ void initWiFi()
     char tp_duration_str[8];
     char ap_duration_str[8];
     char ap_delay_str[8];
+    char sleep_delay_str[8];
     char sleep_duration_str[12];
     sprintf(tz_offset_str,      "%d", config.tz_offset);
     sprintf(tp_duration_str,    "%u", config.tp_duration);
     sprintf(ap_duration_str,    "%u", config.ap_duration);
     sprintf(ap_delay_str,       "%u", config.ap_delay);
+    sprintf(sleep_delay_str,    "%u", config.sleep_delay);
     sprintf(sleep_duration_str, "%u", config.sleep_duration);
 
     // setup wifi, blink let slow while connecting and fast if portal activated.
@@ -494,6 +512,8 @@ void initWiFi()
     wifi.addParameter(&ap_duration_setting);
     WiFiManagerParameter ap_delay_setting("ap_delay", "Adjust Delay", ap_delay_str, 32);
     wifi.addParameter(&ap_delay_setting);
+    WiFiManagerParameter sleep_delay_setting("sleep_delay", "Sleep Delay", sleep_delay_str, 32);
+    wifi.addParameter(&sleep_delay_setting);
     wifi.setSaveConfigCallback([](){save_config = true;});
     wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
     String ssid = "SynchroClock" + String(ESP.getChipId());
@@ -518,7 +538,11 @@ void initWiFi()
         // update any clock config changes
         //
 
-        dbprintf("clock settings: tp:%s ap:%s,%s\n", tp_duration_setting.getValue(), ap_duration_setting.getValue(), ap_delay_setting.getValue());
+        dbprintf("clock settings: tp:%s ap:%s,%s slpdrv:%s\n",
+        		tp_duration_setting.getValue(),
+				ap_duration_setting.getValue(),
+				ap_delay_setting.getValue(),
+				sleep_delay_setting.getValue());
 
         i = atoi(tp_duration_setting.getValue());
         if (i != config.tp_duration)
@@ -539,6 +563,13 @@ void initWiFi()
         {
             config.ap_delay = i;
             clock.setAPDelay(config.ap_delay);
+        }
+
+        i = atoi(sleep_delay_setting.getValue());
+        if (i != config.sleep_delay)
+        {
+            config.sleep_delay = i;
+            clock.setSleepDelay(config.sleep_delay);
         }
 
         i = atoi(sleep_duration_setting.getValue());
@@ -593,6 +624,7 @@ void setup()
     config.tp_duration = clock.getTPDuration();
     config.ap_duration = clock.getAPDuration();
     config.ap_delay    = clock.getAPDelay();
+    config.sleep_delay = clock.getSleepDelay();
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server)-1);
     config.ntp_server[sizeof(config.ntp_server)-1] = 0;
 
@@ -652,6 +684,10 @@ void setup()
     dbprintln("syncing clock to RTC!");
     syncClockToRTC();
 
+#ifdef DISABLE_DEEP_SLEEP
+    stay_awake = true;
+#endif
+
     if (stay_awake)
     {
         dbprintln("starting HTTP");
@@ -661,6 +697,7 @@ void setup()
         HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
         HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
         HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
+        HTTP.on("/sleep_delay", HTTP_GET, handleSleepDelay);
         HTTP.on("/enable", HTTP_GET, handleEnable);
         HTTP.on("/rtc", HTTP_GET, handleRTC);
         HTTP.on("/ntp", HTTP_GET, handleNTP);
@@ -691,7 +728,8 @@ void syncClockToRTC()
     {
         clock.setAdjustment(0);
     }
-    waitForEdge(SYNC_PIN, PIN_EDGE_RISING);
+
+    waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
     uint16_t rtc_pos = getRTCTimeAsPosition();
     dbprintf("RTC position:%d\n", rtc_pos);
     uint16_t clock_pos = clock.getPosition();
@@ -704,6 +742,7 @@ void syncClockToRTC()
             adj += 43200;
         }
         dbprintf("sending adjustment of %d\n", adj);
+        waitForEdge(SYNC_PIN, PIN_EDGE_RISING);
         clock.setAdjustment(adj);
     }
 }

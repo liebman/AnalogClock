@@ -19,6 +19,7 @@
 #define CMD_TP_DURATION 0x05
 #define CMD_AP_DURATION 0x07
 #define CMD_AP_DELAY    0x09
+#define CMD_SLEEP_DELAY 0x0a
 
 // control register bits
 #define BIT_ENABLE      0x80
@@ -38,6 +39,8 @@ public:
     void setAPDuration(uint8_t value);
     uint8_t getAPDelay();
     void setAPDelay(uint8_t value);
+    uint8_t getSleepDelay();
+    void setSleepDelay(uint8_t value);
     boolean getEnable();
     void setEnable(boolean enable);
 private:

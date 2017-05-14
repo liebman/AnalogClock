@@ -19,7 +19,7 @@
 
 #define DS3231
 #define DEBUG_SYNCHRO_CLOCK
-//#define USE_DEEP_SLEEP
+#define DISABLE_DEEP_SLEEP
 
 #ifdef DS3231
 #include <RtcDS3231.h>
@@ -65,6 +65,7 @@ void handleTPCount();
 void handleAPDuration();
 void handleAPCount();
 void handleAPDelay();
+void handleSleepDelay();
 void handleEnable();
 void handleRTC();
 void handleNTP();

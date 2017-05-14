@@ -64,6 +64,16 @@ void Clock::setAPDelay(uint8_t value)
     write8(CMD_AP_DELAY, value);
 }
 
+uint8_t Clock::getSleepDelay()
+{
+    return read8(CMD_SLEEP_DELAY);
+}
+
+void Clock::setSleepDelay(uint8_t value)
+{
+    write8(CMD_SLEEP_DELAY, value);
+}
+
 boolean Clock::getEnable()
 {
     Wire.beginTransmission((uint8_t) I2C_ADDRESS);
