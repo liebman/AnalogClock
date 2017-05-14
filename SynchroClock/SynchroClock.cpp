@@ -8,38 +8,40 @@ RtcDS3231<TwoWire> rtc(Wire);
 RtcDS1307<TwoWire> rtc(Wire);
 #endif
 
-typedef struct {
-    int      sleep_duration; // deep sleep duration in seconds
-    int      tz_offset;      // time offset in seconds from UTC
-    uint8_t  tp_duration;    // tick pulse duration in ms
-    uint8_t  ap_duration;    // adjust pulse duration in ms
-    uint8_t  ap_delay;       // delay in ms between ticks during adjust
-    uint8_t  sleep_delay;    // delay in ms before sleeping DR8838
-    char     ntp_server[64];
+typedef struct
+{
+    int sleep_duration; // deep sleep duration in seconds
+    int tz_offset;      // time offset in seconds from UTC
+    uint8_t tp_duration;    // tick pulse duration in ms
+    uint8_t ap_duration;    // adjust pulse duration in ms
+    uint8_t ap_delay;       // delay in ms between ticks during adjust
+    uint8_t sleep_delay;    // delay in ms before sleeping DR8838
+    char ntp_server[64];
 } Config;
 
-typedef struct {
-  uint32_t crc;
-  uint8_t  data[sizeof(Config)];
+typedef struct
+{
+    uint32_t crc;
+    uint8_t data[sizeof(Config)];
 } EEConfig;
 
-Config       config;
+Config config;
 
-FeedbackLED         feedback(LED_PIN);
-ESP8266WebServer    HTTP(80);
-SNTP                ntp("pool.ntp.org", 123);
-Clock               clock;
+FeedbackLED feedback(LED_PIN);
+ESP8266WebServer HTTP(80);
+SNTP ntp("pool.ntp.org", 123);
+Clock clock;
 WiFiManager wifi;
-unsigned long       setup_done = 0;
+unsigned long setup_done = 0;
 
-boolean save_config  = false; // used by wifi manager when settings were updated.
+boolean save_config = false; // used by wifi manager when settings were updated.
 boolean force_config = false; // reset handler sets this to force into config
-boolean stay_awake   = false; // don't use deep sleep
+boolean stay_awake = false; // don't use deep sleep
 
 #ifdef DEBUG_SYNCHRO_CLOCK
-unsigned int snprintf(char*,unsigned int, ...);
+unsigned int snprintf(char*, unsigned int, ...);
 #define DBP_BUF_SIZE 256
-char    dbp_buf[DBP_BUF_SIZE];
+char dbp_buf[DBP_BUF_SIZE];
 #define dbbegin(x)    Serial.begin(x);
 #define dbprintf(...) {snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
 #define dbprint(x)    Serial.print(x)
@@ -53,7 +55,6 @@ char    dbp_buf[DBP_BUF_SIZE];
 #define dbflush()
 #endif
 
-
 int parseOffset(const char* offset_string)
 {
     int result = 0;
@@ -64,7 +65,8 @@ int parseOffset(const char* offset_string)
         int sign = 1;
         char* s;
 
-        if (value[0] == '-') {
+        if (value[0] == '-')
+        {
             sign = -1;
             s = strtok(&(value[1]), ":");
         }
@@ -166,8 +168,7 @@ uint8_t getValidDuration(String name)
     int i = HTTP.arg(name).toInt();
     if (i < 0 || i > 255)
     {
-        dbprintln("invalid value for " + name + ": " + HTTP.arg(name)
-                  + " using 32 instead!");
+        dbprintln("invalid value for " + name + ": " + HTTP.arg(name) + " using 32 instead!");
         i = 32;
     }
     return (uint8_t) i;
@@ -189,7 +190,7 @@ void handleOffset()
         saveConfig();
     }
 
-    HTTP.send(200, "text/plain", String(config.tz_offset)+"\n");
+    HTTP.send(200, "text/plain", String(config.tz_offset) + "\n");
 }
 
 void handleAdjustment()
@@ -214,7 +215,7 @@ void handleAdjustment()
 
     adj = clock.getAdjustment();
 
-    HTTP.send(200, "text/plain", String(adj)+"\n");
+    HTTP.send(200, "text/plain", String(adj) + "\n");
 }
 
 void handlePosition()
@@ -251,7 +252,7 @@ void handleTPDuration()
 
     value = clock.getTPDuration();
 
-    HTTP.send(200, "text/plain", String(value)+"\n");
+    HTTP.send(200, "text/plain", String(value) + "\n");
 }
 
 void handleAPDuration()
@@ -267,7 +268,7 @@ void handleAPDuration()
 
     value = clock.getAPDuration();
 
-    HTTP.send(200, "text/plain", String(value)+"\n");
+    HTTP.send(200, "text/plain", String(value) + "\n");
 }
 
 void handleAPDelay()
@@ -283,7 +284,7 @@ void handleAPDelay()
 
     value = clock.getAPDelay();
 
-    HTTP.send(200, "text/plain", String(value)+"\n");
+    HTTP.send(200, "text/plain", String(value) + "\n");
 }
 
 void handleSleepDelay()
@@ -299,7 +300,7 @@ void handleSleepDelay()
 
     value = clock.getSleepDelay();
 
-    HTTP.send(200, "text/plain", String(value)+"\n");
+    HTTP.send(200, "text/plain", String(value) + "\n");
 }
 
 void handleEnable()
@@ -311,7 +312,7 @@ void handleEnable()
         clock.setEnable(enable);
     }
     enable = clock.getEnable();
-    HTTP.send(200, "text/Plain", String(enable)+"\n");
+    HTTP.send(200, "text/Plain", String(enable) + "\n");
 }
 
 void handleRTC()
@@ -357,7 +358,8 @@ int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPA
     start_epoch.fraction = 0;
     OffsetTime offset;
     EpochTime end = ntp.getTime(address, start_epoch, &offset);
-    if (end.seconds == 0) {
+    if (end.seconds == 0)
+    {
         dbprintf("NTP Failed!\n");
         return 0;
     }
@@ -394,18 +396,21 @@ int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPA
     return 1;
 }
 
-void handleNTP() {
+void handleNTP()
+{
     char server[64];
     strcpy(server, config.ntp_server);
     boolean sync = false;
 
-    if (HTTP.hasArg("server")) {
+    if (HTTP.hasArg("server"))
+    {
         dbprintf("SERVER: %s\n", HTTP.arg("server").c_str());
         strncpy(server, HTTP.arg("server").c_str(), 63);
         server[63] = 0;
     }
 
-    if (HTTP.hasArg("sync")) {
+    if (HTTP.hasArg("sync"))
+    {
         sync = true;
     }
 
@@ -434,7 +439,8 @@ void handleNTP() {
     return;
 }
 
-void initRTC() {
+void initRTC()
+{
     dbprint("starting RTC\n");
     rtc.Begin();
     RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
@@ -484,11 +490,11 @@ void initWiFi()
     char ap_delay_str[8];
     char sleep_delay_str[8];
     char sleep_duration_str[12];
-    sprintf(tz_offset_str,      "%d", config.tz_offset);
-    sprintf(tp_duration_str,    "%u", config.tp_duration);
-    sprintf(ap_duration_str,    "%u", config.ap_duration);
-    sprintf(ap_delay_str,       "%u", config.ap_delay);
-    sprintf(sleep_delay_str,    "%u", config.sleep_delay);
+    sprintf(tz_offset_str, "%d", config.tz_offset);
+    sprintf(tp_duration_str, "%u", config.tp_duration);
+    sprintf(ap_duration_str, "%u", config.ap_duration);
+    sprintf(ap_delay_str, "%u", config.ap_delay);
+    sprintf(sleep_delay_str, "%u", config.sleep_delay);
     sprintf(sleep_duration_str, "%u", config.sleep_duration);
 
     // setup wifi, blink let slow while connecting and fast if portal activated.
@@ -514,8 +520,10 @@ void initWiFi()
     wifi.addParameter(&ap_delay_setting);
     WiFiManagerParameter sleep_delay_setting("sleep_delay", "Sleep Delay", sleep_delay_str, 32);
     wifi.addParameter(&sleep_delay_setting);
-    wifi.setSaveConfigCallback([](){save_config = true;});
-    wifi.setAPCallback([](WiFiManager *){feedback.blink(FEEDBACK_LED_FAST);});
+    wifi.setSaveConfigCallback([]()
+    {   save_config = true;});
+    wifi.setAPCallback([](WiFiManager *)
+    {   feedback.blink(FEEDBACK_LED_FAST);});
     String ssid = "SynchroClock" + String(ESP.getChipId());
     dbflush();
     if (force_config)
@@ -538,11 +546,8 @@ void initWiFi()
         // update any clock config changes
         //
 
-        dbprintf("clock settings: tp:%s ap:%s,%s slpdrv:%s\n",
-        		tp_duration_setting.getValue(),
-				ap_duration_setting.getValue(),
-				ap_delay_setting.getValue(),
-				sleep_delay_setting.getValue());
+        dbprintf("clock settings: tp:%s ap:%s,%s slpdrv:%s\n", tp_duration_setting.getValue(),
+                ap_duration_setting.getValue(), ap_delay_setting.getValue(), sleep_delay_setting.getValue());
 
         i = atoi(tp_duration_setting.getValue());
         if (i != config.tp_duration)
@@ -579,7 +584,7 @@ void initWiFi()
         }
 
         dbprintf("ntp setting: %s\n", ntp_server_setting.getValue());
-        strncpy(config.ntp_server, ntp_server_setting.getValue(), sizeof(config.ntp_server)-1);
+        strncpy(config.ntp_server, ntp_server_setting.getValue(), sizeof(config.ntp_server) - 1);
 
         dbprintf("seconds_offset_setting: %s\n", seconds_offset_setting.getValue());
         const char* seconds_offset_value = seconds_offset_setting.getValue();
@@ -602,7 +607,6 @@ void initWiFi()
     }
 }
 
-
 void setup()
 {
     dbbegin(115200);
@@ -620,15 +624,16 @@ void setup()
     // initialize config to defaults then load.
     memset(&config, 0, sizeof(config));
     config.sleep_duration = DEFAULT_SLEEP_DURATION;
-    config.tz_offset   = 0;
+    config.tz_offset = 0;
     config.tp_duration = clock.getTPDuration();
     config.ap_duration = clock.getAPDuration();
-    config.ap_delay    = clock.getAPDelay();
+    config.ap_delay = clock.getAPDelay();
     config.sleep_delay = clock.getSleepDelay();
-    strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server)-1);
-    config.ntp_server[sizeof(config.ntp_server)-1] = 0;
+    strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
+    config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
 
-    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay, config.ntp_server);
+    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration,
+            config.ap_delay, config.ntp_server);
 
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
@@ -638,7 +643,8 @@ void setup()
         force_config = true;
     }
 
-    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay, config.ntp_server);
+    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration,
+            config.ap_delay, config.ntp_server);
 
     //
     // clock parameters could have changed, set them
@@ -658,7 +664,8 @@ void setup()
     //
     // if the clock is not running advance it to sync tick/tock
     //
-    if (!enabled) {
+    if (!enabled)
+    {
         force_config = true;    // force the config portal to set the position if the clock is not running
     }
 
@@ -708,7 +715,6 @@ void setup()
         ESP.deepSleep(config.sleep_duration * 1000000);
     }
 }
-
 
 void loop()
 {
@@ -767,51 +773,60 @@ uint16_t getRTCTimeAsPosition()
     dbprintf("position before offset: %d\n", signed_position);
     signed_position += config.tz_offset;
     dbprintf("position after offset: %d\n", signed_position);
-    if (signed_position < 0) {
+    if (signed_position < 0)
+    {
         signed_position += MAX_SECONDS;
         dbprintf("position corrected: %d\n", signed_position);
     }
-    else if (signed_position >= MAX_SECONDS) {
+    else if (signed_position >= MAX_SECONDS)
+    {
         signed_position -= MAX_SECONDS;
         dbprintf("position corrected: %d\n", signed_position);
     }
-    uint16_t position = (uint16_t)signed_position;
+    uint16_t position = (uint16_t) signed_position;
     return position;
 }
 
 //
 // Wait for an rising or falling edge of the given pin
 //
-void waitForEdge(int pin, int edge) {
-    while (digitalRead(pin) == edge) {
+void waitForEdge(int pin, int edge)
+{
+    while (digitalRead(pin) == edge)
+    {
         delay(1);
     }
-    while (digitalRead(pin) != edge) {
+    while (digitalRead(pin) != edge)
+    {
         delay(1);
     }
 }
-
 
 uint32_t calculateCRC32(const uint8_t *data, size_t length)
 {
-  uint32_t crc = 0xffffffff;
-  while (length--) {
-    uint8_t c = *data++;
-    for (uint32_t i = 0x80; i > 0; i >>= 1) {
-      bool bit = crc & 0x80000000;
-      if (c & i) {
-        bit = !bit;
-      }
-      crc <<= 1;
-      if (bit) {
-        crc ^= 0x04c11db7;
-      }
+    uint32_t crc = 0xffffffff;
+    while (length--)
+    {
+        uint8_t c = *data++;
+        for (uint32_t i = 0x80; i > 0; i >>= 1)
+        {
+            bool bit = crc & 0x80000000;
+            if (c & i)
+            {
+                bit = !bit;
+            }
+            crc <<= 1;
+            if (bit)
+            {
+                crc ^= 0x04c11db7;
+            }
+        }
     }
-  }
-  return crc;
+    return crc;
 }
 
-boolean loadConfig() {
+boolean loadConfig()
+{
     EEConfig cfg;
     // Read struct from EEPROM
     dbprintln("loading config from EEPROM");
@@ -835,7 +850,8 @@ boolean loadConfig() {
     return true;
 }
 
-void saveConfig() {
+void saveConfig()
+{
     EEConfig cfg;
     memcpy(&cfg.data, &config, sizeof(cfg.data));
     cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
