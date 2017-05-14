@@ -326,7 +326,6 @@ void setup()
 
     ADCSRA &= ~(1 << ADEN); // Disable ADC as we don't use it, saves ~230uA
     PRR |= (1 << PRADC); // Turn off ADC clock
-    //set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
     tp_duration = DEFAULT_TP_DURATION_MS;
     ap_duration = DEFAULT_AP_DURATION_MS;
@@ -359,10 +358,31 @@ void setup()
 #ifdef DEBUG_I2CAC
 unsigned long last_print;
 uint16_t last_pos = -1;
+unsigned long sleep_count;
 #endif
 
 void loop()
 {
+#ifdef USE_SLEEP
+#ifdef USE_POWER_DOWN_MODE
+    if (!timer_running) {
+        set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    }
+    else
+    {
+        set_sleep_mode(SLEEP_MODE_IDLE);
+    }
+#endif
+
+#ifdef DEBUG_I2CAC
+    sleep_count += 1;
+#endif
+    // sleep!
+    sleep_enable();
+    sleep_mode();
+    sleep_disable();
+#endif
+
 #ifdef DEBUG_I2CAC
     unsigned long now = millis();
     char buffer[128];
@@ -383,8 +403,8 @@ void loop()
                     starts, stops, ints, last_duration, last_actual);
             Serial.print(buffer);
 #endif
-            snprintf(buffer, 127, "position:%u adjustment:%u control:%d seconds:%d drvsleep:%d adjust_active:%d\n",
-                    position, adjustment, control, position % 60, digitalRead(DRV_SLEEP), adjust_active);
+            snprintf(buffer, 127, "position:%u adjustment:%u control:%d seconds:%d drvsleep:%d adjust_active:%d sleep_count:%u\n",
+                    position, adjustment, control, position % 60, digitalRead(DRV_SLEEP), adjust_active, sleep_count);
             Serial.print(buffer);
         }
 #ifdef DEBUG_I2C
@@ -394,5 +414,7 @@ void loop()
 #endif
     }
 #endif
-    //delay(1);
+#ifndef USE_SLEEP
+    delay(100);
+#endif
 }

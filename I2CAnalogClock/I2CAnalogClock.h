@@ -21,12 +21,15 @@
 #define SERIAL_BAUD     115200
 #endif
 
+#define USE_SLEEP
+//#define USE_POWER_DOWN_MODE 1
 #define DRV8838         1
 
 #ifdef __AVR_ATtinyX5__
 #define INT_PIN         1
 #define A_PIN           3
 #define B_PIN           4
+#define DRV_SLEEP       5 // reset pin!
 #define LED_PIN         LED_BUILTIN
 #else
 #define INT_PIN         3
