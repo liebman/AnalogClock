@@ -14,6 +14,7 @@ volatile uint8_t status;        // status register
 
 volatile uint8_t command;       // This is which "register" to be read/written.
 
+volatile bool adjust_active;
 volatile unsigned int receives;
 volatile unsigned int requests;
 volatile unsigned int errors;
@@ -34,6 +35,7 @@ void i2creceive(int size)
             break;
         case CMD_ADJUSTMENT:
             adjustment = Wire.read() | Wire.read() << 8;
+            // adjustment will start on the next tick!
             break;
         case CMD_TP_DURATION:
             tp_duration = Wire.read();
@@ -66,6 +68,9 @@ void i2crequest()
     uint16_t value;
     switch (command)
     {
+    case CMD_ID:
+        Wire.write(ID_VALUE);
+        break;
     case CMD_POSITION:
         value = position;
         Wire.write(value & 0xff);
@@ -130,7 +135,6 @@ ISR(TIMER1_COMPA_vect)
 #ifdef __AVR_ATtinyX5__
     TIMSK &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #else
-    //digitalWrite(LED_PIN, digitalRead(LED_PIN) ^ 1);
     TIMSK1 &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #endif
     timer_running = false;
@@ -161,9 +165,9 @@ void startTimer(int ms, void (*func)())
     TCNT1 = 0;
 
     OCR1A = timer;   // compare match register
-    TCCR1 |= (1 << CTC1);   // CTC mode
+    TCCR1 |= (1 << CTC1);// CTC mode
     TCCR1 |= PRESCALE_BITS;
-    TIMSK |= (1 << OCIE1A);  // enable timer compare interrupt
+    TIMSK |= (1 << OCIE1A);// enable timer compare interrupt
     // clear any already pending interrupt?  does not work :-(
     TIFR &= ~(1 << OCIE1A);
 #else
@@ -186,8 +190,8 @@ void startTimer(int ms, void (*func)())
 void startTick()
 {
 #ifdef DRV8838
-	digitalWrite(DRV_SLEEP, HIGH);
-	delayMicroseconds(30); // data sheet says the DRV8838 take 30us to wake from sleep
+    digitalWrite(DRV_SLEEP, HIGH);
+    delayMicroseconds(30); // data sheet says the DRV8838 take 30us to wake from sleep
     digitalWrite(DRV_PHASE, isTick());
     digitalWrite(DRV_ENABLE, TICK_ON);
 #else
@@ -202,7 +206,32 @@ void endTick()
     digitalWrite(DRV_ENABLE, TICK_OFF);
     digitalWrite(DRV_PHASE, LOW); // per DRV8838 datasheet this reduces power usage
     toggleTick();
-    startTimer(sleep_delay, &sleepDRV8838);
+
+    if (adjustment != 0)
+    {
+        adjustment--;
+        if (adjustment != 0)
+        {
+            startTimer(ap_delay, &adjustClock);
+        }
+        else
+        {
+            //
+            // we are done with adjustment, stop the timer
+            // and schedule the sleep.
+            //
+            adjust_active = false;
+            startTimer(sleep_delay, &sleepDRV8838);
+        }
+    }
+    else
+    {
+        if (adjust_active)
+        {
+            adjust_active = false;
+        }
+        startTimer(sleep_delay, &sleepDRV8838);
+    }
 #else
     digitalWrite(B_PIN, !digitalRead(B_PIN));
 #endif
@@ -211,21 +240,27 @@ void endTick()
 void sleepDRV8838()
 {
 #ifdef DRV8838
-	// only sleep the chip if we are not adjusting
-	if (adjustment == 0)
-	{
-		digitalWrite(DRV_SLEEP, LOW);
-	}
+    // only sleep the chip if we are not adjusting
+    if (adjustment == 0)
+    {
+        digitalWrite(DRV_SLEEP, LOW);
+    }
 #endif
 }
 
 // advance the position
-void advancePosition() {
+void advancePosition()
+{
     position += 1;
     if (position >= MAX_SECONDS)
     {
         position = 0;
     }
+}
+
+void adjustClock()
+{
+    advanceClock(ap_duration);
 }
 
 //
@@ -241,6 +276,15 @@ void advanceClock(uint16_t duration)
     startTimer(duration, &endTick);
 }
 
+void startAdjust()
+{
+    if (!adjust_active)
+    {
+        adjust_active = true;
+        advanceClock(ap_duration);
+    }
+}
+
 //
 // ISR for 1hz interrupt
 //
@@ -248,14 +292,21 @@ void tick()
 {
     if (isEnabled())
     {
-
-        if (adjustment > 0)
+        if (adjustment != 0)
         {
             ++adjustment;
+            startAdjust();
         }
         else
         {
             advanceClock(tp_duration);
+        }
+    }
+    else
+    {
+        if (adjustment != 0)
+        {
+            startAdjust();
         }
     }
 }
@@ -268,17 +319,27 @@ void setup()
     Serial.println("Startup!");
 #endif
 
+#ifndef __AVR_ATtinyX5__
+    digitalWrite(LED_PIN, LOW);
+    pinMode(LED_PIN, OUTPUT);
+#endif
 
-    ADCSRA &= ~(1<<ADEN); // Disable ADC as we don't use it, saves ~230uA
-    PRR    |= (1<<PRADC); // Turn off ADC clock
+    ADCSRA &= ~(1 << ADEN); // Disable ADC as we don't use it, saves ~230uA
+    PRR |= (1 << PRADC); // Turn off ADC clock
     //set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
     tp_duration = DEFAULT_TP_DURATION_MS;
     ap_duration = DEFAULT_AP_DURATION_MS;
-    ap_delay    = DEFAULT_AP_DELAY_MS;
+    ap_delay = DEFAULT_AP_DELAY_MS;
     sleep_delay = DEFAULT_SLEEP_DELAY;
+    adjust_active = false;
 
-    //control = BIT_ENABLE;
+    //
+    // we need a single adjust at startup to insure that the clock motor
+    // is synched as a tick/tock.  This first tick will "misfire" if the motor
+    // is out of sync and after that will be in sync.
+    position = MAX_SECONDS - 1;
+    adjustment = 1;
 
     Wire.begin(I2C_ADDRESS);
     Wire.onReceive(&i2creceive);
@@ -287,13 +348,13 @@ void setup()
     digitalWrite(B_PIN, TICK_OFF);
     digitalWrite(A_PIN, TICK_OFF);
     digitalWrite(DRV_SLEEP, LOW);
+
     pinMode(A_PIN, OUTPUT);
     pinMode(B_PIN, OUTPUT);
     pinMode(DRV_SLEEP, OUTPUT);
     pinMode(INT_PIN, INPUT);
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
 }
-
 
 #ifdef DEBUG_I2CAC
 unsigned long last_print;
@@ -302,44 +363,16 @@ uint16_t last_pos = -1;
 
 void loop()
 {
-    if (adjustment != 0)
-    {
-    	noInterrupts();
-        advancePosition(); // this must be done with interrupts disabled when not in an ISR!
-        interrupts();
-
-        startTick();
-        delay(ap_duration);
-        endTick();
-        delay(ap_delay);
-
-    	//
-    	// this must be done with interrupts disabled when not in an ISR!
-    	//
-    	noInterrupts();
-    	if (adjustment != 0) {
-    		--adjustment;
-    	}
-    	if (adjustment == 0)
-    	{
-    	    startTimer(sleep_delay, &sleepDRV8838);
-    	}
-    	interrupts();
-    }
-    else
-    {
-        sleep_mode();
-    }
-
 #ifdef DEBUG_I2CAC
     unsigned long now = millis();
     char buffer[128];
-    if ((now - last_print) > 1000) {
+    if ((now - last_print) > 1000)
+    {
         last_print = now;
         if (last_pos != position)
         {
             last_pos = position;
-    #ifdef DEBUG_TIMER
+#ifdef DEBUG_TIMER
             if (timer_running)
             {
                 Serial.println("timer running, adding delay!");
@@ -349,10 +382,9 @@ void loop()
             snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
                     starts, stops, ints, last_duration, last_actual);
             Serial.print(buffer);
-    #endif
-            snprintf(buffer, 127,
-                    "position:%u adjustment:%u control:%d seconds:%d drvsleep:%d\n", position,
-                    adjustment, control, position % 60, digitalRead(DRV_SLEEP));
+#endif
+            snprintf(buffer, 127, "position:%u adjustment:%u control:%d seconds:%d drvsleep:%d adjust_active:%d\n",
+                    position, adjustment, control, position % 60, digitalRead(DRV_SLEEP), adjust_active);
             Serial.print(buffer);
         }
 #ifdef DEBUG_I2C

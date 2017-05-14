@@ -48,6 +48,8 @@
 #define TICK_OFF        LOW
 
 #define I2C_ADDRESS     0x09
+
+#define CMD_ID          0x00
 #define CMD_POSITION    0x01
 #define CMD_ADJUSTMENT  0x02
 #define CMD_CONTROL     0x03
@@ -60,6 +62,8 @@
 // control register bits
 #define BIT_ENABLE      0x80
 #define BIT_TICK        0x01
+
+#define ID_VALUE        0x42
 
 #define isEnabled()     (control &  BIT_ENABLE)
 #define isTick()        (control &  BIT_TICK)
@@ -84,10 +88,10 @@
 #define DEFAULT_TP_DURATION_MS 12  // pulse duration in ms.
 #define DEFAULT_AP_DURATION_MS 16  // pulse duration during adjust
 #define DEFAULT_AP_DELAY_MS    12  // delay between adjust pulses in ms.
-#define DEFAULT_SLEEP_DELAY    100 // delay before sleeping the DEV8838
+#define DEFAULT_SLEEP_DELAY    50 // delay before sleeping the DEV8838
 
-
-
+void startAdjust();
+void adjustClock();
 void advanceClock(uint16_t duration);
 void tick();
 void sleepDRV8838();
