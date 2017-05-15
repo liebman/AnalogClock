@@ -12,6 +12,8 @@
 #include <Wire.h>
 
 #define I2C_ADDRESS     0x09
+
+#define CMD_ID          0x00
 #define CMD_POSITION    0x01
 #define CMD_ADJUSTMENT  0x02
 #define CMD_CONTROL     0x03
@@ -23,12 +25,18 @@
 
 // control register bits
 #define BIT_ENABLE      0x80
+#define BIT_STAY_ACTIVE 0x40
 
+#define CLOCK_ID_VALUE  0x42
+
+#define CLOCK_EDGE_RISING  1
+#define CLOCK_EDGE_FALLING 0
 
 class Clock
 {
 public:
-    Clock();
+    Clock(int _pin);
+    bool isClockPresent();
     uint16_t getAdjustment();
     void setAdjustment(uint16_t value);
     uint16_t getPosition();
@@ -41,9 +49,16 @@ public:
     void setAPDelay(uint8_t value);
     uint8_t getSleepDelay();
     void setSleepDelay(uint8_t value);
-    boolean getEnable();
-    void setEnable(boolean enable);
+    bool getEnable();
+    void setEnable(bool enable);
+    bool getStayActive();
+    void setStayActive(bool enable);
+    bool getCommandBit(uint8_t);
+    void setCommandBit(bool value, uint8_t);
+    void waitForActive();
+    void waitForEdge(int edge);
 private:
+    int pin;
     uint16_t read16(uint8_t command);
     void write16(uint8_t command, uint16_t value);
     uint8_t read8(uint8_t command);

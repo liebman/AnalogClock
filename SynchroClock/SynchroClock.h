@@ -18,8 +18,8 @@
 #include "Clock.h"
 
 #define DS3231
-#define DEBUG_SYNCHRO_CLOCK
-#define DISABLE_DEEP_SLEEP
+//#define DEBUG_SYNCHRO_CLOCK
+//#define DISABLE_DEEP_SLEEP
 
 #ifdef DS3231
 #include <RtcDS3231.h>
@@ -42,14 +42,10 @@
 #define SYNC_PIN          D5          // (GPIO14) pin tied to 1hz square wave from RTC
 #define FACTORY_RESET_PIN D6          // (GPIO12)
 
-#define PIN_EDGE_RISING  1
-#define PIN_EDGE_FALLING 0
-
 #define DEFAULT_TZ_OFFSET      0              // default timzezone offset in seconds
 #define DEFAULT_NTP_SERVER     "pool.ntp.org" // default NTP server
 #define DEFAULT_SLEEP_DURATION 3600           // default is 1hr
 
-void waitForEdge(int pin, int edge);
 
 int parseOffset(const char* offset_string);
 uint16_t parsePosition(const char* position_string);

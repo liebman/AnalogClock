@@ -7,13 +7,22 @@
 
 #include "Clock.h"
 
-Clock::Clock()
+Clock::Clock(int _pin)
 {
+    pin = _pin;
 }
 
 //
 // access to analog clock controler via i2c
 //
+
+bool Clock::isClockPresent()
+{
+    waitForActive();
+    uint8_t id = read8(CMD_ID);
+    return (id == CLOCK_ID_VALUE);
+}
+
 uint16_t Clock::getAdjustment()
 {
     return read16(CMD_ADJUSTMENT);
@@ -74,17 +83,39 @@ void Clock::setSleepDelay(uint8_t value)
     write8(CMD_SLEEP_DELAY, value);
 }
 
-boolean Clock::getEnable()
+bool Clock::getEnable()
+{
+    return getCommandBit(BIT_ENABLE);
+}
+
+void Clock::setEnable(bool enable)
+{
+    setCommandBit(enable, BIT_ENABLE);
+}
+
+bool Clock::getStayActive()
+{
+    return getCommandBit(BIT_STAY_ACTIVE);
+}
+
+void Clock::setStayActive(bool active)
+{
+    waitForActive();
+    setCommandBit(active, BIT_STAY_ACTIVE);
+}
+
+
+bool Clock::getCommandBit(uint8_t bit)
 {
     Wire.beginTransmission((uint8_t) I2C_ADDRESS);
     Wire.write(CMD_CONTROL);
     Wire.endTransmission();
     Wire.requestFrom((uint8_t) I2C_ADDRESS, (uint8_t) 1);
     uint8_t value = Wire.read();
-    return ((value & BIT_ENABLE) == BIT_ENABLE);
+    return ((value & bit) == bit);
 }
 
-void Clock::setEnable(boolean enable)
+void Clock::setCommandBit(bool onoff, uint8_t bit)
 {
     Wire.beginTransmission(I2C_ADDRESS);
     Wire.write(CMD_CONTROL);
@@ -93,14 +124,15 @@ void Clock::setEnable(boolean enable)
     Wire.requestFrom((uint8_t) I2C_ADDRESS, (uint8_t) 1);
     uint8_t value = Wire.read();
 
-    if (enable)
+    if (onoff)
     {
-        value |= BIT_ENABLE;
+        value |= bit;
     }
     else
     {
-        value &= ~BIT_ENABLE;
+        value &= ~bit;
     }
+
 
     Wire.beginTransmission(I2C_ADDRESS);
     Wire.write(CMD_CONTROL);
@@ -150,3 +182,20 @@ void Clock::write8(uint8_t command, uint8_t value)
     Wire.endTransmission();
 }
 
+void Clock::waitForActive()
+{
+    waitForEdge(CLOCK_EDGE_FALLING);
+    delay(25); // give the chip time to wake up!
+}
+
+void Clock::waitForEdge(int edge)
+{
+    while (digitalRead(pin) == edge)
+    {
+        delay(1);
+    }
+    while (digitalRead(pin) != edge)
+    {
+        delay(1);
+    }
+}

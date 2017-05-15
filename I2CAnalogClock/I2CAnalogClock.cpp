@@ -10,7 +10,7 @@ volatile uint8_t sleep_delay;  // delay to sleep the DEV8838
 #endif
 
 volatile uint8_t control;       // This is our control "register".
-volatile uint8_t status;        // status register
+volatile uint8_t status;        // status register (has tick bit)
 
 volatile uint8_t command;       // This is which "register" to be read/written.
 
@@ -18,6 +18,9 @@ volatile bool adjust_active;
 volatile unsigned int receives;
 volatile unsigned int requests;
 volatile unsigned int errors;
+volatile unsigned int ticks;
+volatile unsigned int control_count;
+volatile unsigned int id_count;
 
 // i2c receive handler
 void i2creceive(int size)
@@ -51,13 +54,12 @@ void i2creceive(int size)
             break;
         case CMD_CONTROL:
             control = Wire.read();
-            break;
-        case CMD_STATUS:
-            status = Wire.read();
+            ++control_count;
             break;
         default:
             ++errors;
         }
+        command = 0xff;
     }
 }
 
@@ -70,6 +72,7 @@ void i2crequest()
     {
     case CMD_ID:
         Wire.write(ID_VALUE);
+        ++id_count;
         break;
     case CMD_POSITION:
         value = position;
@@ -98,7 +101,12 @@ void i2crequest()
         Wire.write(value);
         break;
     case CMD_CONTROL:
-        Wire.write(control);
+        size_t res;
+        res = Wire.write(control);
+        if (res == 0)
+        {
+            ++errors;
+        }
         break;
     case CMD_STATUS:
         Wire.write(status);
@@ -106,6 +114,7 @@ void i2crequest()
     default:
         ++errors;
     }
+    command = 0xff;
 }
 
 void (*timer_cb)();
@@ -269,9 +278,6 @@ void adjustClock()
 void advanceClock(uint16_t duration)
 {
     advancePosition();
-#ifndef __AVR_ATtinyX5__
-    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-#endif
     startTick();
     startTimer(duration, &endTick);
 }
@@ -290,6 +296,10 @@ void startAdjust()
 //
 void tick()
 {
+    ++ticks;
+#ifndef __AVR_ATtinyX5__
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+#endif
     if (isEnabled())
     {
         if (adjustment != 0)
@@ -307,6 +317,12 @@ void tick()
         if (adjustment != 0)
         {
             startAdjust();
+        }
+        else
+        {
+            // start a timer to sleep the DRV - we just need a timer going
+            // so we stay awake for a bit to receive commands.
+            startTimer(sleep_delay, &sleepDRV8838);
         }
     }
 }
@@ -339,6 +355,7 @@ void setup()
     // is out of sync and after that will be in sync.
     position = MAX_SECONDS - 1;
     adjustment = 1;
+    //control = BIT_ENABLE;
 
     Wire.begin(I2C_ADDRESS);
     Wire.onReceive(&i2creceive);
@@ -356,16 +373,19 @@ void setup()
 }
 
 #ifdef DEBUG_I2CAC
-unsigned long last_print;
-uint16_t last_pos = -1;
-unsigned long sleep_count;
+unsigned int last_print;
+unsigned int sleep_count;
 #endif
 
 void loop()
 {
 #ifdef USE_SLEEP
 #ifdef USE_POWER_DOWN_MODE
-    if (!timer_running) {
+    //
+    // conserve power if we are not in stay active and
+    // there is no timer running
+    //
+    if (!timer_running && !isStayActive()) {
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     }
     else
@@ -379,34 +399,30 @@ void loop()
 #endif
     // sleep!
     sleep_enable();
-    sleep_mode();
+    sleep_cpu();
     sleep_disable();
 #endif
 
 #ifdef DEBUG_I2CAC
-    unsigned long now = millis();
-    char buffer[128];
-    if ((now - last_print) > 1000)
+    unsigned int now = ticks;
+    char buffer[256];
+    if (now != last_print)
     {
         last_print = now;
-        if (last_pos != position)
-        {
-            last_pos = position;
 #ifdef DEBUG_TIMER
-            if (timer_running)
-            {
-                Serial.println("timer running, adding delay!");
-                delay(33);
-            }
-            int last_actual = stop_time - start_time;
-            snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
-                    starts, stops, ints, last_duration, last_actual);
-            Serial.print(buffer);
-#endif
-            snprintf(buffer, 127, "position:%u adjustment:%u control:%d seconds:%d drvsleep:%d adjust_active:%d sleep_count:%u\n",
-                    position, adjustment, control, position % 60, digitalRead(DRV_SLEEP), adjust_active, sleep_count);
-            Serial.print(buffer);
+        if (timer_running)
+        {
+            Serial.println("timer running, adding delay!");
+            delay(33);
         }
+        int last_actual = stop_time - start_time;
+        snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
+                starts, stops, ints, last_duration, last_actual);
+        Serial.print(buffer);
+#endif
+        snprintf(buffer, 255, "position:%u adjustment:%u control:0x%02x status:0x%02x drvsleep:%d adjust_active:%d sleep_count:%u control_count:%u id_count:%u\n",
+                position, adjustment, control, status, digitalRead(DRV_SLEEP), adjust_active, sleep_count, control_count, id_count);
+        Serial.print(buffer);
 #ifdef DEBUG_I2C
         snprintf(buffer, 127, "receives:%d requests:%d errors: %d\n",
                 receives, requests, errors);

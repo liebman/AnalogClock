@@ -16,13 +16,13 @@
 #else
 #include "Wire.h"
 #define DEBUG_I2CAC     1
-//#define DEBUG_I2C       1
+#define DEBUG_I2C       1
 //#define DEBUG_TIMER     1
 #define SERIAL_BAUD     115200
 #endif
 
 #define USE_SLEEP
-//#define USE_POWER_DOWN_MODE 1
+#define USE_POWER_DOWN_MODE 1
 #define DRV8838         1
 
 #ifdef __AVR_ATtinyX5__
@@ -30,7 +30,7 @@
 #define A_PIN           3
 #define B_PIN           4
 #define DRV_SLEEP       5 // reset pin!
-#define LED_PIN         LED_BUILTIN
+//#define LED_PIN         LED_BUILTIN
 #else
 #define INT_PIN         3
 #define A_PIN           4
@@ -61,16 +61,22 @@
 #define CMD_AP_DURATION 0x07
 #define CMD_AP_DELAY    0x09
 #define CMD_SLEEP_DELAY 0x0a
+#define CMD_STAY_ACTIVE 0x0b
 
 // control register bits
 #define BIT_ENABLE      0x80
-#define BIT_TICK        0x01
+#define BIT_STAY_ACTIVE 0x40
+
+// status register bits
+#define STATUS_BIT_TICK 0x01
 
 #define ID_VALUE        0x42
 
 #define isEnabled()     (control &  BIT_ENABLE)
-#define isTick()        (control &  BIT_TICK)
-#define toggleTick()    (control ^= BIT_TICK)
+#define isStayActive()  (control &  BIT_STAY_ACTIVE)
+
+#define isTick()        (status &  STATUS_BIT_TICK)
+#define toggleTick()    (status ^= STATUS_BIT_TICK)
 
 //
 // Timing defaults
@@ -91,7 +97,7 @@
 #define DEFAULT_TP_DURATION_MS 12  // pulse duration in ms.
 #define DEFAULT_AP_DURATION_MS 16  // pulse duration during adjust
 #define DEFAULT_AP_DELAY_MS    12  // delay between adjust pulses in ms.
-#define DEFAULT_SLEEP_DELAY    50 // delay before sleeping the DEV8838
+#define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
 
 void startAdjust();
 void adjustClock();

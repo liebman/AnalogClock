@@ -30,7 +30,7 @@ Config config;
 FeedbackLED feedback(LED_PIN);
 ESP8266WebServer HTTP(80);
 SNTP ntp("pool.ntp.org", 123);
-Clock clock;
+Clock clock(SYNC_PIN);
 WiFiManager wifi;
 unsigned long setup_done = 0;
 
@@ -196,6 +196,7 @@ void handleOffset()
 void handleAdjustment()
 {
     uint16_t adj;
+    clock.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         if (HTTP.arg("set").equalsIgnoreCase("auto"))
@@ -208,12 +209,12 @@ void handleAdjustment()
             adj = getValidPosition("set");
             dbprint("setting adjustment:");
             dbprintln(adj);
-            waitForEdge(SYNC_PIN, PIN_EDGE_RISING);
             clock.setAdjustment(adj);
         }
     }
 
     adj = clock.getAdjustment();
+    clock.setStayActive(false);
 
     HTTP.send(200, "text/plain", String(adj) + "\n");
 }
@@ -221,6 +222,7 @@ void handleAdjustment()
 void handlePosition()
 {
     uint16_t pos;
+    clock.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
@@ -230,6 +232,7 @@ void handlePosition()
     }
 
     pos = clock.getPosition();
+    clock.setStayActive(false);
 
     int hours = pos / 3600;
     int minutes = (pos - (hours * 3600)) / 60;
@@ -242,6 +245,7 @@ void handlePosition()
 void handleTPDuration()
 {
     uint8_t value;
+    clock.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -251,6 +255,7 @@ void handleTPDuration()
     }
 
     value = clock.getTPDuration();
+    clock.setStayActive(false);
 
     HTTP.send(200, "text/plain", String(value) + "\n");
 }
@@ -258,6 +263,7 @@ void handleTPDuration()
 void handleAPDuration()
 {
     uint8_t value;
+    clock.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -267,6 +273,7 @@ void handleAPDuration()
     }
 
     value = clock.getAPDuration();
+    clock.setStayActive(false);
 
     HTTP.send(200, "text/plain", String(value) + "\n");
 }
@@ -274,6 +281,7 @@ void handleAPDuration()
 void handleAPDelay()
 {
     uint8_t value;
+    clock.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -283,6 +291,7 @@ void handleAPDelay()
     }
 
     value = clock.getAPDelay();
+    clock.setStayActive(false);
 
     HTTP.send(200, "text/plain", String(value) + "\n");
 }
@@ -290,6 +299,7 @@ void handleAPDelay()
 void handleSleepDelay()
 {
     uint8_t value;
+    clock.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -299,6 +309,7 @@ void handleSleepDelay()
     }
 
     value = clock.getSleepDelay();
+    clock.setStayActive(false);
 
     HTTP.send(200, "text/plain", String(value) + "\n");
 }
@@ -306,22 +317,26 @@ void handleSleepDelay()
 void handleEnable()
 {
     boolean enable;
+    clock.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         enable = getValidBoolean("set");
         clock.setEnable(enable);
     }
     enable = clock.getEnable();
+    clock.setStayActive(false);
     HTTP.send(200, "text/Plain", String(enable) + "\n");
 }
 
 void handleRTC()
 {
+    clock.setStayActive(true);
     if (HTTP.hasArg("sync"))
     {
         syncClockToRTC();
     }
     uint16_t value = getRTCTimeAsPosition();
+    clock.setStayActive(false);
     int hours = value / 3600;
     int minutes = (value - (hours * 3600)) / 60;
     int seconds = value - (hours * 3600) - (minutes * 60);
@@ -350,7 +365,7 @@ int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPA
     dbprintf("address: %s\n", address.toString().c_str());
 
     // wait for the next falling edge of the 1hz square wave
-    waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
+    clock.waitForEdge(CLOCK_EDGE_FALLING);
 
     RtcDateTime dt = rtc.GetDateTime();
     EpochTime start_epoch;
@@ -376,7 +391,7 @@ int setTimeFromNTP(const char* server, bool sync, OffsetTime* result_offset, IPA
         uint32_t msdelay = 1000 - offset_ms;
         //dbprintf("msdelay: %u\n", msdelay);
 
-        waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
+        clock.waitForEdge(CLOCK_EDGE_FALLING);
         dt = rtc.GetDateTime();
 
         // wait for where the next second should start
@@ -625,6 +640,19 @@ void setup()
     memset(&config, 0, sizeof(config));
     config.sleep_duration = DEFAULT_SLEEP_DURATION;
     config.tz_offset = 0;
+
+    //
+    // make sure the device is available!
+    //
+    feedback.blink(0.9);
+    while(!clock.isClockPresent())
+    {
+        delay(1);
+    }
+    feedback.off();
+
+    clock.setStayActive(true);
+
     config.tp_duration = clock.getTPDuration();
     config.ap_duration = clock.getAPDuration();
     config.ap_delay = clock.getAPDelay();
@@ -683,6 +711,7 @@ void setup()
         dbprintln("clock is enabled, skipping init of RTC");
     }
 
+    clock.setStayActive(false);
     dbprintln("syncing RTC from NTP!");
     setTimeFromNTP(config.ntp_server, true, NULL, NULL);
 
@@ -727,13 +756,15 @@ void loop()
 
 void syncClockToRTC()
 {
+    clock.setStayActive(true);
+
     // if there is already an adjustment in progress then stop it.
     if (clock.getAdjustment() > 0)
     {
         clock.setAdjustment(0);
     }
 
-    waitForEdge(SYNC_PIN, PIN_EDGE_FALLING);
+    clock.waitForEdge(CLOCK_EDGE_FALLING);
     uint16_t rtc_pos = getRTCTimeAsPosition();
     dbprintf("RTC position:%d\n", rtc_pos);
     uint16_t clock_pos = clock.getPosition();
@@ -746,9 +777,10 @@ void syncClockToRTC()
             adj += 43200;
         }
         dbprintf("sending adjustment of %d\n", adj);
-        waitForEdge(SYNC_PIN, PIN_EDGE_RISING);
+        clock.waitForEdge(CLOCK_EDGE_RISING);
         clock.setAdjustment(adj);
     }
+    clock.setStayActive(false);
 }
 
 //
@@ -785,21 +817,6 @@ uint16_t getRTCTimeAsPosition()
     }
     uint16_t position = (uint16_t) signed_position;
     return position;
-}
-
-//
-// Wait for an rising or falling edge of the given pin
-//
-void waitForEdge(int pin, int edge)
-{
-    while (digitalRead(pin) == edge)
-    {
-        delay(1);
-    }
-    while (digitalRead(pin) != edge)
-    {
-        delay(1);
-    }
 }
 
 uint32_t calculateCRC32(const uint8_t *data, size_t length)
