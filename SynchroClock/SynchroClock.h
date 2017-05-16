@@ -18,7 +18,7 @@
 #include "Clock.h"
 
 #define DS3231
-//#define DEBUG_SYNCHRO_CLOCK
+#define DEBUG_SYNCHRO_CLOCK
 //#define DISABLE_DEEP_SLEEP
 
 #ifdef DS3231
