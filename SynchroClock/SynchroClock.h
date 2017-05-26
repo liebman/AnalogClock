@@ -47,6 +47,11 @@
 #define DEFAULT_AP_DELAY       12  // delay between adjust pulses in ms.
 #define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
 
+// error codes for setRTCfromNTP()
+#define ERROR_DNS -1
+#define ERROR_RTC -2
+#define ERROR_NTP -3
+
 typedef struct
 {
     int sleep_duration; // deep sleep duration in seconds

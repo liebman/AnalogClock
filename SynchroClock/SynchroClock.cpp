@@ -424,6 +424,11 @@ void handleNTP()
     int code;
     if (setRTCfromNTP(server, sync, &offset, &address))
     {
+        code = 500;
+        snprintf(message, 64, "NTP Failed!\n");
+    }
+    else
+    {
         if (sync)
         {
             dbprintln("Syncing clock to RTC!");
@@ -432,11 +437,6 @@ void handleNTP()
         code = 200;
         uint32_t offset_ms = fraction2Ms(offset.fraction);
         snprintf(message, 64, "OFFSET: %d.%03d (%s)\n", offset.seconds, offset_ms, address.toString().c_str());
-    }
-    else
-    {
-        code = 500;
-        snprintf(message, 64, "NTP Failed!\n");
     }
     dbprintf(message);
     HTTP.send(code, "text/Plain", message);
@@ -787,7 +787,7 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
     if (!WiFi.hostByName(server, address))
     {
         dbprintf("DNS lookup on %s failed!\n", server);
-        return 0;
+        return ERROR_DNS;
     }
 
     if (result_address)
@@ -804,7 +804,7 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
     if (rtc.readTime(dt))
     {
         dbprintln("setRTCfromNTP: failed to read from RTC!");
-        return 0;
+        return ERROR_RTC;
     }
 
     dbprintf("RTC: %s (UTC)\n", dt.string());
@@ -820,7 +820,7 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
     if (end.seconds == 0)
     {
         dbprintf("NTP Failed!\n");
-        return 0;
+        return ERROR_NTP;
     }
 
     if (result_offset != NULL)
@@ -844,7 +844,7 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
         if (rtc.readTime(dt))
         {
             dbprintln("setRTCfromNTP: failed to read from RTC!");
-            return 0;
+            return ERROR_RTC;
         }
 
         // wait for where the next second should start
@@ -859,14 +859,14 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
             if (rtc.writeTime(dt))
             {
                 dbprintf("FAILED to set RTC: %s\n", dt.string());
-                return 0;
+                return ERROR_RTC;
             }
             dbprintf("set RTC: %s\n", dt.string());
         }
 
     }
 
-    return 1;
+    return 0;
 }
 
 void setCLKfromRTC()
