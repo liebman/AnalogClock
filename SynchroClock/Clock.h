@@ -10,6 +10,10 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include "WireUtils.h"
+
+#define DEBUG_CLOCK
+//#define DISABLE_ACTIVE
 
 #define I2C_ADDRESS     0x09
 
@@ -32,38 +36,49 @@
 #define CLOCK_EDGE_RISING  1
 #define CLOCK_EDGE_FALLING 0
 
+#define CLOCK_ERROR     0xffff
+
 class Clock
 {
 public:
     Clock(int _pin);
+    int begin();
     bool isClockPresent();
-    uint16_t getAdjustment();
-    void setAdjustment(uint16_t value);
-    uint16_t getPosition();
-    void setPosition(uint16_t value);
-    uint8_t getTPDuration();
-    void setTPDuration(uint8_t value);
-    uint8_t getAPDuration();
-    void setAPDuration(uint8_t value);
-    uint8_t getAPDelay();
-    void setAPDelay(uint8_t value);
-    uint8_t getSleepDelay();
+    int readAdjustment(uint16_t *value);
+    int writeAdjustment(uint16_t value);
+    int readPosition(uint16_t* value);
+    int writePosition(uint16_t value);
+    int readTPDuration(uint8_t* value);
+    int writeTPDuration(uint8_t value);
+    int readAPDuration(uint8_t* value);
+    int writeAPDuration(uint8_t value);
+    int readAPDelay(uint8_t* value);
+    int writeAPDelay(uint8_t value);
+    int readSleepDelay(uint8_t* value);
+    int writeSleepDelay(uint8_t value);
     void setSleepDelay(uint8_t value);
     bool getEnable();
     void setEnable(bool enable);
     bool getStayActive();
     void setStayActive(bool enable);
     bool getCommandBit(uint8_t);
-    void setCommandBit(bool value, uint8_t);
+    void setCommandBit(bool value, uint8_t bit);
     void waitForActive();
     void waitForEdge(int edge);
 private:
     int pin;
+    int read(uint8_t  command, uint16_t *value);
+    int write(uint8_t command, uint16_t  value);
+    int read(uint8_t  command, uint8_t *value);
+    int write(uint8_t command, uint8_t  value);
+    int read16(uint8_t command, uint16_t*value);
     uint16_t read16(uint8_t command);
-    void write16(uint8_t command, uint16_t value);
+    int write16(uint8_t command, uint16_t value);
+    int read8(uint8_t command, uint8_t* value);
     uint8_t read8(uint8_t command);
-    void write8(uint8_t command, uint8_t value);
-
+    int write8(uint8_t command, uint8_t value);
+    int read(uint8_t command, uint8_t *value, size_t size);
+    int write(uint8_t command, uint8_t *value, size_t size);
 };
 
 #endif /* CLOCK_H_ */
