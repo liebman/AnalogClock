@@ -88,7 +88,7 @@ void handleEnable();
 void handleRTC();
 void handleNTP();
 int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAddress* result_address);
-void setCLKfromRTC();
+int setCLKfromRTC();
 void saveConfig();
 boolean loadConfig();
 

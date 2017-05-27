@@ -379,6 +379,7 @@ void handleRTC()
         dbprintf("handleRTC: RTC : %s (UTC)\n", dt.string());
 
         clk.setStayActive(true);
+
         if (HTTP.hasArg("sync"))
         {
             setCLKfromRTC();
@@ -474,7 +475,7 @@ void handleWire()
 
 void initWiFi()
 {
-    dbprint("starting wifi feedback\n");
+    dbprint("starting wifi!\n");
     char tz_offset_str[32];
     char tp_duration_str[8];
     char ap_duration_str[8];
@@ -490,7 +491,8 @@ void initWiFi()
 
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
-    dbprintln("create wifi manager");
+
+    wifi.setDebugOutput(false);
     WiFiManagerParameter seconds_offset_setting("offset", "Time Zone", tz_offset_str, 32);
     wifi.addParameter(&seconds_offset_setting);
     WiFiManagerParameter position_setting("position", "Clock Position", "", 32);
@@ -526,6 +528,7 @@ void initWiFi()
     {
         wifi.autoConnect(ssid.c_str(), NULL);
     }
+
     feedback.off();
 
     //
@@ -534,7 +537,6 @@ void initWiFi()
     if (save_config)
     {
         int i;
-        clk.setStayActive(true);
 
         //
         // update any clock config changes
@@ -599,10 +601,10 @@ void initWiFi()
             stay_awake = true;
         }
 
-        clk.setStayActive(false);
-
         saveConfig();
     }
+    IPAddress ip = WiFi.localIP();
+    dbprintf("Connected! IP address is: %u.%u.%u.%u\n",ip[0],ip[1],ip[2],ip[3]);
 }
 
 
@@ -731,7 +733,6 @@ void setup()
         dbprintln("clock is enabled, skipping init of RTC");
     }
 
-    clk.setStayActive(false);
 #ifndef DISABLE_INITIAL_NTP
     dbprintln("syncing RTC from NTP!");
     setRTCfromNTP(config.ntp_server, true, NULL, NULL);
@@ -740,6 +741,8 @@ void setup()
     dbprintln("syncing clock to RTC!");
     setCLKfromRTC();
 #endif
+
+    clk.setStayActive(false);
 
 #ifdef DISABLE_DEEP_SLEEP
     stay_awake = true;
@@ -869,52 +872,34 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
     return 0;
 }
 
-void setCLKfromRTC()
+int setCLKfromRTC()
 {
-#ifdef NEED_TO_IMPLEMENT
-    if (!rtc.IsDateTimeValid())
-    {
-        RtcDateTime dt = rtc.GetDateTime();
-        dbprintf("syncClockToRTC: RTC BAD: %02u/%02u/%04u %02u:%02u:%02u (UTC)\n",
-                dt.Month(),
-                dt.Day(),
-                dt.Year(),
-                dt.Hour(),
-                dt.Minute(),
-                dt.Second());
-        return;
-    }
-#endif
-
-    clk.setStayActive(true);
-
     // if there is already an adjustment in progress then stop it.
     if (clk.writeAdjustment(0))
     {
-    	dbprintln("setCLKfromRTC: failed to clear adjustmet!");
-        clk.setStayActive(false);
+    	dbprintln("setCLKfromRTC: failed to clear adjustment!");
+    	return -1;
     }
 
     clk.waitForEdge(CLOCK_EDGE_FALLING);
+    delay(10);
+    uint16_t clock_pos;
+    if (clk.readPosition(&clock_pos))
+    {
+    	dbprintln("setCLKfromRTC: failed to read position, ignoring");
+    	return -1;
+    }
+    dbprintf("setCLKfromRTC: clock position:%d\n", clock_pos);
+
     DS3231DateTime dt;
     if (rtc.readTime(dt))
     {
         dbprintln("setCLKfromRTC: FAILED to read RTC");
-        clk.setStayActive(false);
-        return;
+        return -1;
     }
     uint16_t rtc_pos = dt.getPosition(config.tz_offset);
-    dbprintf("RTC position:%d\n", rtc_pos);
-    delay(10);
+    dbprintf("setCLKfromRTC: RTC position:%d\n", rtc_pos);
 
-    uint16_t clock_pos;
-    if (clk.readPosition(&clock_pos))
-    {
-    	dbprintln("failed to read position, ignoring");
-        clk.setStayActive(false);
-    	return;
-    }
-    dbprintf("clock position:%d\n", clock_pos);
     if (clock_pos != rtc_pos)
     {
         int adj = rtc_pos - clock_pos;
@@ -922,14 +907,16 @@ void setCLKfromRTC()
         {
             adj += MAX_POSITION;
         }
-        dbprintf("sending adjustment of %d\n", adj);
+        dbprintf("etCLKfromRTC: sending adjustment of %u\n", adj);
         clk.waitForEdge(CLOCK_EDGE_RISING);
         if (clk.writeAdjustment(adj))
         {
         	dbprintln("setCLKfromRTC: failed to set adjustment!");
+        	return -1;
         }
     }
-    clk.setStayActive(false);
+
+    return 0;
 }
 
 uint32_t calculateCRC32(const uint8_t *data, size_t length)
@@ -968,14 +955,14 @@ boolean loadConfig()
     }
 
     uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
-    dbprintf("CRC32 of data: %08x\n", crcOfData);
-    dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
+    //dbprintf("CRC32 of data: %08x\n", crcOfData);
+    //dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
     if (crcOfData != cfg.crc)
     {
         dbprintln("CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!");
         return false;
     }
-    Serial.println("CRC32 check ok, data is probably valid.");
+    //dbprintln("CRC32 check ok, data is probably valid.");
     memcpy(&config, &cfg.data, sizeof(config));
     return true;
 }
@@ -985,8 +972,8 @@ void saveConfig()
     EEConfig cfg;
     memcpy(&cfg.data, &config, sizeof(cfg.data));
     cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
-    dbprintf("caculated CRC: %08x\n", cfg.crc);
-    dbprintln("Saving config to EEPROM");
+    //dbprintf("caculated CRC: %08x\n", cfg.crc);
+    //dbprintln("Saving config to EEPROM");
 
     uint8_t i;
     uint8_t* p = (uint8_t*) &cfg;

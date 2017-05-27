@@ -60,12 +60,27 @@ int Clock::readAdjustment(uint16_t *value)
 
 int Clock::writeAdjustment(uint16_t value)
 {
+	if (value >= CLOCK_MAX)
+	{
+		dbprintf("Clock::writeAdjustment: invalid value: %u", value);
+		return -1;
+	}
 	return write(CMD_ADJUSTMENT, value);
 }
 
 int Clock::readPosition(uint16_t *value)
 {
-	return read(CMD_POSITION, value);
+	int err = read(CMD_POSITION, value);
+	if (err)
+	{
+		return err;
+	}
+	if (*value >= CLOCK_MAX)
+	{
+		dbprintf("Clock::readPosition: INVALID VALUE RETURNED: %u\n", *value);
+		return -1;
+	}
+	return 0;
 }
 
 int Clock::writePosition(uint16_t value)
@@ -131,8 +146,30 @@ bool Clock::getStayActive()
 void Clock::setStayActive(bool active)
 {
 #ifndef DISABLE_ACTIVE
+	boolean done = false;
+
+	dbprintf("Clock::setStayActive(%s)\n", active ? "true" : "false");
+
+	while (!done)
+	{
+	    waitForActive();
+		if (setCommandBit(active, BIT_STAY_ACTIVE))
+		{
+			if (WireUtils.clearBus())
+			{
+				dbprintf("i2c recovery failed!\n");
+				delay(10000);
+			}
+		}
+		else
+		{
+			done = true;
+		}
+	}
+#if 0
     waitForActive();
     setCommandBit(active, BIT_STAY_ACTIVE);
+#endif
 #endif
 }
 
@@ -156,7 +193,7 @@ bool Clock::getCommandBit(uint8_t bit)
     return ((value & bit) == bit);
 }
 
-void Clock::setCommandBit(bool onoff, uint8_t bit)
+int Clock::setCommandBit(bool onoff, uint8_t bit)
 {
     Wire.beginTransmission(I2C_ADDRESS);
     Wire.write(CMD_CONTROL);
@@ -164,10 +201,17 @@ void Clock::setCommandBit(bool onoff, uint8_t bit)
     if (err != 0)
     {
         dbprintf("Clock::setCommandBit endTransmission returned: %d\n", err);
+        return -1;
     }
 
-    Wire.requestFrom((uint8_t) I2C_ADDRESS, (uint8_t) 1);
+    size_t count = Wire.requestFrom((uint8_t) I2C_ADDRESS, (uint8_t) 1);
     uint8_t value = Wire.read();
+
+    if (count != 1)
+    {
+    	dbprintln("Clock::setCommandBit: Wire.requestFrom failed!");
+    	return -1;
+    }
 
     if (onoff)
     {
@@ -180,103 +224,22 @@ void Clock::setCommandBit(bool onoff, uint8_t bit)
 
 
     Wire.beginTransmission(I2C_ADDRESS);
-    Wire.write(CMD_CONTROL);
-    Wire.write(value);
-    Wire.endTransmission();
-}
-
-// send a command, read a 16 bit value
-int Clock::read16(uint8_t command, uint16_t*value)
-{
-    return read(command, (uint8_t*)value, sizeof(uint16_t));
-}
-
-// send a command, read a 16 bit value
-uint16_t Clock::read16(uint8_t command)
-{
-    uint16_t value;
-    read(command, (uint8_t*)&value, sizeof(value));
-    return (value);
-}
-
-// send a command with a 16 bit value
-int Clock::write16(uint8_t command, uint16_t value)
-{
-    return write(command, (uint8_t*)&value, sizeof(uint16_t));
-}
-
-// send a command, read a 8 bit value
-int Clock::read8(uint8_t command, uint8_t* value)
-{
-    return read(command, value, sizeof(uint8_t));
-}
-
-// send a command, read a 8 bit value
-uint8_t Clock::read8(uint8_t command)
-{
-    uint8_t value;
-    read(command, &value, sizeof(value));
-    return (value);
-}
-
-// send a command with a 8 bit value
-int Clock::write8(uint8_t command, uint8_t value)
-{
-    return write(command, &value, sizeof(value));
-}
-
-
-int Clock::read(uint8_t command, uint8_t *value, size_t size)
-{
-    Wire.beginTransmission(I2C_ADDRESS);
-    if (Wire.write(command) != 1)
+    count = 0;
+    count += Wire.write(CMD_CONTROL);
+    count += Wire.write(value);
+    if (count != 2)
     {
         Wire.endTransmission();
-        dbprintln("Clock::read: Wire.write(I2C_ADDRESS) failed!");
-        return -1;
+    	dbprintln("Clock::setCommandBit: Wire.write command & value failed!");
+    	return -1;
     }
-    int err = Wire.endTransmission();
+    err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
+        dbprintf("Clock::setCommandBit: Wire.endTransmission() returned: %d\n", err);
         return -1;
     }
-    size_t count;
-    count = Wire.requestFrom(I2C_ADDRESS, size);
-    Wire.readBytes(value, size);
-    if (count != size)
-    {
-        dbprintf("Clock::read: Wire.requestFrom() returns %u, expected %u\n", count, size);
-        return -1;
-    }
-    return 0;
-}
 
-//
-// write command & size bytes to clock, returns bytes writen & -1 on error.
-//
-int Clock::write(uint8_t command, uint8_t *value, size_t size)
-{
-    Wire.beginTransmission(I2C_ADDRESS);
-    if (Wire.write(command) != 1)
-    {
-        Wire.endTransmission();
-        dbprintf("Clock::write: Wire.write(command=%d) failed!", command);
-        return -1;
-    }
-    size_t count;
-    count = Wire.write(value, size);
-    if (count != size)
-    {
-        dbprintf("Clock::write: Wire.write() returns %u, expected %u\n", count, size);
-        return -1;
-    }
-    int err = Wire.endTransmission();
-    if (err)
-    {
-        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
-        return -1;
-    }
     return 0;
 }
 

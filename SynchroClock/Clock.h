@@ -37,6 +37,7 @@
 #define CLOCK_EDGE_FALLING 0
 
 #define CLOCK_ERROR     0xffff
+#define CLOCK_MAX       43200
 
 class Clock
 {
@@ -62,7 +63,7 @@ public:
     bool getStayActive();
     void setStayActive(bool enable);
     bool getCommandBit(uint8_t);
-    void setCommandBit(bool value, uint8_t bit);
+    int setCommandBit(bool value, uint8_t bit);
     void waitForActive();
     void waitForEdge(int edge);
 private:
@@ -71,14 +72,6 @@ private:
     int write(uint8_t command, uint16_t  value);
     int read(uint8_t  command, uint8_t *value);
     int write(uint8_t command, uint8_t  value);
-    int read16(uint8_t command, uint16_t*value);
-    uint16_t read16(uint8_t command);
-    int write16(uint8_t command, uint16_t value);
-    int read8(uint8_t command, uint8_t* value);
-    uint8_t read8(uint8_t command);
-    int write8(uint8_t command, uint8_t value);
-    int read(uint8_t command, uint8_t *value, size_t size);
-    int write(uint8_t command, uint8_t *value, size_t size);
 };
 
 #endif /* CLOCK_H_ */
