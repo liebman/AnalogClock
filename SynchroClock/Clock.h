@@ -14,6 +14,8 @@
 
 #define DEBUG_CLOCK
 //#define DISABLE_ACTIVE
+//#define DISABLE_EDGE
+
 
 #define I2C_ADDRESS     0x09
 

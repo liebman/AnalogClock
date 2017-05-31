@@ -249,7 +249,7 @@ int Clock::read(uint8_t command, uint8_t *value)
     if (Wire.write(command) != 1)
     {
         Wire.endTransmission();
-        dbprintln("Clock::read: Wire.write(I2C_ADDRESS) failed!");
+        dbprintln("Clock::read: Wire.write(command) failed!");
         return -1;
     }
     int err = Wire.endTransmission();
@@ -348,12 +348,15 @@ int Clock::write(uint8_t command, uint16_t value)
 
 void Clock::waitForActive()
 {
+#ifndef DISABLE_ACTIVE
     waitForEdge(CLOCK_EDGE_FALLING);
     delay(25); // give the chip time to wake up!
+#endif
 }
 
 void Clock::waitForEdge(int edge)
 {
+#ifndef DISABLE_EDGE
     while (digitalRead(pin) == edge)
     {
         delay(1);
@@ -362,4 +365,7 @@ void Clock::waitForEdge(int edge)
     {
         delay(1);
     }
+#else
+    dbprintln("Clock::waitForEdge DISABLED!!!!");
+#endif
 }
