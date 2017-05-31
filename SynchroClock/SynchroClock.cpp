@@ -618,9 +618,8 @@ void setup()
     pinMode(FACTORY_RESET_PIN, INPUT);
 	feedback.off();
 
-    delay(2500); // DS3231 may need this on powerup.
-
     Wire.begin();
+
 
     while (rtc.begin())
     {
@@ -631,6 +630,7 @@ void setup()
     		delay(10000);
     		dbprintln("lets try that again...");
     	}
+		delay(1000);
     }
 
     DS3231DateTime dt;
@@ -658,6 +658,7 @@ void setup()
     // make sure the device is available!
     //
     feedback.blink(0.9);
+    dbprintln("starting clock interface");
     while(clk.begin())
     {
         dbprintln("can't talk with Clock Controller!");
@@ -668,7 +669,9 @@ void setup()
     	}
     	delay(10000);
     }
+    dbprintln("clock interface started");
     feedback.off();
+
 
     clk.setStayActive(true);
 

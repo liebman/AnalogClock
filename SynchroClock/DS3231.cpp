@@ -30,6 +30,9 @@ DS3231::DS3231()
 int DS3231::begin()
 {
     dbprintln("DS3231::begin()");
+
+    delay(2500); // DS3231 may need this on powerup.
+
     uint8_t ctrl = 0b00000000;       // enable osc/no BBS/no CONV/1hz/SQWV on/no ALRM
     int err = write(DS3231_CONTROL_REG, ctrl); //CONTROL Register Address
     if (err)
@@ -71,19 +74,6 @@ uint8_t DS3231::fromBCD(uint8_t val)
 uint8_t DS3231::toBCD(uint8_t val)
 {
 	return val + 6 * (val / 10);
-}
-
-void printTM(struct tm *tm)
-{
-	dbprintf("seconds: %d\n", tm->tm_sec);
-	dbprintf("minutes: %d\n", tm->tm_min);
-	dbprintf("hours:   %d\n", tm->tm_hour);
-	dbprintf("mday:    %d\n", tm->tm_mday);
-	dbprintf("month:   %d\n", tm->tm_mon);
-	dbprintf("year:    %d\n", tm->tm_year);
-	dbprintf("wday:    %d\n", tm->tm_wday);
-	dbprintf("yday:    %d\n", tm->tm_yday);
-	dbprintf("isdst:   %d\n", tm->tm_isdst);
 }
 
 int DS3231::readTime(DS3231DateTime& dt)
@@ -148,10 +138,6 @@ int DS3231::writeTime(DS3231DateTime &dt)
         dbprintln("DS3231::writeTime: Wire.write(reg=DS3231_SEC_REG) failed!");
         return -1;
     }
-
-    uint8_t month = toBCD(dt.month) | (dt.century ? _BV(DS3231_CENTURY) : 0);
-
-    dbprintf("DS3231::writeTime  raw month: 0x%02x\n", month);
 
     int count;
     count  = Wire.write(toBCD(dt.seconds));
@@ -228,7 +214,7 @@ int DS3231::write(uint8_t reg, uint8_t value)
     int err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("DS3231::read: Wire.endTransmission() returned: %d\n", err);
+        dbprintf("DS3231::write: Wire.endTransmission() returned: %d\n", err);
         return -1;
     }
     return(0);
