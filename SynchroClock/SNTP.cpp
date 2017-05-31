@@ -136,7 +136,7 @@ EpochTime SNTP::getTime(IPAddress server, EpochTime now, OffsetTime* offset)
   unsigned int start = millis();
   // send it!
   udp.beginPacket(server, port);
-  udp.write((const char *)&ntp, sizeof(ntp));
+  udp.write((const uint8_t *)&ntp, sizeof(ntp));
   udp.endPacket();
 
   memset((void*)&ntp, 0, sizeof(ntp));
