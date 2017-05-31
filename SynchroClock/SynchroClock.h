@@ -1,8 +1,3 @@
-// Only modify this file to include
-// - function definitions (prototypes)
-// - include files
-// - extern variable definitions
-// In the appropriate section
 
 #ifndef _SynchroClock_H_
 #define _SynchroClock_H_
@@ -19,11 +14,19 @@
 #include "Clock.h"
 #include "DS3231.h"
 #include "WireUtils.h"
+#include "Logger.h"
 
 //
 // this enables Serial debugging output
 //
 #define DEBUG_SYNCHRO_CLOCK
+
+//
+//
+//
+#define USE_NETWORK_LOGGER
+#define NETWORK_LOGGER_HOST "192.168.0.42" // hard coded for now, need to add to wifi config
+#define NETWORK_LOGGER_PORT 4242
 
 //
 // These are only used when debugging

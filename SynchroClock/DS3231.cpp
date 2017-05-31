@@ -8,17 +8,11 @@
 #include "DS3231.h"
 
 #ifdef DEBUG_DS3231
-unsigned int snprintf(char*, unsigned int, ...);
-#define DBP_BUF_SIZE 256
-#define dbbegin(x)     Serial.begin(x);
-#define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
-#define dbprint(x)     Serial.print(x)
-#define dbprintln(x)   Serial.println(x)
-#define dbflush()      Serial.flush()
+#define dbprintf(...) logger.printf(__VA_ARGS__)
+#define dbprintln(x)  logger.println(x)
+#define dbflush()     logger.flush()
 #else
-#define dbbegin(x)
 #define dbprintf(...)
-#define dbprint(x)
 #define dbprintln(x)
 #define dbflush()
 #endif

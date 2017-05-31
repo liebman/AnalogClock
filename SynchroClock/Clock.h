@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "WireUtils.h"
+#include "Logger.h"
 
 #define DEBUG_CLOCK
 //#define DISABLE_ACTIVE

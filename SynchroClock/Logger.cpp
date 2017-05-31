@@ -1,0 +1,107 @@
+/*
+ * Logger.cpp
+ *
+ *  Created on: May 31, 2017
+ *      Author: liebman
+ */
+
+#include "Logger.h"
+
+
+#ifdef DEBUG_LOGGER
+#define DBP_BUF_SIZE 256
+
+unsigned int snprintf(char*, unsigned int, ...);
+#define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
+#define dbprintln(x)   Serial.println(x)
+#define dbflush()      Serial.flush()
+#else
+#define dbprintf(...)
+#define dbprint(x)
+#define dbprintln(x)
+#define dbflush()
+#endif
+
+Logger::Logger()
+{
+	_host       = NULL;
+	_port       = 0;
+	_local_port = 0;
+}
+
+void Logger::begin()
+{
+    begin(LOGGER_DEFAULT_BAUD);
+}
+
+void Logger::begin(long int baud)
+{
+    Serial.begin(baud);
+}
+
+void Logger::setNetworkLogger(const char* host, uint16_t port)
+{
+    setNetworkLogger(host, port, port);
+}
+
+void Logger::setNetworkLogger(const char* host, uint16_t port, uint16_t local_port)
+{
+    _host = host;
+    _port = port;
+    _local_port = local_port;
+}
+
+void Logger::println(const char* message)
+{
+    Serial.println(message);
+    send(message);
+}
+
+void Logger::printf(const char* fmt, ...)
+{
+    va_list argp;
+    va_start(argp, fmt);
+
+    vsnprintf(_buffer, LOGGER_BUFFER_SIZE-1, fmt, argp);
+    va_end(argp);
+
+    Serial.print(_buffer);
+    send(_buffer);
+}
+
+void Logger::flush()
+{
+    Serial.flush();
+}
+
+void Logger::send(const char* message)
+{
+
+    IPAddress ip;
+
+    if (!WiFi.isConnected())
+    {
+        dbprintln("Logger::log: not connected!");
+        return;
+    }
+    if (!WiFi.hostByName(_host, ip))
+    {
+        dbprintf("Logger::log failed to resolve address for:%s\n", _host);
+        return;
+    }
+
+    if (_udp.localPort() != _local_port)
+    {
+        dbprintln("Logger::log: Starting log UDP!");
+        _udp.begin(_local_port);
+    }
+
+    _udp.beginPacket(ip, _port);
+    _udp.write(message);
+    if (!_udp.endPacket())
+    {
+        dbprintln("Logger::log failed to send packet!");
+    }
+}
+
+Logger logger;

@@ -9,6 +9,7 @@
 #define DS3231DATETIME_H_
 #include <Arduino.h>
 #include <time.h>
+#include "Logger.h"
 
 #define DEBUG_DS3231_DATE_TIME
 

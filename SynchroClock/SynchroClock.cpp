@@ -9,6 +9,12 @@ Clock            clk(SYNC_PIN);
 WiFiManager      wifi;
 DS3231           rtc;
 
+#if 0
+#ifdef USE_NETWORK_LOGGER
+NetworkLogger netlog(NETWORK_LOGGER_HOST, NETWORK_LOGGER_PORT);
+#endif
+#endif
+
 unsigned long setup_done = 0;
 
 boolean save_config  = false; // used by wifi manager when settings were updated.
@@ -20,18 +26,29 @@ char message[128]; // buffer for http return values
 #ifdef DEBUG_SYNCHRO_CLOCK
 unsigned int snprintf(char*, unsigned int, ...);
 #define DBP_BUF_SIZE 256
+#define dbbegin(x)    {logger.begin(x);logger.setNetworkLogger(NETWORK_LOGGER_HOST, NETWORK_LOGGER_PORT);}
+#define dbprintf(...) logger.printf(__VA_ARGS__)
+#define dbprintln(x)  logger.println(x)
+#define dbflush()     logger.flush()
+#if 0
+#ifdef USE_NETWORK_LOGGER
+#define dbbegin(x)     {Serial.begin(x);netlog.begin(NETWORK_LOGGER_PORT);}
+#define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);netlog.log(dbp_buf);}
+#define dbprintln(x)   {Serial.println(x);netlog.log(x);}
+#define dbflush()      Serial.flush()
+#else
 #define dbbegin(x)     Serial.begin(x);
 #define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
-#define dbprint(x)     Serial.print(x)
 #define dbprintln(x)   Serial.println(x)
 #define dbflush()      Serial.flush()
+#endif // USE_NETWORK_LOGGER
+#endif
 #else
 #define dbbegin(x)
 #define dbprintf(...)
-#define dbprint(x)
 #define dbprintln(x)
 #define dbflush()
-#endif
+#endif // DEBUG_SYNCHRO_CLOCK
 
 
 int parseOffset(const char* offset_string)
@@ -147,7 +164,7 @@ uint8_t getValidDuration(String name)
     int i = HTTP.arg(name).toInt();
     if (i < 0 || i > 255)
     {
-        dbprintln("invalid value for " + name + ": " + HTTP.arg(name) + " using 32 instead!");
+        dbprintf("invalid value for %s: %s using 32 instead!", name.c_str(), HTTP.arg(name).c_str());
         i = 32;
     }
     return (uint8_t) i;
@@ -164,8 +181,7 @@ void handleOffset()
     if (HTTP.hasArg("set"))
     {
         config.tz_offset = getValidOffset("set");
-        dbprint("seconds offset:");
-        dbprintln(config.tz_offset);
+        dbprintf("seconds offset:%d\n", config.tz_offset);
         saveConfig();
     }
 
@@ -186,11 +202,10 @@ void handleAdjustment()
         else
         {
             adj = getValidPosition("set");
-            dbprint("setting adjustment:");
-            dbprintln(adj);
+            dbprintf("setting adjustment:%u\n", adj);
             if (clk.writeAdjustment(adj))
             {
-            	dbprint("failed to set adjustment!\n");
+            	dbprintln("failed to set adjustment!");
             }
         }
     }
@@ -216,8 +231,7 @@ void handlePosition()
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
-        dbprint("setting position:");
-        dbprintln(pos);
+        dbprintf("setting position:%u\n",pos);
         if (clk.writePosition(pos))
         {
         	dbprintln("failed to set position!");
@@ -249,8 +263,7 @@ void handleTPDuration()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprint("setting tp_duration:");
-        dbprintln(value);
+        dbprintf("setting tp_duration:%u\n", value);
         if (clk.writeTPDuration(value))
         {
         	dbprintln("failed to set TP duration!");
@@ -277,8 +290,7 @@ void handleAPDuration()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprint("setting ap_duration:");
-        dbprintln(value);
+        dbprintf("setting ap_duration:%u\n", value);
         if (clk.writeAPDuration(value))
         {
         	dbprintln("failed to set AP duration");
@@ -305,8 +317,7 @@ void handleAPDelay()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprint("setting ap_delay:");
-        dbprintln(value);
+        dbprintf("setting ap_delay:%u\n", value);
         if (clk.writeAPDelay(value))
         {
         	dbprintln("failed to set AP delay");
@@ -333,8 +344,7 @@ void handleSleepDelay()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprint("setting sleep_delay:");
-        dbprintln(value);
+        dbprintf("setting sleep_delay:%u\n", value);
         if (clk.writeSleepDelay(value))
         {
         	dbprintln("failed to set sleep delay");
@@ -475,7 +485,7 @@ void handleWire()
 
 void initWiFi()
 {
-    dbprint("starting wifi!\n");
+    dbprintln("starting wifi!");
     char tz_offset_str[32];
     char tp_duration_str[8];
     char ap_duration_str[8];
@@ -710,7 +720,7 @@ void setup()
     }
 
     boolean enabled = clk.getEnable();
-    dbprintln("clock enable is:" + String(enabled));
+    dbprintf("clock enable is:%u\n",enabled);
 
     //
     // if the clock is not running advance it to sync tick/tock
@@ -910,7 +920,7 @@ int setCLKfromRTC()
         {
             adj += MAX_POSITION;
         }
-        dbprintf("etCLKfromRTC: sending adjustment of %u\n", adj);
+        dbprintf("setCLKfromRTC: sending adjustment of %u\n", adj);
         clk.waitForEdge(CLOCK_EDGE_RISING);
         if (clk.writeAdjustment(adj))
         {
