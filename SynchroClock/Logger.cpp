@@ -57,6 +57,8 @@ void Logger::println(const char* message)
     send(message);
 }
 
+extern int vsnprintf(char* buffer, size_t size, const char* fmt, va_list args);
+
 void Logger::printf(const char* fmt, ...)
 {
     va_list argp;
