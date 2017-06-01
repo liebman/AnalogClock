@@ -32,6 +32,49 @@ DS3231DateTime::DS3231DateTime()
     century = 0;
 }
 
+boolean DS3231DateTime::isValid()
+{
+    dbvalue("DS3231DateTime::isValid");
+
+    if (seconds > 59)
+    {
+        dbprintf("invalid seconds %d\n", seconds);
+        return false;
+    }
+
+    if (minutes > 59)
+    {
+        dbprintf("invalid minutes %d\n", minutes);
+        return false;
+    }
+
+    if (hours > 23)
+    {
+        dbprintf("invalid hours %d\n", hours);
+        return false;
+    }
+
+    if (date > 31)
+    {
+        dbprintf("invalid hours %d\n", hours);
+        return false;
+    }
+
+    if ((month > 12) || (month < 1))
+    {
+        dbprintf("invalid month %d\n", month);
+        return false;
+    }
+
+    if (year > 99)
+    {
+        dbprintf("invalid year %d\n", year);
+        return false;
+    }
+
+    return true;
+}
+
 void DS3231DateTime::setUnixTime(unsigned long time)
 {
     struct tm tm;

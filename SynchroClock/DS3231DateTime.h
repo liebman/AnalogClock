@@ -19,7 +19,7 @@ class DS3231DateTime
 {
 public:
 	DS3231DateTime();
-
+	boolean       isValid();
 	void          setUnixTime(unsigned long time);
 	unsigned long getUnixTime();
 	uint16_t      getPosition();

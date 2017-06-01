@@ -101,6 +101,14 @@ int DS3231::readTime(DS3231DateTime& dt)
     dt.year     = fromBCD(year);
     dt.century  = month&DS3231_CENTURY? 1 : 0;
 
+    if (!dt.isValid())
+    {
+        dbprintf("DS3231::readTime: result not valid!!!\n");
+        Wire.clearWriteError();
+        Wire.flush();
+        return -1;
+    }
+
     dbprintf("DS3231::readTime %04u-%02u-%02u %02u:%02u:%02u day:%u century:%u\n",
              dt.year,
              dt.month,

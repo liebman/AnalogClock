@@ -9,12 +9,6 @@ Clock            clk(SYNC_PIN);
 WiFiManager      wifi;
 DS3231           rtc;
 
-#if 0
-#ifdef USE_NETWORK_LOGGER
-NetworkLogger netlog(NETWORK_LOGGER_HOST, NETWORK_LOGGER_PORT);
-#endif
-#endif
-
 unsigned long setup_done = 0;
 
 boolean save_config  = false; // used by wifi manager when settings were updated.
@@ -30,19 +24,6 @@ unsigned int snprintf(char*, unsigned int, ...);
 #define dbprintf(...) logger.printf(__VA_ARGS__)
 #define dbprintln(x)  logger.println(x)
 #define dbflush()     logger.flush()
-#if 0
-#ifdef USE_NETWORK_LOGGER
-#define dbbegin(x)     {Serial.begin(x);netlog.begin(NETWORK_LOGGER_PORT);}
-#define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);netlog.log(dbp_buf);}
-#define dbprintln(x)   {Serial.println(x);netlog.log(x);}
-#define dbflush()      Serial.flush()
-#else
-#define dbbegin(x)     Serial.begin(x);
-#define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
-#define dbprintln(x)   Serial.println(x)
-#define dbflush()      Serial.flush()
-#endif // USE_NETWORK_LOGGER
-#endif
 #else
 #define dbbegin(x)
 #define dbprintf(...)
