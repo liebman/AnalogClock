@@ -1,15 +1,13 @@
 #include "SynchroClock.h"
 
-Config config;
-
+Config           config;
+DeepSleepData    dsd;
 FeedbackLED      feedback(LED_PIN);
 ESP8266WebServer HTTP(80);
 SNTP             ntp("pool.ntp.org", 123);
 Clock            clk(SYNC_PIN);
 WiFiManager      wifi;
 DS3231           rtc;
-
-unsigned long setup_done = 0;
 
 boolean save_config  = false; // used by wifi manager when settings were updated.
 boolean force_config = false; // reset handler sets this to force into config if btn held
@@ -21,15 +19,17 @@ char message[128]; // buffer for http return values
 unsigned int snprintf(char*, unsigned int, ...);
 #define DBP_BUF_SIZE 256
 #define dbbegin(x)    {logger.begin(x);logger.setNetworkLogger(NETWORK_LOGGER_HOST, NETWORK_LOGGER_PORT);}
+#define dbend()       logger.end()
 #define dbprintf(...) logger.printf(__VA_ARGS__)
 #define dbprintln(x)  logger.println(x)
 #define dbflush()     logger.flush()
 #else
 #define dbbegin(x)
+#define dbend()
 #define dbprintf(...)
 #define dbprintln(x)
 #define dbflush()
-#endif // DEBUG_SYNCHRO_CLOCK
+#endif
 
 
 int parseOffset(const char* offset_string)
@@ -563,10 +563,10 @@ void initWiFi()
             clk.writeSleepDelay(config.sleep_delay);
         }
 
-        i = atoi(sleep_duration_setting.getValue());
-        if (i != config.sleep_duration)
+        uint32_t ul = atol(sleep_duration_setting.getValue());
+        if (ul != config.sleep_duration)
         {
-            config.sleep_duration = i;
+            config.sleep_duration = ul;
         }
 
         dbprintf("ntp setting: %s\n", ntp_server_setting.getValue());
@@ -605,12 +605,53 @@ void setup()
     dbprintln("");
     dbprintln("Startup!");
 
+    uint32_t sleep_duration = MAX_SLEEP_DURATION;
+    RFMode mode = RF_DEFAULT;
+
     pinMode(SYNC_PIN, INPUT);
     pinMode(FACTORY_RESET_PIN, INPUT);
 	feedback.off();
 
-    Wire.begin();
+	//
+	// lets read deep sleep data and see if we need to immed go back to sleep.
+	//
+	dsd.sleep_delay_left = 0; // this was a cold boot unless RTC data is valid
+	readDeepSleepData();
 
+    // if the config button is pressed then force config
+    if (digitalRead(FACTORY_RESET_PIN) == 0)
+    {
+        dbprintln("reset pubbon pressed, clearing deep sleep!");
+        force_config = true;
+        dsd.sleep_delay_left = 0;
+    }
+
+	dbprintf("sleep_delay_left: %lu\n", dsd.sleep_delay_left);
+
+	if (dsd.sleep_delay_left != 0)
+	{
+
+	    if (dsd.sleep_delay_left > MAX_SLEEP_DURATION)
+	    {
+	        dsd.sleep_delay_left = dsd.sleep_delay_left - MAX_SLEEP_DURATION;
+	        mode = RF_DISABLED;
+            dbprintf("delay still greater than max, mode=DISABLED sleep_delay_left=%lu\n", dsd.sleep_delay_left);
+	    }
+	    else
+	    {
+            sleep_duration       = dsd.sleep_delay_left;
+	        dsd.sleep_delay_left = 0;
+            dbprintf("delay less than max, mode=DEFAULT sleep_delay_left=%lu\n", dsd.sleep_delay_left);
+	    }
+
+	    writeDeepSleepData();
+        dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
+	    dbflush();
+	    dbend();
+	    ESP.deepSleep(sleep_duration * 1000000, mode);
+	}
+
+    Wire.begin();
 
     while (rtc.begin())
     {
@@ -694,12 +735,6 @@ void setup()
     clk.writeAPDuration(config.ap_duration);
     clk.writeAPDelay(config.ap_delay);
 
-    // if the config button is pressed then force config
-    if (digitalRead(FACTORY_RESET_PIN) == 0)
-    {
-        force_config = true;
-    }
-
     boolean enabled = clk.getEnable();
     dbprintf("clock enable is:%u\n",enabled);
 
@@ -760,9 +795,21 @@ void setup()
     }
     else
     {
-        dbprintf("Deep Sleep Time: %d\n", config.sleep_duration);
+        dsd.sleep_delay_left = 0;
+        sleep_duration       = config.sleep_duration;
+        mode                 = RF_DEFAULT;
+        if (sleep_duration > MAX_SLEEP_DURATION)
+        {
+            dsd.sleep_delay_left = sleep_duration - MAX_SLEEP_DURATION;
+            sleep_duration       = MAX_SLEEP_DURATION;
+            mode                 = RF_DISABLED;
+            dbprintf("sleep_duration > max, mode=DISABLE, sleep_delay_left = %lu\n", dsd.sleep_delay_left);
+        }
+        writeDeepSleepData();
+        dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
         dbflush();
-        ESP.deepSleep(config.sleep_duration * 1000000);
+        dbend();
+        ESP.deepSleep(sleep_duration * 1000000, mode);
     }
 }
 
@@ -976,4 +1023,38 @@ void saveConfig()
         EEPROM.write(i, p[i]);
     }
     EEPROM.commit();
+}
+
+boolean readDeepSleepData()
+{
+    RTCDeepSleepData rtcdsd;
+    dbprintln("loading deep sleep data from RTC Memory");
+    if (!ESP.rtcUserMemoryRead(0, (uint32_t*)&rtcdsd, sizeof(rtcdsd)))
+    {
+        dbprintln("readDeepSleepData: failed to read RTC Memory");
+        return false;
+    }
+
+    uint32_t crcOfData = calculateCRC32(((uint8_t*) &rtcdsd.data), sizeof(rtcdsd.data));
+    if (crcOfData != rtcdsd.crc)
+    {
+        dbprintln("CRC32 in RTC Memory doesn't match CRC32 of data. Data is probably invalid!");
+        return false;
+    }
+    memcpy(&dsd, &rtcdsd.data, sizeof(dsd));
+    return true;
+}
+
+boolean writeDeepSleepData()
+{
+    RTCDeepSleepData rtcdsd;
+    memcpy(&rtcdsd.data, &dsd, sizeof(rtcdsd.data));
+    rtcdsd.crc = calculateCRC32(((uint8_t*) &rtcdsd.data), sizeof(rtcdsd.data));
+
+    if (!ESP.rtcUserMemoryWrite(0, (uint32_t*)&rtcdsd, sizeof(rtcdsd)))
+    {
+        dbprintln("writeDeepSleepData: failed to write RTC Memory");
+        return false;
+    }
+    return true;
 }

@@ -24,9 +24,8 @@
 //
 //
 //
-#define USE_NETWORK_LOGGER
 #define NETWORK_LOGGER_HOST "192.168.0.42" // hard coded for now, need to add to wifi config
-#define NETWORK_LOGGER_PORT 4242
+#define NETWORK_LOGGER_PORT 1421
 
 //
 // These are only used when debugging
@@ -50,6 +49,8 @@
 #define DEFAULT_AP_DELAY       12  // delay between adjust pulses in ms.
 #define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
 
+#define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
+
 // error codes for setRTCfromNTP()
 #define ERROR_DNS -1
 #define ERROR_RTC -2
@@ -57,13 +58,13 @@
 
 typedef struct
 {
-    int sleep_duration; // deep sleep duration in seconds
-    int tz_offset;      // time offset in seconds from UTC
-    uint8_t tp_duration;    // tick pulse duration in ms
-    uint8_t ap_duration;    // adjust pulse duration in ms
-    uint8_t ap_delay;       // delay in ms between ticks during adjust
-    uint8_t sleep_delay;    // delay in ms before sleeping DR8838
-    char ntp_server[64];
+    uint32_t sleep_duration; // deep sleep duration in seconds
+    int      tz_offset;      // time offset in seconds from UTC
+    uint8_t  tp_duration;    // tick pulse duration in ms
+    uint8_t  ap_duration;    // adjust pulse duration in ms
+    uint8_t  ap_delay;       // delay in ms between ticks during adjust
+    uint8_t  sleep_delay;    // delay in ms before sleeping DR8838
+    char     ntp_server[64];
 } Config;
 
 typedef struct
@@ -71,6 +72,17 @@ typedef struct
     uint32_t crc;
     uint8_t data[sizeof(Config)];
 } EEConfig;
+
+typedef struct
+{
+    uint32_t sleep_delay_left;
+} DeepSleepData;
+
+typedef struct
+{
+    uint32_t crc;
+    uint8_t data[sizeof(DeepSleepData)];
+} RTCDeepSleepData;
 
 int parseOffset(const char* offset_string);
 uint16_t parsePosition(const char* position_string);
@@ -94,5 +106,7 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
 int setCLKfromRTC();
 void saveConfig();
 boolean loadConfig();
+boolean readDeepSleepData();
+boolean writeDeepSleepData();
 
 #endif /* _SynchroClock_H_ */

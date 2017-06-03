@@ -26,7 +26,6 @@ Logger::Logger()
 {
 	_host       = NULL;
 	_port       = 0;
-	_local_port = 0;
 }
 
 void Logger::begin()
@@ -39,16 +38,17 @@ void Logger::begin(long int baud)
     Serial.begin(baud);
 }
 
-void Logger::setNetworkLogger(const char* host, uint16_t port)
+void Logger::end()
 {
-    setNetworkLogger(host, port, port);
+#ifdef USE_TCP
+    _client.stop();
+#endif
 }
 
-void Logger::setNetworkLogger(const char* host, uint16_t port, uint16_t local_port)
+void Logger::setNetworkLogger(const char* host, uint16_t port)
 {
     _host = host;
     _port = port;
-    _local_port = local_port;
 }
 
 void Logger::println(const char* message)
@@ -79,6 +79,12 @@ void Logger::flush()
 void Logger::send(const char* message)
 {
 
+    // if we are not configured for TCP then just return
+    if (_host == NULL)
+    {
+        return;
+    }
+
     IPAddress ip;
 
     if (!WiFi.isConnected())
@@ -86,24 +92,37 @@ void Logger::send(const char* message)
         dbprintln("Logger::log: not connected!");
         return;
     }
+
     if (!WiFi.hostByName(_host, ip))
     {
         dbprintf("Logger::log failed to resolve address for:%s\n", _host);
         return;
     }
 
-    if (_udp.localPort() != _local_port)
+#ifdef USE_TCP
+    if (!_client.connected())
     {
-        dbprintln("Logger::log: Starting log UDP!");
-        _udp.begin(_local_port);
+        if(!_client.connect(ip, _port))
+        {
+            dbprintf("Logger::send failed to connect!\n");
+            return;
+        }
     }
 
+    if (_client.write(message) != strlen(message))
+    {
+        dbprintf("Logger::write failed to write message: %s\n", message);
+        return;
+    }
+    _client.flush();
+#else
     _udp.beginPacket(ip, _port);
     _udp.write(message);
     if (!_udp.endPacket())
     {
         dbprintln("Logger::log failed to send packet!");
     }
+#endif
 }
 
 Logger logger;
