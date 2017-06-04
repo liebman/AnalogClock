@@ -621,9 +621,15 @@ void setup()
     // if the config button is pressed then force config
     if (digitalRead(FACTORY_RESET_PIN) == 0)
     {
-        dbprintln("reset pubbon pressed, clearing deep sleep!");
+        if (dsd.sleep_delay_left != 0)
+        {
+            dbprintln("reset button pressed with radio off, short sleep to enable!");
+            dsd.sleep_delay_left = 0;
+            writeDeepSleepData();
+            ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
+        }
+        dbprintln("reset button pressed, forcing config!");
         force_config = true;
-        dsd.sleep_delay_left = 0;
     }
 
 	dbprintf("sleep_delay_left: %lu\n", dsd.sleep_delay_left);
