@@ -6,7 +6,6 @@ FeedbackLED      feedback(LED_PIN);
 ESP8266WebServer HTTP(80);
 SNTP             ntp("pool.ntp.org", 123);
 Clock            clk(SYNC_PIN);
-WiFiManager      wifi;
 DS3231           rtc;
 
 boolean save_config  = false; // used by wifi manager when settings were updated.
@@ -483,7 +482,11 @@ void initWiFi()
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
 
+    WiFiManager      wifi(20);
     wifi.setDebugOutput(false);
+
+    // TODO: add timezone support
+
     WiFiManagerParameter seconds_offset_setting("offset", "Time Zone", tz_offset_str, 32);
     wifi.addParameter(&seconds_offset_setting);
     WiFiManagerParameter position_setting("position", "Clock Position", "", 32);
