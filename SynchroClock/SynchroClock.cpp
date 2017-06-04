@@ -621,6 +621,10 @@ void setup()
     // if the config button is pressed then force config
     if (digitalRead(FACTORY_RESET_PIN) == 0)
     {
+        //
+        // If we wake with the reset button pressed and sleep_delay_left then the radio is off
+        // so set it to 0 and use a very short deepSleep to turn the radio back on.
+        //
         if (dsd.sleep_delay_left != 0)
         {
             dbprintln("reset button pressed with radio off, short sleep to enable!");
