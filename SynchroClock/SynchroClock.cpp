@@ -487,25 +487,25 @@ void initWiFi()
 
     // TODO: add timezone support
 
-    WiFiManagerParameter seconds_offset_setting("offset", "Time Zone", tz_offset_str, 32);
+    WiFiManagerParameter seconds_offset_setting("offset", "Time Zone", tz_offset_str, 7);
     wifi.addParameter(&seconds_offset_setting);
-    WiFiManagerParameter position_setting("position", "Clock Position", "", 32);
+    WiFiManagerParameter position_setting("position", "Clock Position", "", 7);
     wifi.addParameter(&position_setting);
     WiFiManagerParameter ntp_server_setting("ntp_server", "NTP Server", config.ntp_server, 32);
     wifi.addParameter(&ntp_server_setting);
     WiFiManagerParameter warning_label("<p>Advanced Settings!</p>");
     wifi.addParameter(&warning_label);
-    WiFiManagerParameter stay_awake_setting("stay_awake", "Stay Awake 'true'", "", 32);
+    WiFiManagerParameter stay_awake_setting("stay_awake", "Stay Awake 'true'", "", 7);
     wifi.addParameter(&stay_awake_setting);
-    WiFiManagerParameter sleep_duration_setting("sleep_duration", "Sleep", sleep_duration_str, 32);
+    WiFiManagerParameter sleep_duration_setting("sleep_duration", "Sleep", sleep_duration_str, 7);
     wifi.addParameter(&sleep_duration_setting);
-    WiFiManagerParameter tp_duration_setting("tp_duration", "Tick Pulse", tp_duration_str, 32);
+    WiFiManagerParameter tp_duration_setting("tp_duration", "Tick Pulse", tp_duration_str, 3);
     wifi.addParameter(&tp_duration_setting);
-    WiFiManagerParameter ap_duration_setting("ap_duration", "Adjust Pulse", ap_duration_str, 32);
+    WiFiManagerParameter ap_duration_setting("ap_duration", "Adjust Pulse", ap_duration_str, 3);
     wifi.addParameter(&ap_duration_setting);
-    WiFiManagerParameter ap_delay_setting("ap_delay", "Adjust Delay", ap_delay_str, 32);
+    WiFiManagerParameter ap_delay_setting("ap_delay", "Adjust Delay", ap_delay_str, 3);
     wifi.addParameter(&ap_delay_setting);
-    WiFiManagerParameter sleep_delay_setting("sleep_delay", "Sleep Delay", sleep_delay_str, 32);
+    WiFiManagerParameter sleep_delay_setting("sleep_delay", "Sleep Delay", sleep_delay_str, 4);
     wifi.addParameter(&sleep_delay_setting);
 
     wifi.setSaveConfigCallback([]()

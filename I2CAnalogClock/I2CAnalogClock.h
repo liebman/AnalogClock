@@ -94,7 +94,7 @@
 #define ms2Timer(x) ((uint16_t)(CLOCK_HZ /(PRESCALE * (1/((double)x/1000)))))
 #endif
 
-#define DEFAULT_TP_DURATION_MS 12  // pulse duration in ms.
+#define DEFAULT_TP_DURATION_MS 24  // pulse duration in ms.
 #define DEFAULT_AP_DURATION_MS 16  // pulse duration during adjust
 #define DEFAULT_AP_DELAY_MS    12  // delay between adjust pulses in ms.
 #define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838

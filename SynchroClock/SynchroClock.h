@@ -44,7 +44,7 @@
 #define DEFAULT_NTP_SERVER     "pool.ntp.org" // default NTP server
 #define DEFAULT_SLEEP_DURATION 3600           // default is 1hr
 
-#define DEFAULT_TP_DURATION    12  // pulse duration in ms.
+#define DEFAULT_TP_DURATION    24  // pulse duration in ms.
 #define DEFAULT_AP_DURATION    16  // pulse duration during adjust
 #define DEFAULT_AP_DELAY       12  // delay between adjust pulses in ms.
 #define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
