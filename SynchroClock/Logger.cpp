@@ -53,8 +53,9 @@ void Logger::setNetworkLogger(const char* host, uint16_t port)
 
 void Logger::println(const char* message)
 {
-    Serial.println(message);
-    send(message);
+    snprintf(_buffer, LOGGER_BUFFER_SIZE-1, "%s\n", message);
+    Serial.print(_buffer);
+    send(_buffer);
 }
 
 extern int vsnprintf(char* buffer, size_t size, const char* fmt, va_list args);
