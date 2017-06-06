@@ -110,6 +110,13 @@ unsigned long DS3231DateTime::getUnixTime()
     return unix;
 }
 
+void DS3231DateTime::applyOffset(int offset)
+{
+    unsigned long now = getUnixTime();
+    now += offset;
+    setUnixTime(now);
+}
+
 uint16_t DS3231DateTime::getPosition()
 {
     int h = hours;
@@ -153,6 +160,31 @@ const char* DS3231DateTime::string()
             minutes,
             seconds);
     return value_buf;
+}
+
+uint8_t DS3231DateTime::getDay()
+{
+    return day;
+}
+
+uint8_t DS3231DateTime::getDate()
+{
+    return date;
+}
+
+uint8_t DS3231DateTime::getHour()
+{
+    return hours;
+}
+
+uint8_t DS3231DateTime::getMonth()
+{
+    return month;
+}
+
+uint16_t DS3231DateTime::getYear()
+{
+    return year+2000;
 }
 
 #ifdef DEBUG_DS3231_DATE_TIME

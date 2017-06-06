@@ -14,6 +14,7 @@
 #include "Clock.h"
 #include "DS3231.h"
 #include "WireUtils.h"
+#include "TZUtils.h"
 #include "Logger.h"
 
 //
@@ -50,11 +51,15 @@
 #define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
 
 #define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
+#define CONNECTION_TIMEOUT     300  // wifi portal timeout - we will deep sleep and try again later
+
 
 // error codes for setRTCfromNTP()
 #define ERROR_DNS -1
 #define ERROR_RTC -2
 #define ERROR_NTP -3
+
+#define TZ_COUNT  2
 
 typedef struct
 {
@@ -64,6 +69,7 @@ typedef struct
     uint8_t  ap_duration;    // adjust pulse duration in ms
     uint8_t  ap_delay;       // delay in ms between ticks during adjust
     uint8_t  sleep_delay;    // delay in ms before sleeping DR8838
+    TZInfo   tz[TZ_COUNT];
     char     ntp_server[64];
 } Config;
 

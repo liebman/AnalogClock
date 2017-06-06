@@ -12,7 +12,7 @@
 #include <ESP8266WiFi.h>
 
 #define USE_TCP
-#define DEBUG_LOGGER
+//#define DEBUG_LOGGER
 
 #ifdef USE_TCP
 #include <WiFiClient.h>

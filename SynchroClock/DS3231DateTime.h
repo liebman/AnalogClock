@@ -22,12 +22,19 @@ public:
 	boolean       isValid();
 	void          setUnixTime(unsigned long time);
 	unsigned long getUnixTime();
+	void          applyOffset(int offset);
 	uint16_t      getPosition();
     uint16_t      getPosition(int offset);
     const char*   string();
 #ifdef DEBUG_DS3231_DATE_TIME
 	void          debugPrint(const char* prefix);
 #endif
+
+	uint8_t  getDay();
+    uint8_t  getDate();
+	uint8_t  getHour();
+    uint8_t  getMonth();
+    uint16_t getYear();
 
 	friend class DS3231;
 protected:

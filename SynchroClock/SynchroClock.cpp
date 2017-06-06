@@ -508,6 +508,8 @@ void initWiFi()
     WiFiManagerParameter sleep_delay_setting("sleep_delay", "Sleep Delay", sleep_delay_str, 4);
     wifi.addParameter(&sleep_delay_setting);
 
+    wifi.setConnectTimeout(CONNECTION_TIMEOUT);
+
     wifi.setSaveConfigCallback([]()
     {   save_config = true;});
     wifi.setAPCallback([](WiFiManager *)
@@ -522,8 +524,18 @@ void initWiFi()
     {
         wifi.autoConnect(ssid.c_str(), NULL);
     }
-
     feedback.off();
+
+    //
+    // if we are not connected then deep sleep and try again.
+    if (!WiFi.isConnected())
+    {
+        dbprintf("failed to connect to wifi!");
+        dbprintf("Deep Sleep Time: %d\n", MAX_SLEEP_DURATION);
+        dbflush();
+        dbend();
+        ESP.deepSleep(MAX_SLEEP_DURATION, RF_DEFAULT);
+    }
 
     //
     //  Config was set from captive portal!
@@ -601,7 +613,6 @@ void initWiFi()
     dbprintf("Connected! IP address is: %u.%u.%u.%u\n",ip[0],ip[1],ip[2],ip[3]);
 }
 
-
 void setup()
 {
     dbbegin(115200);
@@ -620,49 +631,6 @@ void setup()
 	//
 	dsd.sleep_delay_left = 0; // this was a cold boot unless RTC data is valid
 	readDeepSleepData();
-
-    // if the config button is pressed then force config
-    if (digitalRead(FACTORY_RESET_PIN) == 0)
-    {
-        //
-        // If we wake with the reset button pressed and sleep_delay_left then the radio is off
-        // so set it to 0 and use a very short deepSleep to turn the radio back on.
-        //
-        if (dsd.sleep_delay_left != 0)
-        {
-            dbprintln("reset button pressed with radio off, short sleep to enable!");
-            dsd.sleep_delay_left = 0;
-            writeDeepSleepData();
-            ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
-        }
-        dbprintln("reset button pressed, forcing config!");
-        force_config = true;
-    }
-
-	dbprintf("sleep_delay_left: %lu\n", dsd.sleep_delay_left);
-
-	if (dsd.sleep_delay_left != 0)
-	{
-
-	    if (dsd.sleep_delay_left > MAX_SLEEP_DURATION)
-	    {
-	        dsd.sleep_delay_left = dsd.sleep_delay_left - MAX_SLEEP_DURATION;
-	        mode = RF_DISABLED;
-            dbprintf("delay still greater than max, mode=DISABLED sleep_delay_left=%lu\n", dsd.sleep_delay_left);
-	    }
-	    else
-	    {
-            sleep_duration       = dsd.sleep_delay_left;
-	        dsd.sleep_delay_left = 0;
-            dbprintf("delay less than max, mode=DEFAULT sleep_delay_left=%lu\n", dsd.sleep_delay_left);
-	    }
-
-	    writeDeepSleepData();
-        dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
-	    dbflush();
-	    dbend();
-	    ESP.deepSleep(sleep_duration * 1000000, mode);
-	}
 
     Wire.begin();
 
@@ -741,6 +709,77 @@ void setup()
 
     dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration,
             config.ap_delay, config.ntp_server);
+
+    // TODO: clean this up, make configurable!
+    // DST Start
+    config.tz[0].occurrence   = 2;      // second
+    config.tz[0].day_of_week = 0;      // Sunday
+    config.tz[0].month       = 3;      // of March
+    config.tz[0].hour        = 2;      // 2am
+    config.tz[0].tz_offset   = -25200; // UTC - 7 Hours
+    // DST End
+    config.tz[1].occurrence  = 1;      // first
+    config.tz[1].day_of_week = 0;      // Sunday
+    config.tz[1].month       = 11;     // of November
+    config.tz[1].hour        = 2;      // 2am
+    config.tz[1].tz_offset   = -28800; // UTC - 8 Hours
+
+    dt.applyOffset(config.tz_offset);
+    int new_offset = TZUtils::computeCurrentTZOffset(dt, config.tz, TZ_COUNT);
+
+    // if the time zone changed then save the new value and set the the clock
+    if (config.tz_offset != new_offset)
+    {
+        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
+        config.tz_offset = new_offset;
+        saveConfig();
+        setCLKfromRTC();
+    }
+
+    // if the config button is pressed then force config
+    if (digitalRead(FACTORY_RESET_PIN) == 0)
+    {
+        //
+        // If we wake with the reset button pressed and sleep_delay_left then the radio is off
+        // so set it to 0 and use a very short deepSleep to turn the radio back on.
+        //
+        if (dsd.sleep_delay_left != 0)
+        {
+            clk.setStayActive(false);
+            dbprintln("reset button pressed with radio off, short sleep to enable!");
+            dsd.sleep_delay_left = 0;
+            writeDeepSleepData();
+            ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
+        }
+        dbprintln("reset button pressed, forcing config!");
+        force_config = true;
+    }
+
+    dbprintf("sleep_delay_left: %lu\n", dsd.sleep_delay_left);
+
+    if (dsd.sleep_delay_left != 0)
+    {
+
+        if (dsd.sleep_delay_left > MAX_SLEEP_DURATION)
+        {
+            dsd.sleep_delay_left = dsd.sleep_delay_left - MAX_SLEEP_DURATION;
+            mode = RF_DISABLED;
+            dbprintf("delay still greater than max, mode=DISABLED sleep_delay_left=%lu\n", dsd.sleep_delay_left);
+        }
+        else
+        {
+            sleep_duration       = dsd.sleep_delay_left;
+            dsd.sleep_delay_left = 0;
+            dbprintf("delay less than max, mode=DEFAULT sleep_delay_left=%lu\n", dsd.sleep_delay_left);
+        }
+
+        clk.setStayActive(false);
+        writeDeepSleepData();
+        dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
+        dbflush();
+        dbend();
+        ESP.deepSleep(sleep_duration * 1000000, mode);
+    }
 
     //
     // clock parameters could have changed, set them
