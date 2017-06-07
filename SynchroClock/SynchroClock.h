@@ -14,7 +14,8 @@
 #include "Clock.h"
 #include "DS3231.h"
 #include "WireUtils.h"
-#include "TZUtils.h"
+#include "TimeUtils.h"
+#include "ConfigParam.h"
 #include "Logger.h"
 
 //
@@ -59,18 +60,18 @@
 #define ERROR_RTC -2
 #define ERROR_NTP -3
 
-#define TZ_COUNT  2
+#define TIME_CHANGE_COUNT  2
 
 typedef struct
 {
-    uint32_t sleep_duration; // deep sleep duration in seconds
-    int      tz_offset;      // time offset in seconds from UTC
-    uint8_t  tp_duration;    // tick pulse duration in ms
-    uint8_t  ap_duration;    // adjust pulse duration in ms
-    uint8_t  ap_delay;       // delay in ms between ticks during adjust
-    uint8_t  sleep_delay;    // delay in ms before sleeping DR8838
-    TZInfo   tz[TZ_COUNT];
-    char     ntp_server[64];
+    uint32_t   sleep_duration; // deep sleep duration in seconds
+    int        tz_offset;      // time offset in seconds from UTC
+    uint8_t    tp_duration;    // tick pulse duration in ms
+    uint8_t    ap_duration;    // adjust pulse duration in ms
+    uint8_t    ap_delay;       // delay in ms between ticks during adjust
+    uint8_t    sleep_delay;    // delay in ms before sleeping DR8838
+    TimeChange tc[TIME_CHANGE_COUNT];
+    char       ntp_server[64];
 } Config;
 
 typedef struct

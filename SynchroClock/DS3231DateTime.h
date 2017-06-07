@@ -8,7 +8,7 @@
 #ifndef DS3231DATETIME_H_
 #define DS3231DATETIME_H_
 #include <Arduino.h>
-#include <time.h>
+#include "TimeUtils.h"
 #include "Logger.h"
 
 #define DEBUG_DS3231_DATE_TIME
@@ -46,10 +46,6 @@ protected:
 	uint8_t month;
 	uint8_t year;
     uint8_t century;
-
-private:
-    time_t mktime(struct tm *tmbuf);
-    struct tm *gmtime_r(const time_t *timer, struct tm *tmbuf);
 };
 
 #endif /* DS3231DATETIME_H_ */

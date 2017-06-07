@@ -30,130 +30,39 @@ unsigned int snprintf(char*, unsigned int, ...);
 #define dbflush()
 #endif
 
-
-int parseOffset(const char* offset_string)
+boolean parseBoolean(const char* value)
 {
-    int result = 0;
-    char value[11];
-    strncpy(value, offset_string, 10);
-    if (strchr(value, ':') != NULL)
+    if (!strcmp(value, "true") || !strcmp(value, "True") || !strcmp(value, "TRUE") || atoi(value))
     {
-        int sign = 1;
-        char* s;
-
-        if (value[0] == '-')
-        {
-            sign = -1;
-            s = strtok(&(value[1]), ":");
-        }
-        else
-        {
-            s = strtok(value, ":");
-        }
-        if (s != NULL)
-        {
-            int h = atoi(s);
-            while (h > 11)
-            {
-                h -= 12;
-            }
-
-            result += h * 3600; // hours to seconds
-            s = strtok(NULL, ":");
-        }
-        if (s != NULL)
-        {
-            result += atoi(s) * 60; // minutes to seconds
-            s = strtok(NULL, ":");
-        }
-        if (s != NULL)
-        {
-            result += atoi(s);
-        }
-        // apply sign
-        result *= sign;
+        return true;
     }
-    else
-    {
-        result = atoi(value);
-        if (result < -43199 || result > 43199)
-        {
-            result = 0;
-        }
-    }
-    return result;
-}
-
-uint16_t parsePosition(const char* position_string)
-{
-    int result = 0;
-    char value[1];
-    strncpy(value, position_string, 9);
-    if (strchr(value, ':') != NULL)
-    {
-        char* s = strtok(value, ":");
-
-        if (s != NULL)
-        {
-            int h = atoi(s);
-            while (h > 11)
-            {
-                h -= 12;
-            }
-
-            result += h * 3600; // hours to seconds
-            s = strtok(NULL, ":");
-        }
-        if (s != NULL)
-        {
-            result += atoi(s) * 60; // minutes to seconds
-            s = strtok(NULL, ":");
-        }
-        if (s != NULL)
-        {
-            result += atoi(s);
-        }
-    }
-    else
-    {
-        result = atoi(value);
-        if (result < 0 || result > 43199)
-        {
-            result = 0;
-        }
-    }
-    return result;
+    return false;
 }
 
 int getValidOffset(String name)
 {
-    int result = parseOffset(HTTP.arg(name).c_str());
+    int result = TimeUtils::parseOffset(HTTP.arg(name).c_str());
 
     return result;
 }
 
 uint16_t getValidPosition(String name)
 {
-    int result = parsePosition(HTTP.arg(name).c_str());
+    int result = TimeUtils::parsePosition(HTTP.arg(name).c_str());
 
     return result;
 }
 
 uint8_t getValidDuration(String name)
 {
-    int i = HTTP.arg(name).toInt();
-    if (i < 0 || i > 255)
-    {
-        dbprintf("invalid value for %s: %s using 32 instead!", name.c_str(), HTTP.arg(name).c_str());
-        i = 32;
-    }
-    return (uint8_t) i;
+    uint8_t result = TimeUtils::parseSmallDuration(HTTP.arg(name).c_str());
+    return result;
 }
 
 boolean getValidBoolean(String name)
 {
-    String value = HTTP.arg(name);
-    return value.equalsIgnoreCase("true");
+    boolean result = parseBoolean(HTTP.arg(name).c_str());
+    return result;
 }
 
 void handleOffset()
@@ -370,7 +279,7 @@ void handleRTC()
 
         clk.setStayActive(true);
 
-        if (HTTP.hasArg("sync"))
+        if (HTTP.hasArg("sync") && getValidBoolean("sync"))
         {
             setCLKfromRTC();
         }
@@ -406,7 +315,7 @@ void handleNTP()
 
     if (HTTP.hasArg("sync"))
     {
-        sync = true;
+        sync = getValidBoolean("sync");
     }
 
     OffsetTime offset;
@@ -486,27 +395,48 @@ void initWiFi()
     wifi.setDebugOutput(false);
 
     // TODO: add timezone support
-
-    WiFiManagerParameter seconds_offset_setting("offset", "Time Zone", tz_offset_str, 7);
-    wifi.addParameter(&seconds_offset_setting);
-    WiFiManagerParameter position_setting("position", "Clock Position", "", 7);
-    wifi.addParameter(&position_setting);
-    WiFiManagerParameter ntp_server_setting("ntp_server", "NTP Server", config.ntp_server, 32);
-    wifi.addParameter(&ntp_server_setting);
-    WiFiManagerParameter warning_label("<p>Advanced Settings!</p>");
-    wifi.addParameter(&warning_label);
-    WiFiManagerParameter stay_awake_setting("stay_awake", "Stay Awake 'true'", "", 7);
-    wifi.addParameter(&stay_awake_setting);
-    WiFiManagerParameter sleep_duration_setting("sleep_duration", "Sleep", sleep_duration_str, 7);
-    wifi.addParameter(&sleep_duration_setting);
-    WiFiManagerParameter tp_duration_setting("tp_duration", "Tick Pulse", tp_duration_str, 3);
-    wifi.addParameter(&tp_duration_setting);
-    WiFiManagerParameter ap_duration_setting("ap_duration", "Adjust Pulse", ap_duration_str, 3);
-    wifi.addParameter(&ap_duration_setting);
-    WiFiManagerParameter ap_delay_setting("ap_delay", "Adjust Delay", ap_delay_str, 3);
-    wifi.addParameter(&ap_delay_setting);
-    WiFiManagerParameter sleep_delay_setting("sleep_delay", "Sleep Delay", sleep_delay_str, 4);
-    wifi.addParameter(&sleep_delay_setting);
+    ConfigParam offset(wifi, "offset", "Time Zone", config.tz_offset, 8, [](const char* result){
+        config.tz_offset = TimeUtils::parseOffset(result);
+        dbprintf("setting tz_offset to %d\n", config.tz_offset);
+    });
+    ConfigParam position(wifi, "position", "Clock Position", "", 8, [](const char* result){
+        if (strlen(result))
+        {
+            uint16_t position = TimeUtils::parsePosition(result);
+            dbprintf("setting position to %d\n", position);
+            if (clk.writePosition(position))
+            {
+                dbprintln("failed to set initial position!");
+            }
+        }
+    });
+    ConfigParam ntp_server(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result){
+        strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
+    });
+    ConfigParam advance_label(wifi, "<p>Advanced Settings!</p>");
+    ConfigParam no_sleep(wifi, "stay_awake", "Stay Awake 'true'", "", 8, [](const char* result){
+        stay_awake = parseBoolean(result);
+        dbprintf("no_sleep: result:'%s' -> stay_awake:%d\n", result, stay_awake);
+    });
+    ConfigParam sleep_duration(wifi, "sleep_duration", "Sleep", config.sleep_duration, 8, [](const char* result){
+        config.sleep_duration = atoi(result);
+    });
+    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", config.tp_duration, 8, [](const char* result){
+        config.tp_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeTPDuration(config.tp_duration);
+    });
+    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", config.ap_duration, 4, [](const char* result){
+        config.ap_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDuration(config.ap_duration);
+    });
+    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", config.ap_delay, 4, [](const char* result){
+        config.ap_delay = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDelay(config.ap_delay);
+    });
+    ConfigParam sleep_delay(wifi, "sleep_delay", "Sleep Delay", config.sleep_delay, 5, [](const char* result){
+        config.sleep_delay = TimeUtils::parseSmallDuration(result);
+        clk.writeSleepDelay(config.sleep_delay);
+    });
 
     wifi.setConnectTimeout(CONNECTION_TIMEOUT);
 
@@ -542,70 +472,15 @@ void initWiFi()
     //
     if (save_config)
     {
-        int i;
-
-        //
-        // update any clock config changes
-        //
-        dbprintf("clock settings: tp:%s ap:%s,%s slpdrv:%s\n", tp_duration_setting.getValue(),
-                ap_duration_setting.getValue(), ap_delay_setting.getValue(), sleep_delay_setting.getValue());
-
-        i = atoi(tp_duration_setting.getValue());
-        if (i != config.tp_duration)
-        {
-            config.tp_duration = i;
-            clk.writeTPDuration(config.tp_duration);
-        }
-
-        i = atoi(ap_duration_setting.getValue());
-        if (i != config.ap_duration)
-        {
-            config.ap_duration = i;
-            clk.writeAPDuration(config.ap_duration);
-        }
-
-        i = atoi(ap_delay_setting.getValue());
-        if (i != config.ap_delay)
-        {
-            config.ap_delay = i;
-            clk.writeAPDelay(config.ap_delay);
-        }
-
-        i = atoi(sleep_delay_setting.getValue());
-        if (i != config.sleep_delay)
-        {
-            config.sleep_delay = i;
-            clk.writeSleepDelay(config.sleep_delay);
-        }
-
-        uint32_t ul = atol(sleep_duration_setting.getValue());
-        if (ul != config.sleep_duration)
-        {
-            config.sleep_duration = ul;
-        }
-
-        dbprintf("ntp setting: %s\n", ntp_server_setting.getValue());
-        strncpy(config.ntp_server, ntp_server_setting.getValue(), sizeof(config.ntp_server) - 1);
-
-        dbprintf("seconds_offset_setting: %s\n", seconds_offset_setting.getValue());
-        const char* seconds_offset_value = seconds_offset_setting.getValue();
-        config.tz_offset = parseOffset(seconds_offset_value);
-
-        const char* position_value = position_setting.getValue();
-        if (strlen(position_value))
-        {
-            uint16_t position = parsePosition(position_value);
-            dbprintf("setting position to %d\n", position);
-            if (clk.writePosition(position))
-            {
-            	dbprintln("failed to set initial position!");
-            }
-        }
-
-        if (strcmp(stay_awake_setting.getValue(), "true") == 0 || strcmp(stay_awake_setting.getValue(), "True") == 0)
-        {
-            stay_awake = true;
-        }
+        tp_duration.applyIfChanged();
+        ap_duration.applyIfChanged();
+        ap_delay.applyIfChanged();
+        sleep_delay.applyIfChanged();
+        sleep_duration.applyIfChanged();
+        ntp_server.applyIfChanged();
+        offset.applyIfChanged();
+        position.applyIfChanged();
+        no_sleep.applyIfChanged();
 
         saveConfig();
     }
@@ -712,20 +587,20 @@ void setup()
 
     // TODO: clean this up, make configurable!
     // DST Start
-    config.tz[0].occurrence   = 2;      // second
-    config.tz[0].day_of_week = 0;      // Sunday
-    config.tz[0].month       = 3;      // of March
-    config.tz[0].hour        = 2;      // 2am
-    config.tz[0].tz_offset   = -25200; // UTC - 7 Hours
+    config.tc[0].occurrence   = 2;      // second
+    config.tc[0].day_of_week = 0;      // Sunday
+    config.tc[0].month       = 3;      // of March
+    config.tc[0].hour        = 2;      // 2am
+    config.tc[0].tz_offset   = -25200; // UTC - 7 Hours
     // DST End
-    config.tz[1].occurrence  = 1;      // first
-    config.tz[1].day_of_week = 0;      // Sunday
-    config.tz[1].month       = 11;     // of November
-    config.tz[1].hour        = 2;      // 2am
-    config.tz[1].tz_offset   = -28800; // UTC - 8 Hours
+    config.tc[1].occurrence  = 1;      // first
+    config.tc[1].day_of_week = 0;      // Sunday
+    config.tc[1].month       = 11;     // of November
+    config.tc[1].hour        = 2;      // 2am
+    config.tc[1].tz_offset   = -28800; // UTC - 8 Hours
 
     dt.applyOffset(config.tz_offset);
-    int new_offset = TZUtils::computeCurrentTZOffset(dt, config.tz, TZ_COUNT);
+    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
 
     // if the time zone changed then save the new value and set the the clock
     if (config.tz_offset != new_offset)
