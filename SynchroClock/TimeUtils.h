@@ -33,6 +33,7 @@ public:
     static int        computeUTCOffset(uint16_t year, uint8_t month, uint8_t wday, uint8_t hour, TimeChange* tc, int tc_count);
     static uint8_t    findDOW(uint16_t y, uint8_t m, uint8_t d);
     static uint8_t    findNthDate(uint16_t year, uint8_t month, uint8_t dow, uint8_t nthWeek);
+    static uint8_t    daysInMonth(uint16_t year, uint8_t month);
     static uint8_t    findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, int8_t nthWeek);
 };
 #endif /* TIMEUTILS_H_ */

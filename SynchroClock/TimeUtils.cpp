@@ -315,21 +315,56 @@ uint8_t TimeUtils::findNthDate(uint16_t year, uint8_t month, uint8_t dow, uint8_
     return targetDate;
 }
 
-#if 0
+uint8_t TimeUtils::daysInMonth(uint16_t year, uint8_t month)
+{
+    uint8_t days = 31;
+
+    switch(month)
+    {
+     case 2:
+         days = 28;
+         if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
+         {
+             days = 29;
+         }
+         break;
+     case 4:
+     case 6:
+     case 9:
+     case 11:
+            days = 30;
+            break;
+    }
+    return days;
+}
+
 uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, int8_t week)
 {
-    uint8_t weeks[6];
-    uint8_t last;
-    if (week > 0)
+    uint8_t weeks[5];
+    uint8_t max_day = daysInMonth(year, month);
+    int last = 0;
+
+    if (week >= 0)
     {
         return findNthDate(year, month, dow, week);
     }
-    for(last = 1; last <= 6; ++last)
+
+    //
+    // find all times this weekday shows up in the month
+    // Note that 'last' will end up pointing 1 past the last
+    // valid occurrence.  -1 will give the last one.
+    //
+    for(last = 0; last <= 5; ++last)
     {
         weeks[last] = findNthDate(year, month, dow, last);
+        if (weeks[last] > max_day)
+        {
+            break;
+        }
     }
+
+    return weeks[last+week];
 }
-#endif
 
 int TimeUtils::computeUTCOffset(uint16_t year, uint8_t month, uint8_t mday, uint8_t hour, TimeChange* tc, int tc_count)
 {
@@ -365,7 +400,7 @@ int TimeUtils::computeUTCOffset(uint16_t year, uint8_t month, uint8_t mday, uint
         }
 
         // compute what date the occurrence of day_of_week is.
-        uint8_t date = findNthDate(year, tc[i].month, tc[i].day_of_week, tc[i].occurrence);
+        uint8_t date = findDateForWeek(year, tc[i].month, tc[i].day_of_week, tc[i].occurrence);
         dbprintf("TimeUtils::computeUTCOffset: %u is the one we are looking for!\n", date);
         dbprintf("TimeUtils::computeUTCOffset: date is %u\n", mday);
 
