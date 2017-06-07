@@ -80,9 +80,9 @@ boolean ConfigParam::isChanged()
 {
     if (strcmp(_wmp->getValue(), _value))
     {
+        dbprintf("ConfigParam::isChanged: id:%s old:'%s', new:'%s'\n", _wmp->getID(), _value, _wmp->getValue());
         return true;
     }
-    dbprintf("ConfigParam::isChanged: id:%s old:'%s', new:'%s'\n", _wmp->getID(), _value, _wmp->getValue());
     return false;
 }
 

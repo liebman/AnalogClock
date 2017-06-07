@@ -28,6 +28,10 @@ public:
     static uint8_t    parseSmallDuration(const char* value);
     static int        parseOffset(const char* offset_string);
     static uint16_t   parsePosition(const char* position_string);
+    static uint8_t    parseOccurrence(const char* occurrence_string);
+    static uint8_t    parseDayOfWeek(const char* dow_string);
+    static uint8_t    parseMonth(const char* month_string);
+    static uint8_t    parseHour(const char* hour_string);
     static time_t     mktime(struct tm *tmbuf);
     static struct tm* gmtime_r(const time_t *timer, struct tm *tmbuf);
     static int        computeUTCOffset(uint16_t year, uint8_t month, uint8_t wday, uint8_t hour, TimeChange* tc, int tc_count);

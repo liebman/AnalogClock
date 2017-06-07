@@ -375,26 +375,21 @@ void handleWire()
 void initWiFi()
 {
     dbprintln("starting wifi!");
-    char tz_offset_str[32];
-    char tp_duration_str[8];
-    char ap_duration_str[8];
-    char ap_delay_str[8];
-    char sleep_delay_str[8];
-    char sleep_duration_str[12];
-    sprintf(tz_offset_str, "%d", config.tz_offset);
-    sprintf(tp_duration_str, "%u", config.tp_duration);
-    sprintf(ap_duration_str, "%u", config.ap_duration);
-    sprintf(ap_delay_str, "%u", config.ap_delay);
-    sprintf(sleep_delay_str, "%u", config.sleep_delay);
-    sprintf(sleep_duration_str, "%u", config.sleep_duration);
 
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
 
-    WiFiManager      wifi(20);
+    WiFiManager      wifi(30);
     wifi.setDebugOutput(false);
+    wifi.setConnectTimeout(CONNECTION_TIMEOUT);
 
-    // TODO: add timezone support
+    wifi.setSaveConfigCallback([](){
+        save_config = true;
+    });
+    wifi.setAPCallback([](WiFiManager *){
+        feedback.blink(FEEDBACK_LED_FAST);
+    });
+
     ConfigParam offset(wifi, "offset", "Time Zone", config.tz_offset, 8, [](const char* result){
         config.tz_offset = TimeUtils::parseOffset(result);
         dbprintf("setting tz_offset to %d\n", config.tz_offset);
@@ -413,6 +408,41 @@ void initWiFi()
     ConfigParam ntp_server(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result){
         strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
     });
+
+    ConfigParam tc1_label(wifi, "<p>1st Time Change</p>");
+    ConfigParam tc1_occurence(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 2, [](const char* result){
+        config.tc[0].occurrence = TimeUtils::parseOccurrence(result);
+    });
+    ConfigParam tc1_day_of_week(wifi, "tc1_day_of_week", "Day of Week (Sun=0)", config.tc[0].day_of_week, 2, [](const char* result){
+        config.tc[0].day_of_week = TimeUtils::parseDayOfWeek(result);
+    });
+    ConfigParam tc1_month(wifi, "tc1_month", "Month (Jan=1)", config.tc[0].month, 3, [](const char* result){
+        config.tc[0].month = TimeUtils::parseMonth(result);
+    });
+    ConfigParam tc1_hour(wifi, "tc1_hour", "Hour (0-23)", config.tc[0].hour, 3, [](const char* result){
+        config.tc[0].hour = TimeUtils::parseHour(result);
+    });
+    ConfigParam tc1_offset(wifi, "tc1_offset", "Time Offset", config.tc[0].tz_offset, 8, [](const char* result){
+        config.tc[0].tz_offset = TimeUtils::parseOffset(result);
+    });
+
+    ConfigParam tc2_label(wifi, "<p>2ns Time Change</p>");
+    ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 2, [](const char* result){
+        config.tc[1].occurrence = TimeUtils::parseOccurrence(result);
+    });
+    ConfigParam tc2_day_of_week(wifi, "tc2_day_of_week", "Day of Week (Sun=0)", config.tc[1].day_of_week, 2, [](const char* result){
+        config.tc[1].day_of_week = TimeUtils::parseDayOfWeek(result);
+    });
+    ConfigParam tc2_month(wifi, "tc2_month", "Month (Jan=1)", config.tc[1].month, 3, [](const char* result){
+        config.tc[1].month = TimeUtils::parseMonth(result);
+    });
+    ConfigParam tc2_hour(wifi, "tc2_hour", "Hour (0-23)", config.tc[1].hour, 3, [](const char* result){
+        config.tc[1].hour = TimeUtils::parseHour(result);
+    });
+    ConfigParam tc2_offset(wifi, "tc2_offset", "Time Offset", config.tc[1].tz_offset, 8, [](const char* result){
+        config.tc[1].tz_offset = TimeUtils::parseOffset(result);
+    });
+
     ConfigParam advance_label(wifi, "<p>Advanced Settings!</p>");
     ConfigParam no_sleep(wifi, "stay_awake", "Stay Awake 'true'", "", 8, [](const char* result){
         stay_awake = parseBoolean(result);
@@ -438,12 +468,6 @@ void initWiFi()
         clk.writeSleepDelay(config.sleep_delay);
     });
 
-    wifi.setConnectTimeout(CONNECTION_TIMEOUT);
-
-    wifi.setSaveConfigCallback([]()
-    {   save_config = true;});
-    wifi.setAPCallback([](WiFiManager *)
-    {   feedback.blink(FEEDBACK_LED_FAST);});
     String ssid = "SynchroClock" + String(ESP.getChipId());
     dbflush();
     if (force_config)
@@ -472,15 +496,25 @@ void initWiFi()
     //
     if (save_config)
     {
+        offset.applyIfChanged();
+        position.applyIfChanged();
+        ntp_server.applyIfChanged();
+        tc1_occurence.applyIfChanged();
+        tc1_day_of_week.applyIfChanged();
+        tc1_month.applyIfChanged();
+        tc1_hour.applyIfChanged();
+        tc1_offset.applyIfChanged();
+        tc2_occurence.applyIfChanged();
+        tc2_day_of_week.applyIfChanged();
+        tc2_month.applyIfChanged();
+        tc2_hour.applyIfChanged();
+        tc2_offset.applyIfChanged();
+        no_sleep.applyIfChanged();
         tp_duration.applyIfChanged();
         ap_duration.applyIfChanged();
         ap_delay.applyIfChanged();
         sleep_delay.applyIfChanged();
         sleep_duration.applyIfChanged();
-        ntp_server.applyIfChanged();
-        offset.applyIfChanged();
-        position.applyIfChanged();
-        no_sleep.applyIfChanged();
 
         saveConfig();
     }
@@ -571,6 +605,18 @@ void setup()
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
 
+    // Default to disabled (all tz_offsets = 0)
+    config.tc[0].occurrence  = 1;
+    config.tc[0].day_of_week = 0;
+    config.tc[0].month       = 1;
+    config.tc[0].hour        = 0;
+    config.tc[0].tz_offset   = 0;
+    config.tc[1].occurrence  = 1;
+    config.tc[1].day_of_week = 0;
+    config.tc[1].month       = 1;
+    config.tc[1].hour        = 0;
+    config.tc[1].tz_offset   = 0;
+
     dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration,
             config.ap_delay, config.ntp_server);
 
@@ -584,20 +630,6 @@ void setup()
 
     dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration,
             config.ap_delay, config.ntp_server);
-
-    // TODO: clean this up, make configurable!
-    // DST Start
-    config.tc[0].occurrence   = 2;      // second
-    config.tc[0].day_of_week = 0;      // Sunday
-    config.tc[0].month       = 3;      // of March
-    config.tc[0].hour        = 2;      // 2am
-    config.tc[0].tz_offset   = -25200; // UTC - 7 Hours
-    // DST End
-    config.tc[1].occurrence  = 1;      // first
-    config.tc[1].day_of_week = 0;      // Sunday
-    config.tc[1].month       = 11;     // of November
-    config.tc[1].hour        = 2;      // 2am
-    config.tc[1].tz_offset   = -28800; // UTC - 8 Hours
 
     dt.applyOffset(config.tz_offset);
     int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);

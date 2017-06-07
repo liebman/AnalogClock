@@ -23,8 +23,52 @@ uint8_t TimeUtils::parseSmallDuration(const char* value)
     int i = atoi(value);
     if (i < 0 || i > 255)
     {
-        dbprintf("invalid value for %s: using 32 instead!\n", value);
+        dbprintf("TimeUtils::parseSmallDuration: invalid value %s: using 32 instead!\n", value);
         i = 32;
+    }
+    return (uint8_t) i;
+}
+
+uint8_t TimeUtils::parseOccurrence(const char* occurrence_string)
+{
+    int i = atoi(occurrence_string);
+    if (i < -5 || i == 0 || i > 5)
+    {
+        dbprintf("TimeUtils::parseOccurrence: invalid value %s: using 1 instead!\n", occurrence_string);
+        i = 1;
+    }
+    return (uint8_t) i;
+}
+
+uint8_t TimeUtils::parseDayOfWeek(const char* dow_string)
+{
+    int i = atoi(dow_string);
+    if (i < 0 || i > 6)
+    {
+        dbprintf("TimeUtils::parseDayOfWeek: invalid value %s: using 0 (Sunday) instead!\n", dow_string);
+        i = 1;
+    }
+    return (uint8_t) i;
+}
+
+uint8_t TimeUtils::parseMonth(const char* month_string)
+{
+    int i = atoi(month_string);
+    if (i < 0 || i > 12)
+    {
+        dbprintf("TimeUtils::parseMonth: invalid value '%s': using 3 (Mar) instead!\n", month_string);
+        i = 1;
+    }
+    return (uint8_t) i;
+}
+
+uint8_t TimeUtils::parseHour(const char* hour_string)
+{
+    int i = atoi(hour_string);
+    if (i < 0 || i > 23)
+    {
+        dbprintf("TimeUtils::parseMonth: invalid value '%s': using 2 instead!\n", hour_string);
+        i = 1;
     }
     return (uint8_t) i;
 }
