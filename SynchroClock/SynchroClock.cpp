@@ -15,7 +15,6 @@ boolean stay_awake   = false; // don't use deep sleep
 char message[128]; // buffer for http return values
 
 #ifdef DEBUG_SYNCHRO_CLOCK
-unsigned int snprintf(char*, unsigned int, ...);
 #define DBP_BUF_SIZE 256
 #define dbbegin(x)    {logger.begin(x);logger.setNetworkLogger(NETWORK_LOGGER_HOST, NETWORK_LOGGER_PORT);}
 #define dbend()       logger.end()
