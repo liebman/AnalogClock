@@ -766,6 +766,7 @@ void setup()
         writeDeepSleepData();
         dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
         dbflush();
+        delay(100);
         dbend();
         ESP.deepSleep(sleep_duration * 1000000, mode);
     }
@@ -830,13 +831,21 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
         *result_offset = offset;
     }
 
+    dbprintf("+++++++++ seconds: 0x%08x fraction: 0x%08x\n", offset.seconds, offset.fraction);
     uint32_t offset_ms = fraction2Ms(offset.fraction);
-    dbprintf("NTP req: %s offset: %d.%03u\n",
+    dbprintf("NTP req: %s offset.seconds: %d offset_ms:%03u\n",
             dt.string(),
             offset.seconds,
             offset_ms);
 
-    if (abs(offset.seconds) > 0 || offset_ms > 100)
+
+    long double offset_value = (long double)offset.seconds + ((long double)offset.fraction / (long double)4294967296L);
+    dbprintf("********* NTP OFFSET: %lf\n", offset_value);
+
+    //
+    // only set the RTC if we have a big enough offset.
+    //
+    if (abs(offset_value > 0.1))
     {
         dbprintf("offset > 100ms, updating RTC!\n");
         uint32_t msdelay = 1000 - offset_ms;
@@ -865,7 +874,6 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
             }
             dbprintf("set RTC: %s\n", dt.string());
         }
-
     }
 
     return 0;
