@@ -37,6 +37,11 @@
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
 
+#define USE_NTP_MEDIAN                // if defined use median value for offset
+#define NTP_SAMPLE_COUNT       7      // max NTP samples to hold and use for median value
+#define NTP_MEDIAN_THRESHOLD   0.9    // if NTP offset is greater than this use median value.
+#define NTP_SET_RTC_THRESHOLD  0.1    // if offset greater than this update the RTC
+
 // pin definitions
 #define LED_PIN           D7          // (GPIO13) LED on pin, active low
 #define SYNC_PIN          D5          // (GPIO14) pin tied to 1hz square wave from RTC
@@ -74,6 +79,7 @@ typedef struct
     char       ntp_server[64];
 } Config;
 
+
 typedef struct
 {
     uint32_t crc;
@@ -83,6 +89,10 @@ typedef struct
 typedef struct
 {
     uint32_t sleep_delay_left;
+#ifdef USE_NTP_MEDIAN
+    OffsetTime ntp_samples[NTP_SAMPLE_COUNT];
+    uint32_t   ntp_sample_count;
+#endif
 } DeepSleepData;
 
 typedef struct

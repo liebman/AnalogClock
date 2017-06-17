@@ -12,6 +12,7 @@ boolean save_config  = false; // used by wifi manager when settings were updated
 boolean force_config = false; // reset handler sets this to force into config if btn held
 boolean stay_awake   = false; // don't use deep sleep
 
+extern unsigned int snprintf(char*, unsigned int, ...); // because esp8266 does not declare it in a header.
 char message[128]; // buffer for http return values
 
 #ifdef DEBUG_SYNCHRO_CLOCK
@@ -537,7 +538,7 @@ void setup()
 	//
 	// lets read deep sleep data and see if we need to immed go back to sleep.
 	//
-	dsd.sleep_delay_left = 0; // this was a cold boot unless RTC data is valid
+	memset(&dsd, 0, sizeof(dsd));
 	readDeepSleepData();
 
     Wire.begin();
@@ -781,6 +782,26 @@ void loop()
     delay(100);
 }
 
+#define offsetTime2LongDouble(x) (long double)x->seconds + ((long double)x->fraction / (long double)4294967296L);
+
+int compareOffsetTime(const void* a, const void* b)
+{
+    long double a1 = offsetTime2LongDouble(((const OffsetTime*)a));
+    long double b1 = offsetTime2LongDouble(((const OffsetTime*)b));
+
+    if (a1 < b1)
+    {
+        return -1;
+    }
+
+    if (a1 > b1)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
 int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAddress* result_address)
 {
     dbprintf("using server: %s\n", server);
@@ -838,14 +859,64 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
             offset.seconds,
             offset_ms);
 
-
     long double offset_value = (long double)offset.seconds + ((long double)offset.fraction / (long double)4294967296L);
     dbprintf("********* NTP OFFSET: %lf\n", offset_value);
+
+#ifdef USE_NTP_MEDIAN
+    //
+    // shift all values and add current value
+    //
+    int i = 0;
+    for (i = NTP_SAMPLE_COUNT-2; i >= 0; --i)
+    {
+        dsd.ntp_samples[i+1] = dsd.ntp_samples[i];
+        dbprintf("dsd.ntp_samples[%d]: %lf\n", i+1, ((long double)dsd.ntp_samples[i+1].seconds + ((long double)dsd.ntp_samples[i+1].fraction / (long double)4294967296L)));
+    }
+    dsd.ntp_samples[0] = offset;
+    if (dsd.ntp_sample_count < NTP_SAMPLE_COUNT)
+    {
+        dsd.ntp_sample_count += 1;
+    }
+
+    //
+    // use the median value if over threshold
+    //
+
+    if (abs(offset_value) > NTP_MEDIAN_THRESHOLD)
+    {
+        // copy, sort and pull median value.
+        OffsetTime values[NTP_SAMPLE_COUNT];
+        memcpy(values, dsd.ntp_samples, NTP_SAMPLE_COUNT);
+        qsort(values, dsd.ntp_sample_count, sizeof(OffsetTime), compareOffsetTime);
+
+        //
+        // special handling for the first few values
+        //
+        switch (dsd.ntp_sample_count)
+        {
+        case 1:
+            offset = dsd.ntp_samples[0]; // take the current value if its the first
+            break;
+        case 2:
+            offset = dsd.ntp_samples[1]; // take the current value if its the second
+            break;
+        default:
+            offset = dsd.ntp_samples[dsd.ntp_sample_count/2+1]; // median-ish (is median if count is odd)
+            break;
+        }
+
+        // TODO: adjust offset list by new offset!
+        dbprintln("%%%%%%%% TODO: ADJUST OFFSET LIST BY NEW OFFSET! %%%%%%%%%%");
+
+        offset_value = (long double)offset.seconds + ((long double)offset.fraction / (long double)4294967296L);
+        dbprintf("********* NTP MEDIAN OFFSET: %lf\n", offset_value);
+    }
+#endif
 
     //
     // only set the RTC if we have a big enough offset.
     //
-    if (abs(offset_value > 0.1))
+    if (abs(offset_value) > NTP_SET_RTC_THRESHOLD)
     {
         dbprintf("offset > 100ms, updating RTC!\n");
         uint32_t msdelay = 1000 - offset_ms;
