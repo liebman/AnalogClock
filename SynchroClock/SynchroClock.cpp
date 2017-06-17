@@ -959,13 +959,53 @@ int setCLKfromRTC()
     	return -1;
     }
 
+#ifdef USE_STOP_THE_CLOCK
+    int delta;
+    uint16_t clock_pos;
+    uint16_t rtc_pos;
+    do {
+        clk.waitForEdge(CLOCK_EDGE_FALLING);
+        delay(10);
+
+        if (clk.readPosition(&clock_pos))
+        {
+            dbprintln("setCLKfromRTC: failed to read position, ignoring");
+            return -1;
+        }
+        dbprintf("setCLKfromRTC: clock position:%d\n", clock_pos);
+
+        DS3231DateTime dt;
+        if (rtc.readTime(dt))
+        {
+            dbprintln("setCLKfromRTC: FAILED to read RTC");
+            return -1;
+        }
+        rtc_pos = dt.getPosition(config.tz_offset);
+        dbprintf("setCLKfromRTC: RTC position:%d\n", rtc_pos);
+
+        delta = rtc_pos - clock_pos;
+        if (delta < 0 && abs(delta) < STOP_THE_CLOCK_MAX)
+        {
+            int stop_for = abs(delta) + STOP_THE_CLOCK_EXTRA;
+            dbprintf("setCLKfromRTC: stop the clock delta is %d stopping for %d seconds\n", delta, stop_for);
+
+            // stop the clock for delta seconds
+            clk.setEnable(false);
+            delay(stop_for*1000);
+            clk.setEnable(true);
+        }
+        //
+        // if we stopped the clock then repeat block to re-read clock & RTC
+        //
+    } while(delta < 0 && abs(delta) < STOP_THE_CLOCK_MAX);
+#else
     clk.waitForEdge(CLOCK_EDGE_FALLING);
     delay(10);
     uint16_t clock_pos;
     if (clk.readPosition(&clock_pos))
     {
-    	dbprintln("setCLKfromRTC: failed to read position, ignoring");
-    	return -1;
+        dbprintln("setCLKfromRTC: failed to read position, ignoring");
+        return -1;
     }
     dbprintf("setCLKfromRTC: clock position:%d\n", clock_pos);
 
@@ -977,6 +1017,7 @@ int setCLKfromRTC()
     }
     uint16_t rtc_pos = dt.getPosition(config.tz_offset);
     dbprintf("setCLKfromRTC: RTC position:%d\n", rtc_pos);
+#endif
 
     if (clock_pos != rtc_pos)
     {

@@ -42,6 +42,10 @@
 #define NTP_MEDIAN_THRESHOLD   0.9    // if NTP offset is greater than this use median value.
 #define NTP_SET_RTC_THRESHOLD  0.1    // if offset greater than this update the RTC
 
+#define USE_STOP_THE_CLOCK            // if defined then stop the clock for small negative adjustments
+#define STOP_THE_CLOCK_MAX     60     // maximum difference where we will use stop the clock
+#define STOP_THE_CLOCK_EXTRA   2      // extra seconds to leave the clock stopped
+
 // pin definitions
 #define LED_PIN           D7          // (GPIO13) LED on pin, active low
 #define SYNC_PIN          D5          // (GPIO14) pin tied to 1hz square wave from RTC
