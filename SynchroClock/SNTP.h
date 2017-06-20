@@ -11,8 +11,12 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <lwip/def.h> // htonl() & ntohl()
+#include "Logger.h"
 
-//#define SNTP_DEBUG     1
+//#define SNTP_DEBUG
+//#define SNTP_DEBUG_PACKET
+
+#define USE_INT64_OFFSET
 
 #define LI_NONE        0
 #define LI_SIXTY_ONE   1
@@ -49,10 +53,7 @@ typedef struct ntp_time {
   uint32_t fraction;
 } NTPTime, EpochTime;
 
-typedef struct offset_time {
-    int32_t  seconds;
-    uint32_t fraction;
-} OffsetTime;
+typedef int64_t OffsetTime;
 
 typedef struct ntp_packet
 {

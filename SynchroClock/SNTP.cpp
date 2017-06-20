@@ -10,43 +10,48 @@
 #define toUINT64(x) (((uint64_t)(x.seconds)<<32) + x.fraction)
 
 #ifdef SNTP_DEBUG
+#define dbprintf(...) logger.printf(__VA_ARGS__)
+#define dbprintln(x)  logger.println(x)
+#define dbflush()     logger.flush()
+#else
+#define dbprintf(...)
+#define dbprintln(x)
+#define dbflush()
+#endif
+
+#ifdef SNTP_DEBUG_PACKET
+
 void dumpNTPPacket(SNTPPacket* ntp)
 {
 
-    Serial.printf("size:       %u\n",    sizeof(*ntp));
-    Serial.printf("firstbyte:  0x%02x\n", *(uint8_t*)ntp);
-    Serial.printf("li:         %u\n",     getLI(ntp->flags));
-    Serial.printf("version:    %u\n",     getVERS(ntp->flags));
-    Serial.printf("mode:       %u\n",     getMODE(ntp->flags));
-    Serial.printf("stratum:    %u\n",     ntp->stratum);
-    Serial.printf("poll:       %u\n",     ntp->poll);
-    Serial.printf("precision:  %u\n",     ntp->precision);
-    Serial.printf("delay:      %u\n",     ntp->delay);
-    Serial.printf("dispersion: %u\n",     ntp->dispersion);
-    Serial.printf("ref_id:     %02x:%02x:%02x:%02x\n", ntp->ref_id[0], ntp->ref_id[1], ntp->ref_id[2], ntp->ref_id[3]);
-    Serial.printf("ref_time:   %u:%u\n",  ntp->ref_time.seconds, ntp->ref_time.fraction);
-    Serial.printf("orig_time:  %u:%u\n",  ntp->orig_time.seconds, ntp->orig_time.fraction);
-    Serial.printf("recv_time:  %u:%u\n",  ntp->recv_time.seconds, ntp->recv_time.fraction);
-    Serial.printf("xmit_time:  %u:%u\n",  ntp->xmit_time.seconds, ntp->xmit_time.fraction);
+    dbprintf("size:       %u\n",    sizeof(*ntp));
+    dbprintf("firstbyte:  0x%02x\n", *(uint8_t*)ntp);
+    dbprintf("li:         %u\n",     getLI(ntp->flags));
+    dbprintf("version:    %u\n",     getVERS(ntp->flags));
+    dbprintf("mode:       %u\n",     getMODE(ntp->flags));
+    dbprintf("stratum:    %u\n",     ntp->stratum);
+    dbprintf("poll:       %u\n",     ntp->poll);
+    dbprintf("precision:  %u\n",     ntp->precision);
+    dbprintf("delay:      %u\n",     ntp->delay);
+    dbprintf("dispersion: %u\n",     ntp->dispersion);
+    dbprintf("ref_id:     %02x:%02x:%02x:%02x\n", ntp->ref_id[0], ntp->ref_id[1], ntp->ref_id[2], ntp->ref_id[3]);
+    dbprintf("ref_time:   %08x:%08x\n",  ntp->ref_time.seconds, ntp->ref_time.fraction);
+    dbprintf("orig_time:  %08x:%08x\n",  ntp->orig_time.seconds, ntp->orig_time.fraction);
+    dbprintf("recv_time:  %08x:%08x\n",  ntp->recv_time.seconds, ntp->recv_time.fraction);
+    dbprintf("xmit_time:  %08x:%08x\n",  ntp->xmit_time.seconds, ntp->xmit_time.fraction);
 }
+#endif
 
+#ifdef SNTP_DEBUG
 
 void print64(const char *label, uint64_t value)
 {
-    Serial.print(label);
-    Serial.print((uint32_t)(value>>32));
-    Serial.print(":");
-    Serial.print((uint32_t)(value & 0xffffffff));
-    Serial.println();
+    dbprintf("%s %08x:%08x (%Lf)\n", label, (uint32_t)(value>>32), (uint32_t)(value & 0xffffffff), ((long double)value / 4294967296L));
 }
 
 void print64s(const char *label, int64_t value)
 {
-    Serial.print(label);
-    Serial.print((int32_t)(value>>32));
-    Serial.print(":");
-    Serial.print((uint32_t)(value & 0xffffffff));
-    Serial.println();
+    dbprintf("%s %08x:%08x (%Lf)\n", label, (int32_t)(value>>32), (uint32_t)(value & 0xffffffff), ((long double)value / 4294967296L));
 }
 #endif
 
@@ -58,11 +63,7 @@ OffsetTime computeOffset(NTPTime start, unsigned int millis_delta, SNTPPacket * 
     uint64_t T3 = toUINT64(ntp->xmit_time);
     uint64_t T4 = T1 + ms2Fraction(millis_delta);
     int64_t  o  = ((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2;
-
-    OffsetTime offset;
-    offset.seconds  = o >> 32;
-    offset.fraction = o & 0xffffffff;
-
+    OffsetTime offset = o;
 #ifdef SNTP_DEBUG
     int64_t  d  = (T4 - T1) - (T3 - T2);
     print64("T1:     ", T1);
@@ -71,7 +72,6 @@ OffsetTime computeOffset(NTPTime start, unsigned int millis_delta, SNTPPacket * 
     print64("T4:     ", T4);
     print64s("d:      ", d);
     print64s("o:      ", o);
-    Serial.println();
 #endif
 
     return offset;
@@ -117,7 +117,7 @@ EpochTime SNTP::getTime(IPAddress server, EpochTime now, OffsetTime* offset)
   ntp.flags     = setLI(LI_NONE) | setVERS(SNTP_VERSION) | setMODE(MODE_CLIENT);
   ntp.orig_time = now;
 
-#ifdef SNTP_DEBUG
+#ifdef SNTP_DEBUG_PACKET
   dumpNTPPacket(&ntp);
 #endif
 
@@ -151,17 +151,11 @@ EpochTime SNTP::getTime(IPAddress server, EpochTime now, OffsetTime* offset)
       }
   }
 
-#ifdef SNTP_DEBUG
-  Serial.print("packet size:");
-  Serial.println(size);
-  Serial.print("attempt count:");
-  Serial.println(count);
-#endif
+  dbprintf("packet size: %d\n", size);
+  dbprintf("attempt count: %d\n", count);
 
   if (size != 48) {
-#ifdef SNTP_DEBUG
-      Serial.println("bad packet!");
-#endif
+      dbprintln("bad packet!");
       etime.seconds = 0;
       etime.fraction = 0;
       return etime;
@@ -182,7 +176,7 @@ EpochTime SNTP::getTime(IPAddress server, EpochTime now, OffsetTime* offset)
   ntp.xmit_time.seconds  = ntohl(ntp.xmit_time.seconds);
   ntp.xmit_time.fraction = ntohl(ntp.xmit_time.fraction);
 
-#ifdef SNTP_DEBUG
+#ifdef SNTP_DEBUG_PACKET
   dumpNTPPacket(&ntp);
 #endif
 

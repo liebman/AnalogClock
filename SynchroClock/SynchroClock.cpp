@@ -12,7 +12,6 @@ boolean save_config  = false; // used by wifi manager when settings were updated
 boolean force_config = false; // reset handler sets this to force into config if btn held
 boolean stay_awake   = false; // don't use deep sleep
 
-extern unsigned int snprintf(char*, unsigned int, ...); // because esp8266 does not declare it in a header.
 char message[128]; // buffer for http return values
 
 #ifdef DEBUG_SYNCHRO_CLOCK
@@ -279,7 +278,13 @@ void handleRTC()
 
         clk.setStayActive(true);
 
-        if (HTTP.hasArg("sync") && getValidBoolean("sync"))
+        if (HTTP.hasArg("offset"))
+        {
+        	int32_t offset_ms = atoi(HTTP.arg("offset").c_str());
+        	dbprintf("handleRTC: offset_ms: %d\n", offset_ms);
+        	setRTCfromOffset(offset_ms, true, false);
+        }
+        else if (HTTP.hasArg("sync") && getValidBoolean("sync"))
         {
             setCLKfromRTC();
         }
@@ -294,7 +299,7 @@ void handleRTC()
     }
     else
     {
-        sprintf(message, "rtc.readTime() failed!");
+        sprintf(message, "rtc.readTime() failed!\n");
     }
 
     HTTP.send(200, "text/plain", message);
@@ -305,6 +310,9 @@ void handleNTP()
     char server[64];
     strcpy(server, config.ntp_server);
     boolean sync = false;
+#ifdef USE_NTP_MEDIAN
+    boolean clear = false;
+#endif
 
     if (HTTP.hasArg("server"))
     {
@@ -313,16 +321,33 @@ void handleNTP()
         server[63] = 0;
     }
 
+#ifdef USE_NTP_MEDIAN
+    if (HTTP.hasArg("clear"))
+    {
+        clear = getValidBoolean("clear");
+    }
+#endif
+
     if (HTTP.hasArg("sync"))
     {
         sync = getValidBoolean("sync");
     }
 
-    OffsetTime offset;
+#ifdef USE_NTP_MEDIAN
+    if (clear)
+    {
+        dbprintln("clearing NTP sample count");
+        dsd.ntp_sample_count = 0;
+    }
+#endif
+
+    clk.setStayActive(true);
+
+    int32_t offset_ms;
     IPAddress address;
     char message[64];
     int code;
-    if (setRTCfromNTP(server, sync, &offset, &address))
+    if (setRTCfromNTP(server, sync, &offset_ms, &address))
     {
         code = 500;
         snprintf(message, 64, "NTP Failed!\n");
@@ -335,9 +360,11 @@ void handleNTP()
             setCLKfromRTC();
         }
         code = 200;
-        uint32_t offset_ms = fraction2Ms(offset.fraction);
-        snprintf(message, 64, "OFFSET: %d.%03d (%s)\n", offset.seconds, offset_ms, address.toString().c_str());
+        snprintf(message, 64, "OFFSET: %dms (%s)\n", offset_ms, address.toString().c_str());
     }
+
+    clk.setStayActive(false);
+
     dbprintf(message);
     HTTP.send(code, "text/Plain", message);
     return;
@@ -782,27 +809,71 @@ void loop()
     delay(100);
 }
 
-#define offsetTime2LongDouble(x) (long double)x->seconds + ((long double)x->fraction / (long double)4294967296L);
-
 int compareOffsetTime(const void* a, const void* b)
 {
-    long double a1 = offsetTime2LongDouble(((const OffsetTime*)a));
-    long double b1 = offsetTime2LongDouble(((const OffsetTime*)b));
-
-    if (a1 < b1)
-    {
-        return -1;
-    }
-
-    if (a1 > b1)
-    {
-        return 1;
-    }
-
-    return 0;
+    const int32_t *a1 = (const int32_t*)a;
+    const int32_t *b1 = (const int32_t*)b;
+    return *a1 - *b1;
 }
 
-int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAddress* result_address)
+int setRTCfromOffset(int32_t offset_ms, bool sync, bool median)
+{
+	int32_t seconds  = offset_ms / 1000;
+	uint32_t msdelay = abs(offset_ms) % 1000;
+	if (offset_ms > 0)
+	{
+		seconds = seconds + 1;
+		msdelay = 1000 - msdelay;
+	}
+
+    DS3231DateTime dt;
+
+	clk.waitForEdge(CLOCK_EDGE_FALLING);
+	if (rtc.readTime(dt))
+	{
+		dbprintln("setRTCfromOffset: failed to read from RTC!");
+		return ERROR_RTC;
+	}
+
+	// wait for where the next second should start
+	if (msdelay > 0 && msdelay < 1000)
+	{
+		delay(msdelay);
+	}
+
+	uint32_t old_time = dt.getUnixTime();
+	uint32_t new_time = old_time + seconds;// + 1; // +1 because we waited for the next second
+	dt.setUnixTime(new_time);
+
+	if (sync)
+	{
+		if (rtc.writeTime(dt))
+		{
+			dbprintf("setRTCfromOffset: FAILED to set RTC: %s\n", dt.string());
+			return ERROR_RTC;
+		}
+#ifdef USE_NTP_MEDIAN
+		if (median)
+		{
+			// adjust offset list by new offset that was just applied to the clock
+			dbprintln("adjusting offset history list by new offset!");
+			for(unsigned int i = 0; i < dsd.ntp_sample_count; ++i)
+			{
+				dsd.ntp_samples[i] -= offset_ms;
+				dbprintf("dsd.ntp_samples[%d]: %d\n", i+1, dsd.ntp_samples[i]);
+			}
+		}
+#endif
+	}
+
+	dbprintf("seconds: %d\n", seconds);
+	dbprintf("msdelay: %u\n", msdelay);
+	dbprintf("old_time: %d new_time: %d\n", old_time, new_time);
+	dbprintf("set RTC: %s\n", dt.string());
+	return 0;
+}
+
+int setRTCfromNTP(const char* server, bool sync, int32_t* result_offset_ms, IPAddress* result_address)
 {
     dbprintf("using server: %s\n", server);
 
@@ -831,48 +902,55 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
         return ERROR_RTC;
     }
 
-    dbprintf("RTC: %s (UTC)\n", dt.string());
 
     EpochTime start_epoch;
     start_epoch.seconds = dt.getUnixTime();
 
-    dbprintf("start unix: %u\n", start_epoch.seconds);
-
     start_epoch.fraction = 0;
     OffsetTime offset;
     EpochTime end = ntp.getTime(address, start_epoch, &offset);
+
+    // defer printing these to not affect NTP delay
+    dbprintf("RTC: %s (UTC)\n", dt.string());
+    dbprintf("start unix: %u\n", start_epoch.seconds);
+    // end defer
+
     if (end.seconds == 0)
     {
         dbprintf("NTP Failed!\n");
         return ERROR_NTP;
     }
 
-    if (result_offset != NULL)
+    int32_t offset_ms = offset2ms(offset);
+    if (result_offset_ms != NULL)
     {
-        *result_offset = offset;
+        *result_offset_ms = offset_ms;
     }
 
-    dbprintf("+++++++++ seconds: 0x%08x fraction: 0x%08x\n", offset.seconds, offset.fraction);
-    uint32_t offset_ms = fraction2Ms(offset.fraction);
-    dbprintf("NTP req: %s offset.seconds: %d offset_ms:%03u\n",
+    dbprintf("NTP req: %s offset: %d\n",
             dt.string(),
-            offset.seconds,
             offset_ms);
 
-    long double offset_value = (long double)offset.seconds + ((long double)offset.fraction / (long double)4294967296L);
-    dbprintf("********* NTP OFFSET: %lf\n", offset_value);
+    dbprintf("********* NTP OFFSET: %Lf (ms: %d)\n", offset2longDouble(offset), offset_ms);
 
 #ifdef USE_NTP_MEDIAN
     //
     // shift all values and add current value
     //
     int i = 0;
-    for (i = NTP_SAMPLE_COUNT-2; i >= 0; --i)
+    //for (i = NTP_SAMPLE_COUNT-2; i >= 0; --i)
+    //{
+    //    dsd.ntp_samples[i+1] = dsd.ntp_samples[i];
+    for (i = dsd.ntp_sample_count-1; i >= 0; --i)
     {
+    	if (i == NTP_SAMPLE_COUNT-1)
+    	{
+    		continue;
+    	}
         dsd.ntp_samples[i+1] = dsd.ntp_samples[i];
-        dbprintf("dsd.ntp_samples[%d]: %lf\n", i+1, ((long double)dsd.ntp_samples[i+1].seconds + ((long double)dsd.ntp_samples[i+1].fraction / (long double)4294967296L)));
+        dbprintf("dsd.ntp_samples[%d]: %d\n", i+1, dsd.ntp_samples[i+1]);
     }
-    dsd.ntp_samples[0] = offset;
+    dsd.ntp_samples[0] = offset_ms;
     if (dsd.ntp_sample_count < NTP_SAMPLE_COUNT)
     {
         dsd.ntp_sample_count += 1;
@@ -881,13 +959,12 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
     //
     // use the median value if over threshold
     //
-
-    if (abs(offset_value) > NTP_MEDIAN_THRESHOLD)
+    if (abs(offset_ms) > NTP_MEDIAN_THRESHOLD)
     {
         // copy, sort and pull median value.
-        OffsetTime values[NTP_SAMPLE_COUNT];
+        int32_t values[NTP_SAMPLE_COUNT];
         memcpy(values, dsd.ntp_samples, NTP_SAMPLE_COUNT);
-        qsort(values, dsd.ntp_sample_count, sizeof(OffsetTime), compareOffsetTime);
+        qsort(values, dsd.ntp_sample_count, sizeof(int32_t), compareOffsetTime);
 
         //
         // special handling for the first few values
@@ -895,55 +972,31 @@ int setRTCfromNTP(const char* server, bool sync, OffsetTime* result_offset, IPAd
         switch (dsd.ntp_sample_count)
         {
         case 1:
-            offset = dsd.ntp_samples[0]; // take the current value if its the first
+            offset_ms = dsd.ntp_samples[0]; // take the current value if its the first
             break;
         case 2:
-            offset = dsd.ntp_samples[1]; // take the current value if its the second
+            offset_ms = dsd.ntp_samples[1]; // take the current value if its the second
             break;
         default:
-            offset = dsd.ntp_samples[dsd.ntp_sample_count/2+1]; // median-ish (is median if count is odd)
+            offset_ms = dsd.ntp_samples[dsd.ntp_sample_count/2+1]; // median-ish (is median if count is odd)
             break;
         }
 
-        // TODO: adjust offset list by new offset!
-        dbprintln("%%%%%%%% TODO: ADJUST OFFSET LIST BY NEW OFFSET! %%%%%%%%%%");
-
-        offset_value = (long double)offset.seconds + ((long double)offset.fraction / (long double)4294967296L);
-        dbprintf("********* NTP MEDIAN OFFSET: %lf\n", offset_value);
+        dbprintf("********* NTP MEDIAN OFFSET: %d\n", offset_ms);
     }
 #endif
 
     //
     // only set the RTC if we have a big enough offset.
     //
-    if (abs(offset_value) > NTP_SET_RTC_THRESHOLD)
+    if (abs(offset_ms) > NTP_SET_RTC_THRESHOLD)
     {
         dbprintf("offset > 100ms, updating RTC!\n");
-        uint32_t msdelay = 1000 - offset_ms;
-        //dbprintf("msdelay: %u\n", msdelay);
-
-        clk.waitForEdge(CLOCK_EDGE_FALLING);
-        if (rtc.readTime(dt))
+        // compute the offset in ms to where the next second should start
+        int error =  setRTCfromOffset(offset_ms, sync, true);
+        if (error)
         {
-            dbprintln("setRTCfromNTP: failed to read from RTC!");
-            return ERROR_RTC;
-        }
-
-        // wait for where the next second should start
-        if (msdelay > 0 && msdelay < 1000)
-        {
-            delay(msdelay);
-        }
-
-        if (sync)
-        {
-            dt.setUnixTime(dt.getUnixTime()+offset.seconds+1); // +1 because we waited for the next second
-            if (rtc.writeTime(dt))
-            {
-                dbprintf("FAILED to set RTC: %s\n", dt.string());
-                return ERROR_RTC;
-            }
-            dbprintf("set RTC: %s\n", dt.string());
+        	return error;
         }
     }
 
