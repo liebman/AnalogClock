@@ -1,3 +1,24 @@
+/*
+ * SynchroClock.h
+ *
+ * Copyright 2017 Christopher B. Liebman
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ *  Created on: May 26, 2017
+ *      Author: liebman
+ */
 
 #ifndef _SynchroClock_H_
 #define _SynchroClock_H_
@@ -39,7 +60,7 @@
 #define USE_NTP_MEDIAN                // if defined use median value for offset
 #define NTP_SAMPLE_COUNT       7      // max NTP samples to hold and use for median value
 #define NTP_MEDIAN_THRESHOLD   900    // if NTP offset is greater than this use median value.
-#define NTP_SET_RTC_THRESHOLD  100    // if offset greater than this update the RTC
+#define NTP_SET_RTC_THRESHOLD  40     // if offset greater than this update the RTC
 
 #define USE_STOP_THE_CLOCK            // if defined then stop the clock for small negative adjustments
 #define STOP_THE_CLOCK_MAX     60     // maximum difference where we will use stop the clock
@@ -74,16 +95,17 @@
 
 typedef struct
 {
-    uint32_t   sleep_duration; // deep sleep duration in seconds
-    int        tz_offset;      // time offset in seconds from UTC
-    uint8_t    tp_duration;    // tick pulse duration in ms
-    uint8_t    ap_duration;    // adjust pulse duration in ms
-    uint8_t    ap_delay;       // delay in ms between ticks during adjust
-    uint8_t    sleep_delay;    // delay in ms before sleeping DR8838
-    TimeChange tc[TIME_CHANGE_COUNT];
-    char       ntp_server[64];
+    uint32_t   sleep_duration;           // deep sleep duration in seconds
+    int        tz_offset;                // time offset in seconds from UTC
+    uint8_t    tp_duration;              // tick pulse duration in ms
+    uint8_t    ap_duration;              // adjust pulse duration in ms
+    uint8_t    ap_delay;                 // delay in ms between ticks during adjust
+    uint8_t    sleep_delay;              // delay in ms before sleeping DR8838
+    uint8_t    network_logger_port;      // port for network logging
+    TimeChange tc[TIME_CHANGE_COUNT];    // time change description
+    char       ntp_server[64];           // host to use for ntp
+    char       network_logger_host[64];  // host for network logging
 } Config;
-
 
 typedef struct
 {

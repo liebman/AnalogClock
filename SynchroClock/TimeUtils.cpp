@@ -1,6 +1,21 @@
 /*
  * TimeUtils.cpp
  *
+ * Copyright 2017 Christopher B. Liebman
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
  *  Created on: Jun 7, 2017
  *      Author: liebman
  */
@@ -323,6 +338,11 @@ struct tm *TimeUtils::gmtime_r(const time_t *timer, struct tm *tmbuf)
   return tmbuf;
 }
 
+//
+// The functions findDOW & findNthDate are from:
+//
+//   http://hackaday.com/2012/07/16/automatic-daylight-savings-time-compensation-for-your-clock-projects
+//
 
 /*--------------------------------------------------------------------------
   FUNC: 6/11/11 - Returns day of week for any given date
@@ -340,6 +360,7 @@ uint8_t TimeUtils::findDOW(uint16_t y, uint8_t m, uint8_t d)
 }
 
 /*--------------------------------------------------------------------------
+  http://hackaday.com/2012/07/16/automatic-daylight-savings-time-compensation-for-your-clock-projects
   FUNC: 6/11/11 - Returns the date for Nth day of month. For instance,
     it will return the numeric date for the 2nd Sunday of April
   PARAMS: year, month, day of week, Nth occurrence of that day in that month
@@ -376,8 +397,8 @@ uint8_t TimeUtils::daysInMonth(uint16_t year, uint8_t month)
      case 6:
      case 9:
      case 11:
-            days = 30;
-            break;
+         days = 30;
+         break;
     }
     return days;
 }
@@ -412,9 +433,6 @@ uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, in
 
 int TimeUtils::computeUTCOffset(uint16_t year, uint8_t month, uint8_t mday, uint8_t hour, TimeChange* tc, int tc_count)
 {
-    //
-    // TODO: need to map dt into current timezone!
-    //
     int offset = 0;
     for (int i = 0; i < tc_count;++i)
     {

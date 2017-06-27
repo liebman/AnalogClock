@@ -1,3 +1,25 @@
+/*
+ * SynchroClock.cpp
+ *
+ * Copyright 2017 Christopher B. Liebman
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ *
+ *  Created on: May 26, 2017
+ *      Author: liebman
+ */
+
 #include "SynchroClock.h"
 
 Config           config;
@@ -16,13 +38,15 @@ char message[128]; // buffer for http return values
 
 #ifdef DEBUG_SYNCHRO_CLOCK
 #define DBP_BUF_SIZE 256
-#define dbbegin(x)    {logger.begin(x);logger.setNetworkLogger(NETWORK_LOGGER_HOST, NETWORK_LOGGER_PORT);}
-#define dbend()       logger.end()
-#define dbprintf(...) logger.printf(__VA_ARGS__)
-#define dbprintln(x)  logger.println(x)
-#define dbflush()     logger.flush()
+#define dbbegin(x)      logger.begin(x)
+#define dbnetlog(h, p)  {if (strlen(h) && p) logger.setNetworkLogger(h, p);}
+#define dbend()         logger.end()
+#define dbprintf(...)   logger.printf(__VA_ARGS__)
+#define dbprintln(x)    logger.println(x)
+#define dbflush()       logger.flush()
 #else
 #define dbbegin(x)
+#define dbnetlog(h, p)
 #define dbend()
 #define dbprintf(...)
 #define dbprintln(x)
@@ -494,6 +518,13 @@ void initWiFi()
         config.sleep_delay = TimeUtils::parseSmallDuration(result);
         clk.writeSleepDelay(config.sleep_delay);
     });
+    ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result){
+        strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
+    });
+    ConfigParam network_logger_port(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 5, [](const char* result){
+        config.ap_delay = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDelay(config.ap_delay);
+    });
 
     String ssid = "SynchroClock" + String(ESP.getChipId());
     dbflush();
@@ -542,9 +573,14 @@ void initWiFi()
         ap_delay.applyIfChanged();
         sleep_delay.applyIfChanged();
         sleep_duration.applyIfChanged();
-
+        network_logger_host.applyIfChanged();
+        network_logger_port.applyIfChanged();
         saveConfig();
     }
+
+    // Configure network logging if enabled
+    dbnetlog(config.network_logger_host, config.network_logger_port);
+
     IPAddress ip = WiFi.localIP();
     dbprintf("Connected! IP address is: %u.%u.%u.%u\n",ip[0],ip[1],ip[2],ip[3]);
 }
