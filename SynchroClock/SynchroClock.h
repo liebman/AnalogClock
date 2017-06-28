@@ -101,7 +101,7 @@ typedef struct
     uint8_t    ap_duration;              // adjust pulse duration in ms
     uint8_t    ap_delay;                 // delay in ms between ticks during adjust
     uint8_t    sleep_delay;              // delay in ms before sleeping DR8838
-    uint8_t    network_logger_port;      // port for network logging
+    uint16_t    network_logger_port;     // port for network logging
     TimeChange tc[TIME_CHANGE_COUNT];    // time change description
     char       ntp_server[64];           // host to use for ntp
     char       network_logger_host[64];  // host for network logging

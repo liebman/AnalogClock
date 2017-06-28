@@ -521,9 +521,8 @@ void initWiFi()
     ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result){
         strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
     });
-    ConfigParam network_logger_port(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 5, [](const char* result){
-        config.ap_delay = TimeUtils::parseSmallDuration(result);
-        clk.writeAPDelay(config.ap_delay);
+    ConfigParam network_logger_port(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 6, [](const char* result){
+        config.network_logger_port = atoi(result);
     });
 
     String ssid = "SynchroClock" + String(ESP.getChipId());
@@ -680,8 +679,8 @@ void setup()
     config.tc[1].hour        = 0;
     config.tc[1].tz_offset   = 0;
 
-    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration,
-            config.ap_delay, config.ntp_server);
+    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration,
+            config.ap_delay, config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
@@ -691,8 +690,8 @@ void setup()
         force_config = true;
     }
 
-    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s\n", config.tz_offset, config.tp_duration, config.ap_duration,
-            config.ap_delay, config.ntp_server);
+    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration,
+            config.ap_delay, config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dt.applyOffset(config.tz_offset);
     int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
