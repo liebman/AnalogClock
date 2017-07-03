@@ -28,7 +28,7 @@
 #include <lwip/def.h> // htonl() & ntohl()
 #include "Logger.h"
 
-//#define SNTP_DEBUG
+#define SNTP_DEBUG
 //#define SNTP_DEBUG_PACKET
 
 #define USE_INT64_OFFSET
@@ -62,6 +62,8 @@
 #define toNTP(t)          ((uint32_t)t+SEVENTY_YEARS)
 #define ms2Fraction(x) (uint32_t)((uint64_t)x*(uint64_t)(4294967296L)/(uint64_t)(1000L))
 #define fraction2Ms(x) (uint32_t)((uint64_t)x/((uint64_t)(4294967296L)/(uint64_t)(1000L)))
+
+typedef int32_t ntp_offset_t;
 
 typedef struct ntp_time {
   uint32_t seconds;

@@ -79,8 +79,9 @@ OffsetTime computeOffset(NTPTime start, unsigned int millis_delta, SNTPPacket * 
     uint64_t T4 = T1 + ms2Fraction(millis_delta);
     int64_t  o  = ((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2;
     OffsetTime offset = o;
-#ifdef SNTP_DEBUG
     int64_t  d  = (T4 - T1) - (T3 - T2);
+#ifdef SNTP_DEBUG
+    dbprintf("delta:  %d\n", millis_delta);
     print64("T1:     ", T1);
     print64("T2:     ", T2);
     print64("T3:     ", T3);
