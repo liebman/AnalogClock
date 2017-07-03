@@ -22,7 +22,6 @@
 
 #ifndef _SynchroClock_H_
 #define _SynchroClock_H_
-
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiManager.h>
@@ -30,7 +29,7 @@
 #include <ESP8266WebServer.h>
 #include <EEPROM.h>
 #include "FeedbackLED.h"
-#include "SNTP.h"
+#include "NTP.h"
 #include "Clock.h"
 #include "DS3231.h"
 #include "WireUtils.h"
@@ -56,9 +55,10 @@
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
 
-#define USE_NTP_MEDIAN                // if defined use median value for offset
+//#define USE_NTP_MEDIAN                // if defined use median value for offset
 #define NTP_SAMPLE_COUNT       7      // max NTP samples to hold and use for median value
 #define NTP_MEDIAN_THRESHOLD   900    // if NTP offset is greater than this use median value.
+
 #define NTP_SET_RTC_THRESHOLD  40     // if offset greater than this update the RTC
 
 #define USE_STOP_THE_CLOCK            // if defined then stop the clock for small negative adjustments
@@ -82,7 +82,6 @@
 #define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
 #define CONNECTION_TIMEOUT     300  // wifi portal timeout - we will deep sleep and try again later
 
-#define offset2ms(x)           (int32_t)(x/((4294967296L)/(1000L)))
 #define offset2longDouble(x)   ((long double)x / 4294967296L)
 
 // error codes for setRTCfromNTP()
@@ -115,8 +114,9 @@ typedef struct
 typedef struct
 {
     uint32_t sleep_delay_left;
+    NTPPersist ntp_persist;
 #ifdef USE_NTP_MEDIAN
-    int32_t  ntp_samples[NTP_SAMPLE_COUNT];
+    ntp_offset_t  ntp_samples[NTP_SAMPLE_COUNT];
     uint32_t ntp_sample_count;
 #endif
 } DeepSleepData;
@@ -145,8 +145,12 @@ void handleSleepDelay();
 void handleEnable();
 void handleRTC();
 void handleNTP();
-int setRTCfromOffset(int32_t offset_ms, bool sync, bool median);
-int setRTCfromNTP(const char* server, bool sync, int32_t* result_offset, IPAddress* result_address);
+#ifdef USE_NTP_MEDIAN
+int setRTCfromOffset(ntp_offset_t offset_ms, bool sync, bool median);
+#else
+int setRTCfromOffset(ntp_offset_t offset_ms, bool sync);
+#endif
+int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset, IPAddress* result_address);
 int setCLKfromRTC();
 void saveConfig();
 boolean loadConfig();
