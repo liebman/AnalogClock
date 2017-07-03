@@ -26,7 +26,7 @@
 #ifdef DEBUG_LOGGER
 #define DBP_BUF_SIZE 256
 
-unsigned int snprintf(char*, unsigned int, ...);
+extern unsigned int snprintf(char*, unsigned int, ...);
 #define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
 #define dbprintln(x)   Serial.println(x)
 #define dbflush()      Serial.flush()
@@ -41,6 +41,8 @@ Logger::Logger()
 {
 	_host       = NULL;
 	_port       = 0;
+	_failed     = 0;
+	_client.setTimeout(1000); // 1 second connect timeout
 }
 
 void Logger::begin()
@@ -90,6 +92,10 @@ void Logger::printf(const char* fmt, ...)
 void Logger::flush()
 {
     Serial.flush();
+    if (_client.connected())
+    {
+        _client.flush();
+    }
 }
 
 void Logger::send(const char* message)
@@ -116,10 +122,11 @@ void Logger::send(const char* message)
     }
 
 #ifdef USE_TCP
-    if (!_client.connected())
+    if (!_client.connected() && _failed < 3) // try 3 times at most to connect then give up.
     {
-        if(!_client.connect(ip, _port))
+        if(!_client.connect(ip, _port) && _failed < 3)
         {
+        	    _failed++;
             dbprintf("Logger::send failed to connect!\n");
             return;
         }

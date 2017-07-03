@@ -58,6 +58,7 @@ private:
 #endif
     const char* _host;
     uint16_t    _port;
+    uint16_t    _failed;
     char        _buffer[LOGGER_BUFFER_SIZE];
 
     void send(const char* message);
