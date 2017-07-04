@@ -65,7 +65,7 @@ typedef struct ntp_packet
     uint8_t flags;
     uint8_t stratum;
     uint8_t poll;
-    uint8_t precision;
+    int8_t  precision;
     uint32_t delay;
     uint32_t dispersion;
     uint8_t ref_id[4];
@@ -91,7 +91,7 @@ typedef struct ntp_packet
 #endif
 
 #ifdef NTP_DEBUG_PACKET
-void dumpNTPPacket(SNTPPacket* ntp)
+void dumpNTPPacket(NTPPacket* ntp)
 {
 
     dbprintf("size:       %u\n", sizeof(*ntp));
@@ -101,7 +101,7 @@ void dumpNTPPacket(SNTPPacket* ntp)
     dbprintf("mode:       %u\n", getMODE(ntp->flags));
     dbprintf("stratum:    %u\n", ntp->stratum);
     dbprintf("poll:       %u\n", ntp->poll);
-    dbprintf("precision:  %u\n", ntp->precision);
+    dbprintf("precision:  %d\n", ntp->precision);
     dbprintf("delay:      %u\n", ntp->delay);
     dbprintf("dispersion: %u\n", ntp->dispersion);
     dbprintf("ref_id:     %02x:%02x:%02x:%02x\n", ntp->ref_id[0], ntp->ref_id[1], ntp->ref_id[2], ntp->ref_id[3]);
@@ -135,17 +135,21 @@ IPAddress NTP::getServerAddress()
 
 int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_offset_t* offset, ntp_delay_t *delay)
 {
-    dbprintf("NTP::getOffsetAndDelay: previous reach: 0x%02x\n", persist->reach);
+    unsigned int start = millis();  // start of time we need to add to now to remove DNS & ping overhead
+
+    //dbprintf("NTP::getOffsetAndDelay: previous reach: 0x%02x\n", persist->reach);
     persist->reach <<= 1;
 
+
     IPAddress address = persist->ip;
+
     //
     // if we don't have a persisted ip address or the server name does not match the persisted one or
     // its not reachable then persist new ones.
     //
     if (persist->ip == 0 || strncmp(server_name, persist->server, NTP_SERVER_LENGTH) != 0 || persist->reach == 0)
     {
-        dbprintln("NTP::getOffsetAndDelay: updating server and address!");
+        //dbprintln("NTP::getOffsetAndDelay: updating server and address!");
         if (!WiFi.hostByName(server_name, address))
         {
             dbprintf("NTP::getOffsetAndDelay: DNS lookup on %s failed!\n", server_name);
@@ -156,13 +160,11 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
         strncpy(persist->server, server_name, NTP_SERVER_LENGTH-1);
         persist->ip = address;
 
-        dbprintf("NTP::getOffsetAndDelay NEW server: %s address: %s\n", server_name, address.toString().c_str());
+        //dbprintf("NTP::getOffsetAndDelay NEW server: %s address: %s\n", server_name, address.toString().c_str());
     }
 
     NTPPacket ntp;
     NTPTime now;
-
-    dbprintf("NTP::getOffsetAndDelay using server: %s address: %s\n", persist->server, address.toString().c_str());
 
     //
     // Ping the server first, we don't care about the result.  This updates any
@@ -171,15 +173,18 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     //
     ping(address);
 
-    // adjust now for NTP time
+    dbflush();
+    unsigned int end = millis();  // end of time we need to add to now to remove DNS & ping overhead
+
+   // adjust now for NTP time
     now.seconds = toNTP(now_seconds);
-    now.fraction = 0;
+    now.fraction = ms2fraction(end - start); // assumption: will be less than 1 second!
 
     memset((void*) &ntp, 0, sizeof(ntp));
     ntp.flags = setLI(LI_NONE) | setVERS(SNTP_VERSION) | setMODE(MODE_CLIENT);
     ntp.orig_time = now;
 
-    dumpNTPPacket(&ntp);
+    //dumpNTPPacket(&ntp);
 
     // put timestamps in network byte order
     ntp.delay = htonl(ntp.delay);
@@ -193,15 +198,12 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     ntp.xmit_time.seconds = htonl(ntp.xmit_time.seconds);
     ntp.xmit_time.fraction = htonl(ntp.xmit_time.fraction);
 
-    unsigned int start = millis();
+    start = millis();
     // send it!
     udp.beginPacket(address, port);
     udp.write((const uint8_t *) &ntp, sizeof(ntp));
     udp.flush();
     udp.endPacket();
-    unsigned int sent_by = millis();
-    yield();
-    unsigned int sent_ay = millis();
 
     memset((void*) &ntp, 0, sizeof(ntp));
 
@@ -218,8 +220,9 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
         }
     }
 
-    unsigned int end = millis();
+    end = millis();
 
+    dbprintf("NTP::getOffsetAndDelay using server: %s address: %s\n", persist->server, address.toString().c_str());
     dbprintf("packet size: %d\n", size);
     dbprintf("attempt count: %d\n", count);
 
@@ -232,10 +235,6 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     udp.read((char *) &ntp, sizeof(ntp));
     int duration = end - start;
     dbprintf("ntp request duration: %dms\n", duration);
-
-    int duration_xmit = sent_by - start;
-    int duration_yield = sent_ay - sent_by;
-    dbprintf("xmit duration: %d yield: %d\n", duration_xmit, duration_yield);
 
     // put timestamps in host byte order
     ntp.delay = ntohl(ntp.delay);
@@ -268,6 +267,15 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     dbprint64s("d:      ", d);
     dbprint64s("o:      ", o);
 
+#if 1
+#define PHI             15e-6   /* % frequency tolerance (15 ppm) */
+#define PRECISION       -18     /* precision (log2 s)  */
+#define LOG2D(a)        ((a) < 0 ? 1. / (1L << -(a)) : \
+                            1L << (a))          /* poll, etc. */
+    double disp = LOG2D(ntp.precision) + LOG2D(PRECISION) + PHI * offset2sec(T4-T1);
+    dbprintf("NTP::getOffsetAndDelay: DISPERSION: %lf\n", disp);
+#endif
+
     //
     // update reach as we git a response.
     //
@@ -291,7 +299,7 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     persist->samples[0].offset = o;
     persist->samples[0].delay = d;
 
-    dbprintf("getOffsetAndDelay: persist->samples[%d]: %.0lf (delay:%d)\n", 0,
+    dbprintf("NTP::getOffsetAndDelay: persist->samples[%d]: %.0lf (delay:%d)\n", 0,
             (double)(offset2ms(persist->samples[0].offset)),
             delay2ms(persist->samples[0].delay));
 
@@ -299,6 +307,19 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     {
         persist->sample_count += 1;
     }
+
+    if (persist->sample_count > 1)
+    {
+        double   offset_delta = offset2sec(persist->samples[0].offset - persist->samples[1].offset);
+        dbprintf("offset_delta: %lfs\n", offset_delta);
+        uint32_t time_delta   = persist->samples[0].timestamp - persist->samples[1].timestamp;
+        dbprintf("time_delta:   %ds\n", time_delta);
+        double   local_drift  = offset_delta / (double)time_delta * 1000000;
+        dbprintf("local_drift: %0.3lf\n", local_drift);
+        persist->drift = (persist->drift*NTP_SAMPLE_COUNT + local_drift) / (NTP_SAMPLE_COUNT+1);
+    }
+
+    dbprintf("drift: %0.3lf\n", persist->drift);
 
     if (offset != NULL)
     {

@@ -22,8 +22,8 @@
 
 #include "SynchroClock.h"
 
-Config           config;
-DeepSleepData    dsd;
+Config           config;                       // configuration persisted in the EEPROM
+DeepSleepData    dsd;                          // data persisted in the RTC memory
 FeedbackLED      feedback(LED_PIN);
 ESP8266WebServer HTTP(80);
 NTP              ntp(123, &(dsd.ntp_persist));
@@ -753,6 +753,8 @@ void setup()
 #endif
 
     initWiFi();
+
+    dbprintf("###### rtc data size: %d\n", sizeof(RTCDeepSleepData));
 
     ntp.begin(1235);
 

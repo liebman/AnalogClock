@@ -29,13 +29,15 @@
 #include "Logger.h"
 
 #define NTP_DEBUG
-//#define NTP_DEBUG_PACKET
+#define NTP_DEBUG_PACKET
 
 typedef int64_t  ntp_offset_t;
 typedef uint64_t ntp_delay_t;
 
-#define offset2ms(x)           (ntp_offset_t)(x/((4294967296L)/(1000L)))
-#define delay2ms(x)            (ntp_delay_t)(x/((4294967296L)/(1000L)))
+#define offset2sec(x)          (((double)(x))/4294967296L)
+#define ms2fraction(x) ((uint32_t)((long double)(x) / 1000.0 * (long double)4294967296L))
+#define offset2ms(x)           (ntp_offset_t)((x)/((4294967296L)/(1000L)))
+#define delay2ms(x)            (ntp_delay_t)((x)/((4294967296L)/(1000L)))
 
 typedef struct ntp_sample
 {
@@ -54,6 +56,7 @@ typedef struct ntp_persist
 {
     NTPSample    samples[NTP_SAMPLE_COUNT];
     char         server[NTP_SERVER_LENGTH];
+    double       drift;
     unsigned int sample_count;
     uint32_t     ip;
     uint8_t      reach;
