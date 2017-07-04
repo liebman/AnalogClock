@@ -114,10 +114,11 @@ void dumpNTPPacket(SNTPPacket* ntp)
 #define dumpNTPPacket(x)
 #endif
 
-NTP::NTP(const char* server, uint16_t port, NTPPersist *persist)
+NTP::NTP(uint16_t port, NTPPersist *persist)
 {
-    this->default_server = server;
-    this->port = port;
+    memset((void*)persist->server, 0, sizeof(persist->server ));
+
+    this->port    = port;
     this->persist = persist;
 }
 
@@ -126,18 +127,46 @@ void NTP::begin(uint16_t local_port)
     udp.begin(local_port);
 }
 
-int NTP::getOffsetAndDelay(IPAddress server, uint32_t now_seconds,
-        ntp_offset_t* offset, ntp_delay_t *delay)
+
+IPAddress NTP::getServerAddress()
 {
+    return persist->ip;
+}
+
+int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_offset_t* offset, ntp_delay_t *delay)
+{
+    IPAddress address = persist->ip;
+    //
+    // if we don't have a persisted ip address or the server name does not match the persisted one then
+    // persist new ones.
+    //
+    if (persist->ip == 0 || strncmp(server_name, persist->server, NTP_SERVER_LENGTH) != 0)
+    {
+        dbprintln("NTP::getOffsetAndDelay: updating server and address!");
+        if (!WiFi.hostByName(server_name, address))
+        {
+            dbprintf("NTP::getOffsetAndDelay: DNS lookup on %s failed!\n", server_name);
+            return -1;
+        }
+
+        memset((void*)persist->server, 0, sizeof(persist->server ));
+        strncpy(persist->server, server_name, NTP_SERVER_LENGTH-1);
+        persist->ip = address;
+
+        dbprintf("NTP::getOffsetAndDelay NEW server: %s address: %s\n", server_name, address.toString().c_str());
+    }
+
     NTPPacket ntp;
     NTPTime now;
+
+    dbprintf("NTP::getOffsetAndDelay using server: %s address: %s\n", persist->server, address.toString().c_str());
 
     //
     // Ping the server first, we don't care about the result.  This updates any
     // ARP cache etc.  Without this we see a varying 20ms -> 80ms delay on the
     // NTP packet.
     //
-    ping(server);
+    ping(address);
 
     // adjust now for NTP time
     now.seconds = toNTP(now_seconds);
@@ -163,7 +192,7 @@ int NTP::getOffsetAndDelay(IPAddress server, uint32_t now_seconds,
 
     unsigned int start = millis();
     // send it!
-    udp.beginPacket(server, port);
+    udp.beginPacket(address, port);
     udp.write((const uint8_t *) &ntp, sizeof(ntp));
     udp.flush();
     udp.endPacket();
@@ -239,7 +268,7 @@ int NTP::getOffsetAndDelay(IPAddress server, uint32_t now_seconds,
     int i;
     for (i = persist->sample_count - 1; i >= 0; --i)
     {
-        if (i == NTP_SAMPLE_SIZE - 1)
+        if (i == NTP_SAMPLE_COUNT - 1)
         {
             continue;
         }
@@ -257,7 +286,7 @@ int NTP::getOffsetAndDelay(IPAddress server, uint32_t now_seconds,
             (double)(offset2ms(persist->samples[0].offset)),
             delay2ms(persist->samples[0].delay));
 
-    if (persist->sample_count < NTP_SAMPLE_SIZE)
+    if (persist->sample_count < NTP_SAMPLE_COUNT)
     {
         persist->sample_count += 1;
     }

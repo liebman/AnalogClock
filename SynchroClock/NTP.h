@@ -44,30 +44,35 @@ typedef struct ntp_sample
     ntp_delay_t  delay;
 } NTPSample;
 
-#define NTP_SAMPLE_SIZE 8
+#define NTP_SERVER_LENGTH   64 // max length+1 of ntp server name
+#define NTP_SAMPLE_COUNT    8  // number of NTP samples to keep
 
 //
 // This is used to validate new NTP responses and compute the clock drift
 //
 typedef struct ntp_persist
 {
-    NTPSample    samples[NTP_SAMPLE_SIZE];
+    NTPSample    samples[NTP_SAMPLE_COUNT];
+    char         server[NTP_SERVER_LENGTH];
     unsigned int sample_count;
+    uint32_t     ip;
+    uint8_t      reach;
 } NTPPersist;
 
 class NTP
 {
 public:
-  NTP(const char* server, uint16_t port, NTPPersist *persist);
+  NTP(uint16_t port, NTPPersist *persist);
   void       begin(uint16_t local_port);
-  int        getOffsetAndDelay(IPAddress server, uint32_t now_seconds, ntp_offset_t* offset, ntp_delay_t *delay);  // returns -1 on error, 0 on success
+  IPAddress  getServerAddress(); // get the last used server address
+  int        getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_offset_t* offset, ntp_delay_t *delay);  // returns -1 on error, 0 on success
 
 private:
-  int        ping(IPAddress server);
-  const char *default_server;
   NTPPersist *persist;
   uint16_t   port;
   WiFiUDP    udp;
+
+  int        ping(IPAddress server);
 };
 
 #endif /* SNTP_H_ */

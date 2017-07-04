@@ -55,10 +55,6 @@
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
 
-//#define USE_NTP_MEDIAN                // if defined use median value for offset
-#define NTP_SAMPLE_COUNT       7      // max NTP samples to hold and use for median value
-#define NTP_MEDIAN_THRESHOLD   900    // if NTP offset is greater than this use median value.
-
 #define NTP_SET_RTC_THRESHOLD  40     // if offset greater than this update the RTC
 
 #define USE_STOP_THE_CLOCK            // if defined then stop the clock for small negative adjustments
@@ -115,10 +111,6 @@ typedef struct
 {
     uint32_t sleep_delay_left;
     NTPPersist ntp_persist;
-#ifdef USE_NTP_MEDIAN
-    ntp_offset_t  ntp_samples[NTP_SAMPLE_COUNT];
-    uint32_t ntp_sample_count;
-#endif
 } DeepSleepData;
 
 typedef struct
@@ -145,11 +137,7 @@ void handleSleepDelay();
 void handleEnable();
 void handleRTC();
 void handleNTP();
-#ifdef USE_NTP_MEDIAN
-int setRTCfromOffset(ntp_offset_t offset_ms, bool sync, bool median);
-#else
 int setRTCfromOffset(ntp_offset_t offset_ms, bool sync);
-#endif
 int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset, IPAddress* result_address);
 int setCLKfromRTC();
 void saveConfig();

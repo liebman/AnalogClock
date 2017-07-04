@@ -26,7 +26,7 @@ Config           config;
 DeepSleepData    dsd;
 FeedbackLED      feedback(LED_PIN);
 ESP8266WebServer HTTP(80);
-NTP              ntp("pool.ntp.org", 123, &(dsd.ntp_persist));
+NTP              ntp(123, &(dsd.ntp_persist));
 Clock            clk(SYNC_PIN);
 DS3231           rtc;
 
@@ -306,11 +306,7 @@ void handleRTC()
         {
         	ntp_offset_t offset_ms = atoi(HTTP.arg("offset").c_str());
         	dbprintf("handleRTC: offset_ms: %d\n", offset_ms);
-#ifdef USE_NTP_MEDIAN
-        	setRTCfromOffset(offset_ms, true, false);
-#else
             setRTCfromOffset(offset_ms, true);
-#endif
         }
         else if (HTTP.hasArg("sync") && getValidBoolean("sync"))
         {
@@ -338,9 +334,6 @@ void handleNTP()
     char server[64];
     strcpy(server, config.ntp_server);
     boolean sync = false;
-#ifdef USE_NTP_MEDIAN
-    boolean clear = false;
-#endif
 
     if (HTTP.hasArg("server"))
     {
@@ -349,25 +342,10 @@ void handleNTP()
         server[63] = 0;
     }
 
-#ifdef USE_NTP_MEDIAN
-    if (HTTP.hasArg("clear"))
-    {
-        clear = getValidBoolean("clear");
-    }
-#endif
-
     if (HTTP.hasArg("sync"))
     {
         sync = getValidBoolean("sync");
     }
-
-#ifdef USE_NTP_MEDIAN
-    if (clear)
-    {
-        dbprintln("clearing NTP sample count");
-        dsd.ntp_sample_count = 0;
-    }
-#endif
 
     clk.setStayActive(true);
 
@@ -856,11 +834,7 @@ int compareOffsetTime(const void* a, const void* b)
     return *a1 - *b1;
 }
 
-#ifdef USE_NTP_MEDIAN
-int setRTCfromOffset(ntp_offset_t offset_ms, bool sync, bool median)
-#else
 int setRTCfromOffset(ntp_offset_t offset_ms, bool sync)
-#endif
 {
 	int32_t  seconds  = offset_ms / 1000L;
 	uint32_t msdelay = abs(offset_ms % 1000L);
@@ -897,18 +871,6 @@ int setRTCfromOffset(ntp_offset_t offset_ms, bool sync)
 			dbprintf("setRTCfromOffset: FAILED to set RTC: %s\n", dt.string());
 			return ERROR_RTC;
 		}
-#ifdef USE_NTP_MEDIAN
-		if (median)
-		{
-			// adjust offset list by new offset that was just applied to the clock
-			dbprintln("adjusting offset history list by new offset!");
-			for(unsigned int i = 0; i < dsd.ntp_sample_count; ++i)
-			{
-				dsd.ntp_samples[i] -= offset_ms;
-				dbprintf("dsd.ntp_samples[%d]: %d\n", i+1, dsd.ntp_samples[i]);
-			}
-		}
-#endif
 	}
 
 	dbprintf("old_time: %d new_time: %d\n", old_time, new_time);
@@ -919,21 +881,6 @@ int setRTCfromOffset(ntp_offset_t offset_ms, bool sync)
 int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset_ms, IPAddress* result_address)
 {
     dbprintf("using server: %s\n", server);
-
-    // Look up the address before we start
-    IPAddress address;
-    if (!WiFi.hostByName(server, address))
-    {
-        dbprintf("DNS lookup on %s failed!\n", server);
-        return ERROR_DNS;
-    }
-
-    if (result_address)
-    {
-        *result_address = address;
-    }
-
-    dbprintf("address: %s\n", address.toString().c_str());
 
     // wait for the next falling edge of the 1hz square wave
     clk.waitForEdge(CLOCK_EDGE_FALLING);
@@ -947,67 +894,23 @@ int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset_ms,
 
     ntp_offset_t offset;
     ntp_delay_t  delay;
-    if (ntp.getOffsetAndDelay(address, dt.getUnixTime(), &offset, &delay))
+    if (ntp.getOffsetAndDelay(server, dt.getUnixTime(), &offset, &delay))
     {
         dbprintf("setRTCfromNTP: NTP Failed!\n");
         return ERROR_NTP;
     }
+
+    if (result_address)
+    {
+        *result_address = ntp.getServerAddress();
+    }
+
     ntp_offset_t offset_ms = offset2ms(offset);
     if (result_offset_ms != NULL)
     {
         *result_offset_ms = offset_ms;
     }
     dbprintf("********* NTP OFFSET: %Lf (%Ldms)\n", offset2longDouble(offset), offset_ms);
-
-#ifdef USE_NTP_MEDIAN
-    //
-    // shift all values and add current value
-    //
-    int i;
-    for (i = dsd.ntp_sample_count-1; i >= 0; --i)
-    {
-    	if (i == NTP_SAMPLE_COUNT-1)
-    	{
-    		continue;
-    	}
-        dsd.ntp_samples[i+1] = dsd.ntp_samples[i];
-        dbprintf("setRTCfromNTP: dsd.ntp_samples[%d]: %.0lf\n", i+1, (double)(dsd.ntp_samples[i+1]));
-    }
-    dsd.ntp_samples[0] = offset_ms;
-    if (dsd.ntp_sample_count < NTP_SAMPLE_COUNT)
-    {
-        dsd.ntp_sample_count += 1;
-    }
-
-    //
-    // use the median value if over threshold
-    //
-    if (offset_ms > NTP_MEDIAN_THRESHOLD || offset_ms < -NTP_MEDIAN_THRESHOLD)
-    {
-        // copy, sort and pull median value.
-        ntp_offset_t values[NTP_SAMPLE_COUNT];
-        memcpy(values, dsd.ntp_samples, NTP_SAMPLE_COUNT);
-        qsort(values, dsd.ntp_sample_count, sizeof(ntp_offset_t), compareOffsetTime);
-
-        //
-        // special handling for the first few values
-        //
-        switch (dsd.ntp_sample_count)
-        {
-        case 1:
-            offset_ms = dsd.ntp_samples[0]; // take the current value if its the first
-            break;
-        case 2:
-            offset_ms = dsd.ntp_samples[1]; // take the current value if its the second
-            break;
-        default:
-            offset_ms = values[dsd.ntp_sample_count/2+1]; // median-ish (is median if count is odd)
-            break;
-        }
-
-        dbprintf("********* NTP MEDIAN OFFSET: %d\n", offset_ms);
-    }
-#endif
 
     //
     // only set the RTC if we have a big enough offset.
@@ -1017,11 +920,8 @@ int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset_ms,
     {
         dbprintf("offset > %dms, updating RTC!\n", NTP_SET_RTC_THRESHOLD);
         // compute the offset in ms to where the next second should start
-#ifdef USE_NTP_MEDIAN
-        int error =  setRTCfromOffset(offset_ms, sync, true);
-#else
         int error =  setRTCfromOffset(offset_ms, sync);
-#endif
+
         if (error)
         {
         	return error;
