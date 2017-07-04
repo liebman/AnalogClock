@@ -135,12 +135,15 @@ IPAddress NTP::getServerAddress()
 
 int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_offset_t* offset, ntp_delay_t *delay)
 {
+    dbprintf("NTP::getOffsetAndDelay: previous reach: 0x%02x\n", persist->reach);
+    persist->reach <<= 1;
+
     IPAddress address = persist->ip;
     //
-    // if we don't have a persisted ip address or the server name does not match the persisted one then
-    // persist new ones.
+    // if we don't have a persisted ip address or the server name does not match the persisted one or
+    // its not reachable then persist new ones.
     //
-    if (persist->ip == 0 || strncmp(server_name, persist->server, NTP_SERVER_LENGTH) != 0)
+    if (persist->ip == 0 || strncmp(server_name, persist->server, NTP_SERVER_LENGTH) != 0 || persist->reach == 0)
     {
         dbprintln("NTP::getOffsetAndDelay: updating server and address!");
         if (!WiFi.hostByName(server_name, address))
@@ -265,6 +268,12 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     dbprint64s("d:      ", d);
     dbprint64s("o:      ", o);
 
+    //
+    // update reach as we git a response.
+    //
+    persist->reach |= 1;
+    dbprintf("NTP::getOffsetAndDelay: reach now: 0x%02x\n", persist->reach);
+
     int i;
     for (i = persist->sample_count - 1; i >= 0; --i)
     {
@@ -273,7 +282,7 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
             continue;
         }
         persist->samples[i + 1] = persist->samples[i];
-        dbprintf("getOffsetAndDelay: persist->samples[%d]: %.0lf (delay:%d)\n",
+        dbprintf("NTP::getOffsetAndDelay: persist->samples[%d]: %.0lf (delay:%d)\n",
                 i + 1, (double)(offset2ms(persist->samples[i+1].offset)),
                 delay2ms(persist->samples[i+1].delay));
     }
