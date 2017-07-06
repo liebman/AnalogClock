@@ -31,19 +31,16 @@
 #define NTP_DEBUG
 #define NTP_DEBUG_PACKET
 
-typedef int64_t  ntp_offset_t;
-typedef uint64_t ntp_delay_t;
-
-#define offset2sec(x)          (((double)(x))/4294967296L)
-#define ms2fraction(x) ((uint32_t)((long double)(x) / 1000.0 * (long double)4294967296L))
-#define offset2ms(x)           (ntp_offset_t)((x)/((4294967296L)/(1000L)))
-#define delay2ms(x)            (ntp_delay_t)((x)/((4294967296L)/(1000L)))
+typedef double ntp_offset_t;
+typedef double ntp_delay_t;
+typedef double ntp_dispersion_t;
 
 typedef struct ntp_sample
 {
-    uint32_t     timestamp;
-    ntp_offset_t offset;
-    ntp_delay_t  delay;
+    uint32_t         timestamp;
+    ntp_offset_t     offset;
+    ntp_delay_t      delay;
+    ntp_dispersion_t dispersion;
 } NTPSample;
 
 #define NTP_SERVER_LENGTH   64 // max length+1 of ntp server name

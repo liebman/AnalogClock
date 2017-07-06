@@ -23,36 +23,43 @@
 #define NTP_INTERNAL
 #include "NTP.h"
 
-#define LI_NONE        0
-#define LI_SIXTY_ONE   1
-#define LI_FIFTY_NINE  2
-#define LI_ALARM       3
+#define MINPOLL         4
+#define PHI             15e-6   /* % frequency tolerance (15 ppm) */
+#define PRECISION       -18     /* precision (log2 s)  */
 
-#define MODE_RESERVED  0
-#define MODE_ACTIVE    1
-#define MODE_PASSIVE   2
-#define MODE_CLIENT    3
-#define MODE_SERVER    4
-#define MODE_BROADCAST 5
-#define MODE_CONTROL   6
-#define MODE_PRIVATE   7
+#define LI_NONE         0
+#define LI_SIXTY_ONE    1
+#define LI_FIFTY_NINE   2
+#define LI_ALARM        3
 
-#define SNTP_VERSION    4
+#define MODE_RESERVED   0
+#define MODE_ACTIVE     1
+#define MODE_PASSIVE    2
+#define MODE_CLIENT     3
+#define MODE_SERVER     4
+#define MODE_BROADCAST  5
+#define MODE_CONTROL    6
+#define MODE_PRIVATE    7
 
-#define setLI(value)      ((value&0x03)<<6)
-#define setVERS(value)    ((value&0x07)<<3)
-#define setMODE(value)    ((value&0x07))
+#define NTP_VERSION     4
 
-#define getLI(value)      ((value>>6)&0x03)
-#define getVERS(value)    ((value>>3)&0x07)
-#define getMODE(value)    (value&0x07)
+#define setLI(value)    ((value&0x03)<<6)
+#define setVERS(value)  ((value&0x07)<<3)
+#define setMODE(value)  ((value&0x07))
 
-#define SEVENTY_YEARS     2208988800L
-#define toEPOCH(t)        ((uint32_t)t-SEVENTY_YEARS)
-#define toNTP(t)          ((uint32_t)t+SEVENTY_YEARS)
-#define ms2Fraction(x)    (uint32_t)((uint64_t)x*(uint64_t)(4294967296L)/(uint64_t)(1000L))
-#define fraction2Ms(x)    (uint32_t)((uint64_t)x/((uint64_t)(4294967296L)/(uint64_t)(1000L)))
-#define toUINT64(x)       (((uint64_t)(x.seconds)<<32) + x.fraction)
+#define getLI(value)    ((value>>6)&0x03)
+#define getVERS(value)  ((value>>3)&0x07)
+#define getMODE(value)  (value&0x07)
+
+#define SEVENTY_YEARS   2208988800L
+#define toEPOCH(t)      ((uint32_t)t-SEVENTY_YEARS)
+#define toNTP(t)        ((uint32_t)t+SEVENTY_YEARS)
+#define toUINT64(x)     (((uint64_t)(x.seconds)<<32) + x.fraction)
+
+#define offset2sec(x)   (((double)(x))/4294967296L)
+#define ms2fraction(x)  ((uint32_t)((double)(x) / 1000.0 * (double)4294967296L))
+#define LOG2D(a)        ((a) < 0 ? 1. / (1L << -(a)) : 1L << (a))
+
 
 typedef struct ntp_time
 {
@@ -77,8 +84,8 @@ typedef struct ntp_packet
 
 #ifdef NTP_DEBUG
 #define dbprintf(...)   logger.printf(__VA_ARGS__)
-#define dbprint64(l,v)  logger.printf("%s %08x:%08x (%Lf)\n", l, (uint32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296L))
-#define dbprint64s(l,v) logger.printf("%s %08x:%08x (%Lf)\n", l,  (int32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296L))
+#define dbprint64(l,v)  logger.printf("%s %08x:%08x (%Lf)\n", l, (uint32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
+#define dbprint64s(l,v) logger.printf("%s %08x:%08x (%Lf)\n", l,  (int32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
 #define dbprintln(x)    logger.println(x)
 #define dbflush()       logger.flush()
 #else
@@ -181,7 +188,8 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     now.fraction = ms2fraction(end - start); // assumption: will be less than 1 second!
 
     memset((void*) &ntp, 0, sizeof(ntp));
-    ntp.flags = setLI(LI_NONE) | setVERS(SNTP_VERSION) | setMODE(MODE_CLIENT);
+    ntp.flags = setLI(LI_NONE) | setVERS(NTP_VERSION) | setMODE(MODE_CLIENT);
+    ntp.poll  = 4;
     ntp.orig_time = now;
 
     //dumpNTPPacket(&ntp);
@@ -257,21 +265,17 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
     uint64_t T1 = toUINT64(now);
     uint64_t T2 = toUINT64(ntp.recv_time);
     uint64_t T3 = toUINT64(ntp.xmit_time);
-    uint64_t T4 = T1 + ms2Fraction(duration);
-    int64_t o = ((int64_t) (T2 - T1) + (int64_t) (T3 - T4)) / 2;
-    int64_t d = (T4 - T1) - (T3 - T2);
+    uint64_t T4 = T1 + ms2fraction(duration);
+    ntp_offset_t o = offset2sec(((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2);
+    ntp_delay_t  d = offset2sec( (int64_t)(T4 - T1) - (int64_t)(T3 - T2));
     dbprint64("T1:     ", T1);
     dbprint64("T2:     ", T2);
     dbprint64("T3:     ", T3);
     dbprint64("T4:     ", T4);
-    dbprint64s("d:      ", d);
-    dbprint64s("o:      ", o);
+    dbprintf("delay:   %lf\n", d);
+    dbprintf("offset:  %lf\n", o);
 
 #if 1
-#define PHI             15e-6   /* % frequency tolerance (15 ppm) */
-#define PRECISION       -18     /* precision (log2 s)  */
-#define LOG2D(a)        ((a) < 0 ? 1. / (1L << -(a)) : \
-                            1L << (a))          /* poll, etc. */
     double disp = LOG2D(ntp.precision) + LOG2D(PRECISION) + PHI * offset2sec(T4-T1);
     dbprintf("NTP::getOffsetAndDelay: DISPERSION: %lf\n", disp);
 #endif
@@ -290,27 +294,33 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
             continue;
         }
         persist->samples[i + 1] = persist->samples[i];
-        dbprintf("NTP::getOffsetAndDelay: persist->samples[%d]: %.0lf (delay:%d)\n",
-                i + 1, (double)(offset2ms(persist->samples[i+1].offset)),
-                delay2ms(persist->samples[i+1].delay));
+        dbprintf("NTP::getOffsetAndDelay: persist->samples[%d]: %lf delay:%lf disp:%lf\n",
+                i + 1, persist->samples[i+1].offset, persist->samples[i+1].delay, persist->samples[i+1].dispersion);
     }
 
-    persist->samples[0].timestamp = now_seconds;
-    persist->samples[0].offset = o;
-    persist->samples[0].delay = d;
-
-    dbprintf("NTP::getOffsetAndDelay: persist->samples[%d]: %.0lf (delay:%d)\n", 0,
-            (double)(offset2ms(persist->samples[0].offset)),
-            delay2ms(persist->samples[0].delay));
+    persist->samples[0].timestamp  = now_seconds;
+    persist->samples[0].offset     = o;
+    persist->samples[0].delay      = d;
+    persist->samples[0].dispersion = disp;
+    dbprintf("NTP::getOffsetAndDelay: persist->samples[%d]: %lf delay:%lf disp:%lf\n",
+    		0, persist->samples[0].offset, persist->samples[0].delay, persist->samples[i+1].dispersion);
 
     if (persist->sample_count < NTP_SAMPLE_COUNT)
     {
         persist->sample_count += 1;
     }
 
+    double jitter = 0.0;
+    for(i = 0; i < (int)persist->sample_count; ++i)
+    {
+        jitter += pow(persist->samples[0].offset, 2.0);
+    }
+    jitter = sqrt(jitter / (double)persist->sample_count);
+    dbprintf("jitter: %lf\n", jitter);
+
     if (persist->sample_count > 1)
     {
-        double   offset_delta = offset2sec(persist->samples[0].offset - persist->samples[1].offset);
+        double   offset_delta = persist->samples[0].offset - persist->samples[1].offset;
         dbprintf("offset_delta: %lfs\n", offset_delta);
         uint32_t time_delta   = persist->samples[0].timestamp - persist->samples[1].timestamp;
         dbprintf("time_delta:   %ds\n", time_delta);
@@ -319,7 +329,7 @@ int NTP::getOffsetAndDelay(const char* server_name, uint32_t now_seconds, ntp_of
         persist->drift = (persist->drift*NTP_SAMPLE_COUNT + local_drift) / (NTP_SAMPLE_COUNT+1);
     }
 
-    dbprintf("drift: %0.3lf\n", persist->drift);
+    dbprintf("drift: %0.3lfppm\n", persist->drift);
 
     if (offset != NULL)
     {

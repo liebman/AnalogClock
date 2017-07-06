@@ -304,9 +304,9 @@ void handleRTC()
 
         if (HTTP.hasArg("offset"))
         {
-        	ntp_offset_t offset_ms = atoi(HTTP.arg("offset").c_str());
-        	dbprintf("handleRTC: offset_ms: %d\n", offset_ms);
-            setRTCfromOffset(offset_ms, true);
+        	ntp_offset_t offset = strtod(HTTP.arg("offset").c_str(), NULL);
+        	dbprintf("handleRTC: offset: %lf\n", offset);
+            setRTCfromOffset(offset, true);
         }
         else if (HTTP.hasArg("sync") && getValidBoolean("sync"))
         {
@@ -367,7 +367,7 @@ void handleNTP()
         }
         code = 200;
 
-        snprintf(message, 64, "OFFSET: %.0lfms (%s)\n", (double)offset, address.toString().c_str());
+        snprintf(message, 64, "OFFSET: %0.6lf (%s)\n", offset, address.toString().c_str());
     }
 
     clk.setStayActive(false);
@@ -836,16 +836,16 @@ int compareOffsetTime(const void* a, const void* b)
     return *a1 - *b1;
 }
 
-int setRTCfromOffset(ntp_offset_t offset_ms, bool sync)
+int setRTCfromOffset(ntp_offset_t offset, bool sync)
 {
-	int32_t  seconds  = offset_ms / 1000L;
-	uint32_t msdelay = abs(offset_ms % 1000L);
-	if (offset_ms > 0)
+	int32_t  seconds = floor(offset);
+	uint32_t msdelay = fabs((offset-seconds)*1000);
+	if (offset > 0)
 	{
 		seconds = seconds + 1;
 		msdelay = 1000 - msdelay;
 	}
-	dbprintf("offset_ms: %Ld seconds: %d msdelay: %d\n", offset_ms, seconds, msdelay);
+	dbprintf("offset: %lf seconds: %d msdelay: %d\n", offset, seconds, msdelay);
 
     DS3231DateTime dt;
 
@@ -880,7 +880,7 @@ int setRTCfromOffset(ntp_offset_t offset_ms, bool sync)
 	return 0;
 }
 
-int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset_ms, IPAddress* result_address)
+int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset, IPAddress* result_address)
 {
     dbprintf("using server: %s\n", server);
 
@@ -907,22 +907,21 @@ int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset_ms,
         *result_address = ntp.getServerAddress();
     }
 
-    ntp_offset_t offset_ms = offset2ms(offset);
-    if (result_offset_ms != NULL)
+    if (result_offset != NULL)
     {
-        *result_offset_ms = offset_ms;
+        *result_offset = offset;
     }
-    dbprintf("********* NTP OFFSET: %Lf (%Ldms)\n", offset2longDouble(offset), offset_ms);
+    dbprintf("********* NTP OFFSET: %lf\n", offset);
 
     //
     // only set the RTC if we have a big enough offset.
     //
-    if ((offset_ms >  NTP_SET_RTC_THRESHOLD) ||
-        (offset_ms < -NTP_SET_RTC_THRESHOLD))
+    if ((offset >  NTP_SET_RTC_THRESHOLD) ||
+        (offset < -NTP_SET_RTC_THRESHOLD))
     {
         dbprintf("offset > %dms, updating RTC!\n", NTP_SET_RTC_THRESHOLD);
         // compute the offset in ms to where the next second should start
-        int error =  setRTCfromOffset(offset_ms, sync);
+        int error =  setRTCfromOffset(offset, sync);
 
         if (error)
         {

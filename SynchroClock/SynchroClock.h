@@ -55,7 +55,7 @@
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
 
-#define NTP_SET_RTC_THRESHOLD  40     // if offset greater than this update the RTC
+#define NTP_SET_RTC_THRESHOLD  0.04     // if offset greater than this update the RTC
 
 #define USE_STOP_THE_CLOCK            // if defined then stop the clock for small negative adjustments
 #define STOP_THE_CLOCK_MAX     60     // maximum difference where we will use stop the clock
