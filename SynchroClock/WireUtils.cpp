@@ -22,15 +22,8 @@
 
 #include "WireUtils.h"
 
-#ifdef DEBUG_WIRE_UTILS
-#define dbprintf(...) logger.printf(__VA_ARGS__)
-#define dbprintln(x)  logger.println(x)
-#define dbflush()     logger.flush()
-#else
-#define dbprintf(...)
-#define dbprintln(x)
-#define dbflush()
-#endif
+#define DEBUG
+#include "Logger.h"
 
 WireUtilsC::WireUtilsC()
 {

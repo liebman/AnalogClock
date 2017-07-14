@@ -24,9 +24,6 @@
 #define DS3231DATETIME_H_
 #include <Arduino.h>
 #include "TimeUtils.h"
-#include "Logger.h"
-
-#define DEBUG_DS3231_DATE_TIME
 
 #define MAX_POSITION      43200 // seconds in 12 hours
 
@@ -41,9 +38,6 @@ public:
 	uint16_t      getPosition();
     uint16_t      getPosition(int offset);
     const char*   string();
-#ifdef DEBUG_DS3231_DATE_TIME
-	void          debugPrint(const char* prefix);
-#endif
 
 	uint8_t  getDay();
     uint8_t  getDate();

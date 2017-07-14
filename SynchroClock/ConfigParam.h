@@ -23,9 +23,7 @@
 #ifndef CONFIGPARAM_H_
 #define CONFIGPARAM_H_
 #include <WiFiManager.h>
-#include "Logger.h"
 
-#define DEBUG_CONFIG_PARAM
 #define MAX_VALUE_LENGTH 63
 
 class ConfigParam

@@ -26,10 +26,6 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <lwip/def.h> // htonl() & ntohl()
-#include "Logger.h"
-
-#define NTP_DEBUG
-#define NTP_DEBUG_PACKET
 
 typedef double ntp_offset_t;
 typedef double ntp_delay_t;
@@ -70,7 +66,7 @@ public:
 private:
   NTPPersist *persist;
   uint16_t   port;
-  WiFiUDP    udp;
+  WiFiUdp    udp;
 
   int        ping(IPAddress server);
 };

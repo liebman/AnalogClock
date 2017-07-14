@@ -27,7 +27,6 @@
 #include <ESP8266WiFi.h>
 
 #define USE_TCP
-#define DEBUG_LOGGER
 
 #ifdef USE_TCP
 #include <WiFiClient.h>
@@ -66,4 +65,25 @@ private:
 
 extern Logger logger;
 
+#ifndef LOGGER_IMPLEMENTATION
+#ifdef DEBUG
+#define dbbegin(x)      logger.begin(x)
+#define dbnetlog(h, p)  {if (strlen(h) && p) logger.setNetworkLogger(h, p);}
+#define dbend()         logger.end()
+#define dbprintf(...)   logger.printf(__VA_ARGS__)
+#define dbprintln(x)    logger.println(x)
+#define dbprint64(l,v)  logger.printf("%s %08x:%08x (%Lf)\n", l, (uint32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
+#define dbprint64s(l,v) logger.printf("%s %08x:%08x (%Lf)\n", l,  (int32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
+#define dbflush()       logger.flush()
+#else
+#define dbbegin(x)
+#define dbnetlog(h, p)
+#define dbend()
+#define dbprintf(...)
+#define dbprintln(x)
+#define dbprint64(l,v)
+#define dbprint64s(l,v)
+#define dbflush()
+#endif
+#endif /* not LOGGER_IMPLEMENTATION */
 #endif /* LOGGER_H_ */

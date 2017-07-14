@@ -20,8 +20,10 @@
  *      Author: liebman
  */
 
+#define LOGGER_IMPLEMENTATION
 #include "Logger.h"
 
+#define DEBUG_LOGGER
 
 #ifdef DEBUG_LOGGER
 #define DBP_BUF_SIZE 256

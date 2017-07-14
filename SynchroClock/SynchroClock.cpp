@@ -22,6 +22,16 @@
 
 #include "SynchroClock.h"
 
+#define DEBUG
+#include "Logger.h"
+
+//
+// These are only used when debugging
+//
+//#define DISABLE_DEEP_SLEEP
+//#define DISABLE_INITIAL_NTP
+//#define DISABLE_INITIAL_SYNC
+
 Config           config;                       // configuration persisted in the EEPROM
 DeepSleepData    dsd;                          // data persisted in the RTC memory
 FeedbackLED      feedback(LED_PIN);
@@ -35,23 +45,6 @@ boolean force_config = false; // reset handler sets this to force into config if
 boolean stay_awake   = false; // don't use deep sleep
 
 char message[128]; // buffer for http return values
-
-#ifdef DEBUG_SYNCHRO_CLOCK
-#define DBP_BUF_SIZE 256
-#define dbbegin(x)      logger.begin(x)
-#define dbnetlog(h, p)  {if (strlen(h) && p) logger.setNetworkLogger(h, p);}
-#define dbend()         logger.end()
-#define dbprintf(...)   logger.printf(__VA_ARGS__)
-#define dbprintln(x)    logger.println(x)
-#define dbflush()       logger.flush()
-#else
-#define dbbegin(x)
-#define dbnetlog(h, p)
-#define dbend()
-#define dbprintf(...)
-#define dbprintln(x)
-#define dbflush()
-#endif
 
 boolean parseBoolean(const char* value)
 {

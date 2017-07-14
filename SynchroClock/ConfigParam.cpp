@@ -22,16 +22,8 @@
 
 #include "ConfigParam.h"
 
-#ifdef DEBUG_CONFIG_PARAM
-#define DBP_BUF_SIZE 256
-#define dbprintf(...) logger.printf(__VA_ARGS__)
-#define dbprintln(x)  logger.println(x)
-#define dbflush()     logger.flush()
-#else
-#define dbprintf(...)
-#define dbprintln(x)
-#define dbflush()
-#endif
+#define DEBUG
+#include "Logger.h"
 
 ConfigParam::ConfigParam(WiFiManager &wifi, const char *label)
 {

@@ -22,15 +22,8 @@
 
 #include "DS3231.h"
 
-#ifdef DEBUG_DS3231
-#define dbprintf(...) logger.printf(__VA_ARGS__)
-#define dbprintln(x)  logger.println(x)
-#define dbflush()     logger.flush()
-#else
-#define dbprintf(...)
-#define dbprintln(x)
-#define dbflush()
-#endif
+#define DEBUG
+#include "Logger.h"
 
 DS3231::DS3231()
 {

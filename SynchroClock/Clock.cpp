@@ -22,15 +22,11 @@
 
 #include "Clock.h"
 
-#ifdef DEBUG_CLOCK
-#define dbprintf(...) logger.printf(__VA_ARGS__)
-#define dbprintln(x)  logger.println(x)
-#define dbflush()     logger.flush()
-#else
-#define dbprintf(...)
-#define dbprintln(x)
-#define dbflush()
-#endif
+#define DEBUG
+#include "Logger.h"
+
+//#define DISABLE_ACTIVE
+//#define DISABLE_EDGE
 
 Clock::Clock(int _pin)
 {

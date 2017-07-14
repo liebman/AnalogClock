@@ -35,25 +35,6 @@
 #include "WireUtils.h"
 #include "TimeUtils.h"
 #include "ConfigParam.h"
-#include "Logger.h"
-
-//
-// this enables Serial debugging output
-//
-#define DEBUG_SYNCHRO_CLOCK
-
-//
-//
-//
-#define NETWORK_LOGGER_HOST "192.168.0.42" // hard coded for now, need to add to wifi config
-#define NETWORK_LOGGER_PORT 1421
-
-//
-// These are only used when debugging
-//
-//#define DISABLE_DEEP_SLEEP
-//#define DISABLE_INITIAL_NTP
-//#define DISABLE_INITIAL_SYNC
 
 #define NTP_SET_RTC_THRESHOLD  0.04     // if offset greater than this update the RTC
 

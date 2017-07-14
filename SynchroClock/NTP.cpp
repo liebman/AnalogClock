@@ -23,6 +23,12 @@
 #define NTP_INTERNAL
 #include "NTP.h"
 
+#define DEBUG
+#include "Logger.h"
+
+#define NTP_DEBUG_PACKET
+
+
 #define MINPOLL         4
 #define PHI             15e-6   /* % frequency tolerance (15 ppm) */
 #define PRECISION       -18     /* precision (log2 s)  */
@@ -82,20 +88,6 @@ typedef struct ntp_packet
     NTPTime xmit_time;
 } NTPPacket;
 
-#ifdef NTP_DEBUG
-#define dbprintf(...)   logger.printf(__VA_ARGS__)
-#define dbprint64(l,v)  logger.printf("%s %08x:%08x (%Lf)\n", l, (uint32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
-#define dbprint64s(l,v) logger.printf("%s %08x:%08x (%Lf)\n", l,  (int32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
-#define dbprintln(x)    logger.println(x)
-#define dbflush()       logger.flush()
-#else
-#define dbprintf(...)
-#define dbprint64(l,v)
-#define dbprint64s(l,v)
-#define dbprintln(x)
-#define dbflush()
-
-#endif
 
 #ifdef NTP_DEBUG_PACKET
 void dumpNTPPacket(NTPPacket* ntp)

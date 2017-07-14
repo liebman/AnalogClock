@@ -22,16 +22,8 @@
 
 #include "TimeUtils.h"
 
-#ifdef DEBUG_TIME_UTILS
-#define DBP_BUF_SIZE 256
-#define dbprintf(...) logger.printf(__VA_ARGS__)
-#define dbprintln(x)  logger.println(x)
-#define dbflush()     logger.flush()
-#else
-#define dbprintf(...)
-#define dbprintln(x)
-#define dbflush()
-#endif
+#define DEBUG
+#include "Logger.h"
 
 uint8_t TimeUtils::parseSmallDuration(const char* value)
 {

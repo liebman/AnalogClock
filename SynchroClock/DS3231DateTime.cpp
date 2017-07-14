@@ -23,17 +23,27 @@
 #include "DS3231DateTime.h"
 
 
-#ifdef DEBUG_DS3231_DATE_TIME
-#define dbprintf(...) logger.printf(__VA_ARGS__)
-#define dbprintln(x)  logger.println(x)
-#define dbflush()     logger.flush()
-#define dbvalue(x)     debugPrint(x)
+#define DEBUG
+#include "Logger.h"
+
+#ifdef DEBUG
+#define dbvalue(prefix) { \
+    dbprintf("%s position:%u (%04u-%02u-%02u %02u:%02u:%02u) weekday:%u century:%d unix:%lu\n", \
+            prefix, \
+            getPosition(), \
+            year+1900+100, \
+            month, \
+            date, \
+            hours, \
+            minutes, \
+            seconds, \
+            day, \
+            century, \
+            getUnixTime());}
 #else
-#define dbprintf(...)
-#define dbprintln(x)
-#define dbflush()
-#define dbvalue(x)
+#define dbvalue(prefix)
 #endif
+
 
 DS3231DateTime::DS3231DateTime()
 {
@@ -201,25 +211,4 @@ uint16_t DS3231DateTime::getYear()
 {
     return year+2000;
 }
-
-#ifdef DEBUG_DS3231_DATE_TIME
-void DS3231DateTime::debugPrint(const char* prefix)
-{
-    uint16_t      position = getPosition();
-    unsigned long unix     = getUnixTime();
-
-    dbprintf("%s position:%u (%04u-%02u-%02u %02u:%02u:%02u) weekday:%u century:%d unix:%lu\n",
-            prefix,
-            position,
-            year+1900+100,
-            month,
-            date,
-            hours,
-            minutes,
-            seconds,
-            day,
-            century,
-            unix);
-}
-#endif
 
