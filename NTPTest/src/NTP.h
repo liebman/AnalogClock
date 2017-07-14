@@ -18,11 +18,13 @@
 
 #define NTP_PORT 123
 
+typedef double ntp_offset_t;
+
 typedef struct ntp_sample
 {
-    uint32_t timestamp;
-    double   offset;
-    double   delay;
+    uint32_t     timestamp;
+    ntp_offset_t offset;
+    double       delay;
 } NTPSample;
 
 typedef struct ntp_adjustment

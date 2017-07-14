@@ -36,7 +36,7 @@ Config           config;                       // configuration persisted in the
 DeepSleepData    dsd;                          // data persisted in the RTC memory
 FeedbackLED      feedback(LED_PIN);
 ESP8266WebServer HTTP(80);
-NTP              ntp(123, &(dsd.ntp_persist));
+NTP              ntp(&(dsd.ntp_persist));
 Clock            clk(SYNC_PIN);
 DS3231           rtc;
 
@@ -297,7 +297,7 @@ void handleRTC()
 
         if (HTTP.hasArg("offset"))
         {
-        	ntp_offset_t offset = strtod(HTTP.arg("offset").c_str(), NULL);
+        	double offset = strtod(HTTP.arg("offset").c_str(), NULL);
         	dbprintf("handleRTC: offset: %lf\n", offset);
             setRTCfromOffset(offset, true);
         }
@@ -342,7 +342,7 @@ void handleNTP()
 
     clk.setStayActive(true);
 
-    ntp_offset_t offset;
+    double offset;
     IPAddress address;
     char message[64];
     int code;
@@ -749,7 +749,7 @@ void setup()
 
     dbprintf("###### rtc data size: %d\n", sizeof(RTCDeepSleepData));
 
-    ntp.begin(1235);
+    ntp.begin(NTP_PORT);
 
     if (!enabled)
     {
@@ -822,14 +822,7 @@ void loop()
     delay(100);
 }
 
-int compareOffsetTime(const void* a, const void* b)
-{
-    const ntp_offset_t *a1 = (const ntp_offset_t*)a;
-    const ntp_offset_t *b1 = (const ntp_offset_t*)b;
-    return *a1 - *b1;
-}
-
-int setRTCfromOffset(ntp_offset_t offset, bool sync)
+int setRTCfromOffset(double offset, bool sync)
 {
 	int32_t  seconds = floor(offset);
 	uint32_t msdelay = fabs((offset-seconds)*1000);
@@ -873,7 +866,24 @@ int setRTCfromOffset(ntp_offset_t offset, bool sync)
 	return 0;
 }
 
-int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset, IPAddress* result_address)
+/*
+ * sync to a second boundary and return the current time in seconds
+ */
+int getTime(uint32_t *result)
+{
+    clk.waitForEdge(CLOCK_EDGE_FALLING);
+
+    DS3231DateTime dt;
+    if (rtc.readTime(dt))
+    {
+        dbprintln("getTime: failed to read from RTC!");
+        return -1;
+    }
+    *result = dt.getUnixTime();
+    return 0;
+}
+
+int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddress* result_address)
 {
     dbprintf("using server: %s\n", server);
 
@@ -887,9 +897,8 @@ int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset, IP
         return ERROR_RTC;
     }
 
-    ntp_offset_t offset;
-    ntp_delay_t  delay;
-    if (ntp.getOffsetAndDelay(server, dt.getUnixTime(), &offset, &delay))
+    double offset;
+    if (ntp.getOffset(server, &offset, &getTime))
     {
         dbprintf("setRTCfromNTP: NTP Failed!\n");
         return ERROR_NTP;
@@ -897,29 +906,20 @@ int setRTCfromNTP(const char* server, bool sync, ntp_offset_t* result_offset, IP
 
     if (result_address)
     {
-        *result_address = ntp.getServerAddress();
+        *result_address = ntp.getAddress();
     }
 
     if (result_offset != NULL)
     {
         *result_offset = offset;
     }
+
     dbprintf("********* NTP OFFSET: %lf\n", offset);
 
-    //
-    // only set the RTC if we have a big enough offset.
-    //
-    if ((offset >  NTP_SET_RTC_THRESHOLD) ||
-        (offset < -NTP_SET_RTC_THRESHOLD))
+    int error =  setRTCfromOffset(offset, sync);
+    if (error)
     {
-        dbprintf("offset > %dms, updating RTC!\n", NTP_SET_RTC_THRESHOLD);
-        // compute the offset in ms to where the next second should start
-        int error =  setRTCfromOffset(offset, sync);
-
-        if (error)
-        {
-        	return error;
-        }
+        return error;
     }
 
     dbprintln("setRTCfromNTP: returning OK");

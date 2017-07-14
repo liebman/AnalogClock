@@ -23,65 +23,32 @@
 #ifndef LOGGER_H_
 #define LOGGER_H_
 
-#include <Arduino.h>
-#include <ESP8266WiFi.h>
-
-#define USE_TCP
-
-#ifdef USE_TCP
-#include <WiFiClient.h>
-#else
-#include <WiFiUDP.h>
-#endif
-
-#define LOGGER_DEFAULT_BAUD 115200L
-#define LOGGER_BUFFER_SIZE  256
-
-
 class Logger {
 public:
-	Logger();
-	void begin();
-	void begin(long int baud);
-	void end();
-	void setNetworkLogger(const char* host, uint16_t port);
-	void println(const char*message);
-	void printf(const char*message, ...);
-	void flush();
-
-private:
-#ifdef USE_TCP
-	WiFiClient _client;
-#else
-    WiFiUDP     _udp;
-#endif
-    const char* _host;
-    uint16_t    _port;
-    uint16_t    _failed;
-    char        _buffer[LOGGER_BUFFER_SIZE];
-
-    void send(const char* message);
+    Logger();
+    void begin(long int baud = 115200L);
+    void end();
+    void setNetworkLogger(const char* host, unsigned short port);
+    void println(const char*message);
+    void printf(const char*message, ...);
+    void flush();
 };
 
 extern Logger logger;
 
+#define DEBUG
 #ifdef DEBUG
-#define dbbegin(x)      logger.begin(x)
-#define dbnetlog(h, p)  {if (strlen(h) && p) logger.setNetworkLogger(h, p);}
-#define dbend()         logger.end()
 #define dbprintf(...)   logger.printf(__VA_ARGS__)
-#define dbprintln(x)    logger.println(x)
 #define dbprint64(l,v)  logger.printf("%s %08x:%08x (%Lf)\n", l, (uint32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
 #define dbprint64s(l,v) logger.printf("%s %08x:%08x (%Lf)\n", l,  (int32_t)(v>>32), (uint32_t)(v & 0xffffffff), ((long double)v / 4294967296.))
+#define dbprintln(x)    logger.println(x)
 #define dbflush()       logger.flush()
 #else
-#define dbbegin(x)
-#define dbnetlog(h, p)
-#define dbend()
 #define dbprintf(...)
-#define dbprintln(x)
 #define dbprint64(l,v)
 #define dbprint64s(l,v)
+#define dbprintln(x)
 #define dbflush()
 #endif
+
 #endif /* LOGGER_H_ */

@@ -20,23 +20,22 @@
  *      Author: liebman
  */
 
-#define LOGGER_IMPLEMENTATION
 #include "Logger.h"
 
-#define DEBUG_LOGGER
+#define DEBUG
 
-#ifdef DEBUG_LOGGER
+#ifdef DEBUG
+
+#undef dbprintf
+#undef dbprint
+#undef dbprintln
+#undef dbflush
+
 #define DBP_BUF_SIZE 256
-
 extern unsigned int snprintf(char*, unsigned int, ...);
 #define dbprintf(...)  {char dbp_buf[DBP_BUF_SIZE]; snprintf(dbp_buf, DBP_BUF_SIZE-1, __VA_ARGS__); Serial.print(dbp_buf);}
 #define dbprintln(x)   Serial.println(x)
 #define dbflush()      Serial.flush()
-#else
-#define dbprintf(...)
-#define dbprint(x)
-#define dbprintln(x)
-#define dbflush()
 #endif
 
 Logger::Logger()
