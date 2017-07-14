@@ -57,9 +57,20 @@ double NTP::getDrift()
 {
     return _persist->drift;
 }
+
 IPAddress NTP::getAddress()
 {
     return _persist->ip;
+}
+
+int NTP::getLastOffset(double *offset)
+{
+    if (_persist->nsamples > 0)
+    {
+        *offset = _persist->samples[0].offset;
+        return 0;
+    }
+    return -1;
 }
 
 // return next poll delay or -1 on error.
@@ -75,10 +86,10 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     //
     if (_persist->ip == 0 || strncmp(server, _persist->server, NTP_SERVER_LENGTH) != 0 || _persist->reach == 0)
     {
-        //dbprintln("NTP::getOffsetAndDelay: updating server and address!");
+        //dbprintln("NTP::getOffset: updating server and address!");
         if (!WiFi.hostByName(server, address))
         {
-            dbprintf("NTP::getOffsetAndDelay: DNS lookup on %s failed!\n", server);
+            dbprintf("NTP::getOffset: DNS lookup on %s failed!\n", server);
             return -1;
         }
 
@@ -89,7 +100,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
         strncpy(_persist->server, server, NTP_SERVER_LENGTH-1);
         _persist->ip = address;
 
-        dbprintf("NTP::getOffsetAndDelay NEW server: %s address: %s\n", server, address.toString().c_str());
+        dbprintf("NTP::getOffset: NEW server: %s address: %s\n", server, address.toString().c_str());
     }
 
     //
@@ -113,7 +124,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     uint32_t start;
     if (getTime(&start))
     {
-        dbprintln("failed to getTime() failed!");
+        dbprintln("NTP::getOffset: failed to getTime() failed!");
         return -1;
     }
 
@@ -138,13 +149,13 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     int size = _udp.recv(&ntp, sizeof(ntp), 1000);
     uint32_t duration = timer.stop();
 
-    dbprintf("used server: %s address: %s\n", _persist->server, address.toString().c_str());
-    dbprintf("packet size: %d\n", size);
-    dbprintf("duration %ums\n", duration);
+    dbprintf("NTP::getOffset: used server: %s address: %s\n", _persist->server, address.toString().c_str());
+    dbprintf("NTP::getOffset: packet size: %d\n", size);
+    dbprintf("NTP::getOffset: duration %ums\n", duration);
 
     if (size != 48)
     {
-        dbprintln("bad packet!");
+        dbprintln("NTP::getOffset: bad packet!");
         return -1;
     }
 
@@ -168,7 +179,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     int err = packet(&ntp, now);
     if (err)
     {
-        dbprintf("packet returns err: %d\n", err);
+        dbprintf("NTP::getOffset: packet returns: %d\n", err);
         return err;
     }
 
@@ -180,13 +191,13 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
 {
     if (ntp->stratum == 0)
     {
-        dbprintln("bad stratum!");
+        dbprintln("NTP::packet: bad stratum!");
         return -1;
     }
 
     if (getLI(ntp->flags) == LI_NOSYNC)
     {
-        dbprintln("leap indicator indicates NOSYNC!");
+        dbprintln("NTP::packet: leap indicator indicates NOSYNC!");
         return -1; /* unsynchronized */
     }
 
@@ -210,7 +221,7 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
     double offset     = LFP2D(((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2);
     double delay      = LFP2D( (int64_t)(T4 - T1) - (int64_t)(T3 - T2));
 
-    dbprintf("offset: %0.6lf delay: %0.6lf\n", offset, delay);
+    dbprintf("NTP::packet: offset: %0.6lf delay: %0.6lf\n", offset, delay);
 
     int i;
     for (i = _persist->nsamples - 1; i >= 0; --i)
@@ -220,14 +231,14 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
             continue;
         }
         _persist->samples[i + 1] = _persist->samples[i];
-        dbprintf("NTP::getOffsetAndDelay: samples[%d]: %lf delay:%lf timestamp:%u\n",
+        dbprintf("NTP::packet: samples[%d]: %lf delay:%lf timestamp:%u\n",
                 i + 1, _persist->samples[i+1].offset, _persist->samples[i+1].delay, _persist->samples[i+1].timestamp);
     }
 
     _persist->samples[0].timestamp  = now.seconds;
     _persist->samples[0].offset     = offset;
     _persist->samples[0].delay      = delay;
-    dbprintf("NTP::getOffsetAndDelay: samples[%d]: %lf delay:%lf timestamp:%u\n",
+    dbprintf("NTP::packet: samples[%d]: %lf delay:%lf timestamp:%u\n",
             0, _persist->samples[0].offset, _persist->samples[0].delay, _persist->samples[0].timestamp);
 
     if (_persist->nsamples < NTP_SAMPLE_COUNT)
@@ -249,13 +260,13 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
         delay_std = delay_std + pow(_persist->samples[i].delay - mean, 2);
     }
     delay_std = SQRT(delay_std / _persist->nsamples);
-    dbprintf("STD DEV: %lf, mean: %lf\n", delay_std, mean);
+    dbprintf("NTP::packet: STD DEV: %lf, mean: %lf\n", delay_std, mean);
 
     //
     // don't use this offset if its off of the mean by moth than one std deviation
     if ((fabs(_persist->samples[0].delay) - mean) > delay_std)
     {
-        dbprintln("sample delay too big!");
+        dbprintln("NTP::packet: sample delay too big!");
         return -1;
     }
 
@@ -264,7 +275,7 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
     //
     if (fabs(offset) < NTP_OFFSET_THRESHOLD)
     {
-        dbprintln("offset not big enough for adjust!");
+        dbprintln("NTP::packet: offset not big enough for adjust!");
         return -1;
     }
 

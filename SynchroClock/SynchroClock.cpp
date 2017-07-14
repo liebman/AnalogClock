@@ -611,8 +611,9 @@ void setup()
     //
     // initialize config to defaults then load.
     memset(&config, 0, sizeof(config));
+    config.drift          = 0.0;
     config.sleep_duration = DEFAULT_SLEEP_DURATION;
-    config.tz_offset = 0;
+    config.tz_offset      = 0;
 
     //
     // make sure the device is available!
@@ -749,7 +750,7 @@ void setup()
 
     dbprintf("###### rtc data size: %d\n", sizeof(RTCDeepSleepData));
 
-    ntp.begin(NTP_PORT);
+    ntp.begin(NTP_PORT, config.drift);
 
     if (!enabled)
     {

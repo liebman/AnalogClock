@@ -36,22 +36,20 @@
 #include "TimeUtils.h"
 #include "ConfigParam.h"
 
-#define NTP_SET_RTC_THRESHOLD  0.04     // if offset greater than this update the RTC
-
-#define USE_STOP_THE_CLOCK            // if defined then stop the clock for small negative adjustments
-#define STOP_THE_CLOCK_MAX     60     // maximum difference where we will use stop the clock
-#define STOP_THE_CLOCK_EXTRA   2      // extra seconds to leave the clock stopped
+#define USE_STOP_THE_CLOCK          // if defined then stop the clock for small negative adjustments
+#define STOP_THE_CLOCK_MAX     60   // maximum difference where we will use stop the clock
+#define STOP_THE_CLOCK_EXTRA   2    // extra seconds to leave the clock stopped
 
 // pin definitions
-#define LED_PIN           D7          // (GPIO13) LED on pin, active low
-#define SYNC_PIN          D5          // (GPIO14) pin tied to 1hz square wave from RTC
-#define FACTORY_RESET_PIN D6          // (GPIO12) button tied to pin
+#define LED_PIN           D7        // (GPIO13) LED on pin, active low
+#define SYNC_PIN          D5        // (GPIO14) pin tied to 1hz square wave from RTC
+#define FACTORY_RESET_PIN D6        // (GPIO12) button tied to pin
 
-#define DEFAULT_TZ_OFFSET      0              // default timzezone offset in seconds
-#define DEFAULT_NTP_SERVER     "pool.ntp.org" // default NTP server
-#define DEFAULT_SLEEP_DURATION 3600           // default is 1hr
+#define DEFAULT_TZ_OFFSET      0    // default timzezone offset in seconds
+#define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
+#define DEFAULT_SLEEP_DURATION 3600 // default is 1hr
 
-#define DEFAULT_TP_DURATION    24  // pulse duration in ms.
+#define DEFAULT_TP_DURATION    24   // pulse duration in ms.
 #define DEFAULT_AP_DURATION    16  // pulse duration during adjust
 #define DEFAULT_AP_DELAY       12  // delay between adjust pulses in ms.
 #define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
@@ -70,6 +68,7 @@
 
 typedef struct
 {
+    double     drift;
     uint32_t   sleep_duration;           // deep sleep duration in seconds
     int        tz_offset;                // time offset in seconds from UTC
     uint8_t    tp_duration;              // tick pulse duration in ms

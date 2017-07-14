@@ -78,10 +78,11 @@ class NTP
 public:
     NTP(NTPPersist *persist);
     void begin(int port = NTP_PORT, double drift = 0.0);
+    double getDrift();
 
     // return next poll delay or -1 on error.
     int getOffset(const char* server, double* offset, int (*getTime)(uint32_t *result));
-    double getDrift();
+    int getLastOffset(double* offset);
     IPAddress getAddress();
 
 private:
