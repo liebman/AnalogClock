@@ -31,18 +31,26 @@
 //#define DISABLE_DEEP_SLEEP
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
+//#define HARD_CODE_WIFI
 
-Config           config;                       // configuration persisted in the EEPROM
-DeepSleepData    dsd;                          // data persisted in the RTC memory
-FeedbackLED      feedback(LED_PIN);
-ESP8266WebServer HTTP(80);
-NTP              ntp(&(dsd.ntp_persist));
-Clock            clk(SYNC_PIN);
-DS3231           rtc;
+#ifdef HARD_CODED_WIFI
+#define HARD_CODED_SSID "Whatever"
+#define HARD_CODED_PASS "the password"
+// define to declare clock position if its not already running.
+//#define HARD_CODED_POSITION "00:00:00"
+#endif
+
+Config           config;                    // configuration persisted in the EEPROM
+DeepSleepData    dsd;                       // data persisted in the RTC memory
+FeedbackLED      feedback(LED_PIN);         // used to blink LED to indicate status
+ESP8266WebServer HTTP(80);                  // used when debugging/stay awake mode
+NTP              ntp(&(dsd.ntp_persist));   // handles NTP communication & filtering
+Clock            clk(SYNC_PIN);             // clock ticker, manages position of clock
+DS3231           rtc;                       // real time clock on i2c interface
 
 boolean save_config  = false; // used by wifi manager when settings were updated.
-boolean force_config = false; // reset handler sets this to force into config if btn held
-boolean stay_awake   = false; // don't use deep sleep
+boolean force_config = false; // reset handler sets this to force into config mode if button held
+boolean stay_awake   = false; // don't use deep sleep (from config mode option)
 
 char message[128]; // buffer for http return values
 
@@ -110,14 +118,14 @@ void handleAdjustment()
             dbprintf("setting adjustment:%u\n", adj);
             if (clk.writeAdjustment(adj))
             {
-            	dbprintln("failed to set adjustment!");
+                dbprintln("failed to set adjustment!");
             }
         }
     }
 
     if (clk.readAdjustment(&adj))
     {
-    	sprintf(message, "failed to read adjustment!\n");
+        sprintf(message, "failed to read adjustment!\n");
     }
     else
     {
@@ -136,24 +144,23 @@ void handlePosition()
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
-        dbprintf("setting position:%u\n",pos);
+        dbprintf("setting position:%u\n", pos);
         if (clk.writePosition(pos))
         {
-        	dbprintln("failed to set position!");
+            dbprintln("failed to set position!");
         }
     }
 
     if (clk.readPosition(&pos))
     {
-    	sprintf(message, "failed to read position!\n");
+        sprintf(message, "failed to read position!\n");
     }
     else
     {
         int hours = pos / 3600;
         int minutes = (pos - (hours * 3600)) / 60;
         int seconds = pos - (hours * 3600) - (minutes * 60);
-        sprintf(message, "position: %d (%02d:%02d:%02d)\n",
-                pos, hours,     minutes,     seconds);
+        sprintf(message, "position: %d (%02d:%02d:%02d)\n", pos, hours, minutes, seconds);
     }
 
     clk.setStayActive(false);
@@ -171,17 +178,17 @@ void handleTPDuration()
         dbprintf("setting tp_duration:%u\n", value);
         if (clk.writeTPDuration(value))
         {
-        	dbprintln("failed to set TP duration!");
+            dbprintln("failed to set TP duration!");
         }
     }
 
     if (clk.readTPDuration(&value))
     {
-    	sprintf(message, "failed to read TP duration\n");
+        sprintf(message, "failed to read TP duration\n");
     }
     else
     {
-    	sprintf(message, "TP duration: %u\n", value);
+        sprintf(message, "TP duration: %u\n", value);
     }
     clk.setStayActive(false);
 
@@ -198,17 +205,17 @@ void handleAPDuration()
         dbprintf("setting ap_duration:%u\n", value);
         if (clk.writeAPDuration(value))
         {
-        	dbprintln("failed to set AP duration");
+            dbprintln("failed to set AP duration");
         }
     }
 
     if (clk.readAPDuration(&value))
     {
-    	sprintf(message, "failed to read AP duration\n");
+        sprintf(message, "failed to read AP duration\n");
     }
     else
     {
-    	sprintf(message, "AP duration: %u\n", value);
+        sprintf(message, "AP duration: %u\n", value);
     }
     clk.setStayActive(false);
 
@@ -225,17 +232,17 @@ void handleAPDelay()
         dbprintf("setting ap_delay:%u\n", value);
         if (clk.writeAPDelay(value))
         {
-        	dbprintln("failed to set AP delay");
+            dbprintln("failed to set AP delay");
         }
     }
 
     if (clk.readAPDelay(&value))
     {
-    	sprintf(message, "failed to read AP delay\n");
+        sprintf(message, "failed to read AP delay\n");
     }
     else
     {
-    	sprintf(message, "AP delay: %u\n", value);
+        sprintf(message, "AP delay: %u\n", value);
     }
     clk.setStayActive(false);
 
@@ -252,17 +259,17 @@ void handleSleepDelay()
         dbprintf("setting sleep_delay:%u\n", value);
         if (clk.writeSleepDelay(value))
         {
-        	dbprintln("failed to set sleep delay");
+            dbprintln("failed to set sleep delay");
         }
     }
 
     if (clk.readSleepDelay(&value))
     {
-    	sprintf(message, "failed to read sleep delay\n");
+        sprintf(message, "failed to read sleep delay\n");
     }
     else
     {
-    	sprintf(message, "sleep delay: %u\n", value);
+        sprintf(message, "sleep delay: %u\n", value);
     }
     clk.setStayActive(false);
 
@@ -297,8 +304,8 @@ void handleRTC()
 
         if (HTTP.hasArg("offset"))
         {
-        	double offset = strtod(HTTP.arg("offset").c_str(), NULL);
-        	dbprintf("handleRTC: offset: %lf\n", offset);
+            double offset = strtod(HTTP.arg("offset").c_str(), NULL);
+            dbprintf("handleRTC: offset: %lf\n", offset);
             setRTCfromOffset(offset, true);
         }
         else if (HTTP.hasArg("sync") && getValidBoolean("sync"))
@@ -370,7 +377,6 @@ void handleNTP()
     return;
 }
 
-
 void handleWire()
 {
     char message[64];
@@ -406,22 +412,26 @@ void initWiFi()
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
 
-    WiFiManager      wifi(30);
+    WiFiManager wifi(30);
     wifi.setDebugOutput(false);
     wifi.setConnectTimeout(CONNECTION_TIMEOUT);
 
-    wifi.setSaveConfigCallback([](){
+    wifi.setSaveConfigCallback([]()
+    {
         save_config = true;
     });
-    wifi.setAPCallback([](WiFiManager *){
+    wifi.setAPCallback([](WiFiManager *)
+    {
         feedback.blink(FEEDBACK_LED_FAST);
     });
 
-    ConfigParam offset(wifi, "offset", "Time Zone", config.tz_offset, 8, [](const char* result){
+    ConfigParam offset(wifi, "offset", "Time Zone", config.tz_offset, 8, [](const char* result)
+    {
         config.tz_offset = TimeUtils::parseOffset(result);
         dbprintf("setting tz_offset to %d\n", config.tz_offset);
     });
-    ConfigParam position(wifi, "position", "Clock Position", "", 8, [](const char* result){
+    ConfigParam position(wifi, "position", "Clock Position", "", 8, [](const char* result)
+    {
         if (strlen(result))
         {
             uint16_t position = TimeUtils::parsePosition(result);
@@ -432,77 +442,119 @@ void initWiFi()
             }
         }
     });
-    ConfigParam ntp_server(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result){
+    ConfigParam ntp_server(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result)
+    {
         strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
     });
 
     ConfigParam tc1_label(wifi, "<p>1st Time Change</p>");
-    ConfigParam tc1_occurence(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 2, [](const char* result){
+    ConfigParam tc1_occurence(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 2, [](const char* result)
+    {
         config.tc[0].occurrence = TimeUtils::parseOccurrence(result);
     });
-    ConfigParam tc1_day_of_week(wifi, "tc1_day_of_week", "Day of Week (Sun=0)", config.tc[0].day_of_week, 2, [](const char* result){
+    ConfigParam tc1_day_of_week(wifi, "tc1_day_of_week", "Day of Week (Sun=0)", config.tc[0].day_of_week, 2, [](const char* result)
+    {
         config.tc[0].day_of_week = TimeUtils::parseDayOfWeek(result);
     });
-    ConfigParam tc1_month(wifi, "tc1_month", "Month (Jan=1)", config.tc[0].month, 3, [](const char* result){
+    ConfigParam tc1_month(wifi, "tc1_month", "Month (Jan=1)", config.tc[0].month, 3, [](const char* result)
+    {
         config.tc[0].month = TimeUtils::parseMonth(result);
     });
-    ConfigParam tc1_hour(wifi, "tc1_hour", "Hour (0-23)", config.tc[0].hour, 3, [](const char* result){
+    ConfigParam tc1_hour(wifi, "tc1_hour", "Hour (0-23)", config.tc[0].hour, 3, [](const char* result)
+    {
         config.tc[0].hour = TimeUtils::parseHour(result);
     });
-    ConfigParam tc1_offset(wifi, "tc1_offset", "Time Offset", config.tc[0].tz_offset, 8, [](const char* result){
+    ConfigParam tc1_offset(wifi, "tc1_offset", "Time Offset", config.tc[0].tz_offset, 8, [](const char* result)
+    {
         config.tc[0].tz_offset = TimeUtils::parseOffset(result);
     });
 
     ConfigParam tc2_label(wifi, "<p>2ns Time Change</p>");
-    ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 2, [](const char* result){
+    ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 2, [](const char* result)
+    {
         config.tc[1].occurrence = TimeUtils::parseOccurrence(result);
     });
-    ConfigParam tc2_day_of_week(wifi, "tc2_day_of_week", "Day of Week (Sun=0)", config.tc[1].day_of_week, 2, [](const char* result){
+    ConfigParam tc2_day_of_week(wifi, "tc2_day_of_week", "Day of Week (Sun=0)", config.tc[1].day_of_week, 2, [](const char* result)
+    {
         config.tc[1].day_of_week = TimeUtils::parseDayOfWeek(result);
     });
-    ConfigParam tc2_month(wifi, "tc2_month", "Month (Jan=1)", config.tc[1].month, 3, [](const char* result){
+    ConfigParam tc2_month(wifi, "tc2_month", "Month (Jan=1)", config.tc[1].month, 3, [](const char* result)
+    {
         config.tc[1].month = TimeUtils::parseMonth(result);
     });
-    ConfigParam tc2_hour(wifi, "tc2_hour", "Hour (0-23)", config.tc[1].hour, 3, [](const char* result){
+    ConfigParam tc2_hour(wifi, "tc2_hour", "Hour (0-23)", config.tc[1].hour, 3, [](const char* result)
+    {
         config.tc[1].hour = TimeUtils::parseHour(result);
     });
-    ConfigParam tc2_offset(wifi, "tc2_offset", "Time Offset", config.tc[1].tz_offset, 8, [](const char* result){
+    ConfigParam tc2_offset(wifi, "tc2_offset", "Time Offset", config.tc[1].tz_offset, 8, [](const char* result)
+    {
         config.tc[1].tz_offset = TimeUtils::parseOffset(result);
     });
 
     ConfigParam advance_label(wifi, "<p>Advanced Settings!</p>");
-    ConfigParam no_sleep(wifi, "stay_awake", "Stay Awake 'true'", "", 8, [](const char* result){
+    ConfigParam no_sleep(wifi, "stay_awake", "Stay Awake 'true'", "", 8, [](const char* result)
+    {
         stay_awake = parseBoolean(result);
         dbprintf("no_sleep: result:'%s' -> stay_awake:%d\n", result, stay_awake);
     });
-    ConfigParam sleep_duration(wifi, "sleep_duration", "Sleep", config.sleep_duration, 8, [](const char* result){
+    ConfigParam sleep_duration(wifi, "sleep_duration", "Sleep", config.sleep_duration, 8, [](const char* result)
+    {
         config.sleep_duration = atoi(result);
     });
-    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", config.tp_duration, 8, [](const char* result){
+    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", config.tp_duration, 8, [](const char* result)
+    {
         config.tp_duration = TimeUtils::parseSmallDuration(result);
         clk.writeTPDuration(config.tp_duration);
     });
-    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", config.ap_duration, 4, [](const char* result){
+    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", config.ap_duration, 4, [](const char* result)
+    {
         config.ap_duration = TimeUtils::parseSmallDuration(result);
         clk.writeAPDuration(config.ap_duration);
     });
-    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", config.ap_delay, 4, [](const char* result){
+    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", config.ap_delay, 4, [](const char* result)
+    {
         config.ap_delay = TimeUtils::parseSmallDuration(result);
         clk.writeAPDelay(config.ap_delay);
     });
-    ConfigParam sleep_delay(wifi, "sleep_delay", "Sleep Delay", config.sleep_delay, 5, [](const char* result){
+    ConfigParam sleep_delay(wifi, "sleep_delay", "Sleep Delay", config.sleep_delay, 5, [](const char* result)
+    {
         config.sleep_delay = TimeUtils::parseSmallDuration(result);
         clk.writeSleepDelay(config.sleep_delay);
     });
-    ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result){
+    ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
+    {
         strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
     });
-    ConfigParam network_logger_port(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 6, [](const char* result){
+    ConfigParam network_logger_port(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 6, [](const char* result)
+    {
         config.network_logger_port = atoi(result);
     });
 
     String ssid = "SynchroClock" + String(ESP.getChipId());
     dbflush();
+#ifdef HARD_CODE_WIFI
+    config.network_logger_host[0] = 0;
+    save_config = true;
+#ifdef HARD_CODED_POSITION
+    if (!clk.getEnable())
+    {
+        uint16_t position = TimeUtils::parsePosition(HARD_CODED_POSITION);
+        dbprintf("setting position to %d\n", position);
+        if (clk.writePosition(position))
+        {
+            dbprintln("failed to set initial position!");
+        }
+    }
+#endif
+    Serial.print("HACK: Connecting to wifi");
+    WiFi.begin(HARD_CODED_SSID, HARD_CODED_PASS);
+    while (WiFi.status() != WL_CONNECTED)
+    {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.println("done!");
+#else
     if (force_config)
     {
         wifi.startConfigPortal(ssid.c_str(), NULL);
@@ -511,13 +563,14 @@ void initWiFi()
     {
         wifi.autoConnect(ssid.c_str(), NULL);
     }
+#endif
     feedback.off();
 
     //
     // if we are not connected then deep sleep and try again.
     if (!WiFi.isConnected())
     {
-        dbprintf("failed to connect to wifi!");
+        dbprintln("failed to connect to wifi!");
         dbprintf("Deep Sleep Time: %d\n", MAX_SLEEP_DURATION);
         dbflush();
         dbend();
@@ -557,7 +610,7 @@ void initWiFi()
     dbnetlog(config.network_logger_host, config.network_logger_port);
 
     IPAddress ip = WiFi.localIP();
-    dbprintf("Connected! IP address is: %u.%u.%u.%u\n",ip[0],ip[1],ip[2],ip[3]);
+    dbprintf("Connected! IP address is: %u.%u.%u.%u\n", ip[0], ip[1], ip[2], ip[3]);
 }
 
 void setup()
@@ -571,93 +624,92 @@ void setup()
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(FACTORY_RESET_PIN, INPUT);
-	feedback.off();
+    feedback.off();
 
-	//
-	// lets read deep sleep data and see if we need to immed go back to sleep.
-	//
-	memset(&dsd, 0, sizeof(dsd));
-	readDeepSleepData();
+    //
+    // lets read deep sleep data and see if we need to immed go back to sleep.
+    //
+    memset(&dsd, 0, sizeof(dsd));
+    readDeepSleepData();
 
     Wire.begin();
 
     while (rtc.begin())
     {
-    	dbprintln("RTC begin failed! Attempting recovery...");
+        dbprintln("RTC begin failed! Attempting recovery...");
 
-    	while (WireUtils.clearBus())
-    	{
-    		delay(10000);
-    		dbprintln("lets try that again...");
-    	}
-		delay(1000);
+        while (WireUtils.clearBus())
+        {
+            delay(10000);
+            dbprintln("lets try that again...");
+        }
+        delay(1000);
     }
 
     DS3231DateTime dt;
     while (rtc.readTime(dt))
     {
-    	dbprintln("read RTC failed! Attempting recovery...");
-    	//
-    	//
-    	while(WireUtils.clearBus())
-    	{
-    		delay(10000);
-    		dbprintln("lets try that again...");
-    	}
-    	delay(10000);
+        dbprintln("read RTC failed! Attempting recovery...");
+        //
+        //
+        while (WireUtils.clearBus())
+        {
+            delay(10000);
+            dbprintln("lets try that again...");
+        }
+        delay(10000);
     }
     dbprintf("intial RTC: %s\n", dt.string());
 
     //
     // initialize config to defaults then load.
     memset(&config, 0, sizeof(config));
-    config.drift          = 0.0;
+    config.drift = 0.0;
     config.sleep_duration = DEFAULT_SLEEP_DURATION;
-    config.tz_offset      = 0;
+    config.tz_offset = 0;
 
     //
     // make sure the device is available!
     //
     feedback.blink(0.9);
     dbprintln("starting clock interface");
-    while(clk.begin())
+    while (clk.begin())
     {
         dbprintln("can't talk with Clock Controller!");
-    	while(WireUtils.clearBus())
-    	{
-    		delay(10000);
-    		dbprintln("lets try that again...");
-    	}
-    	delay(10000);
+        while (WireUtils.clearBus())
+        {
+            delay(10000);
+            dbprintln("lets try that again...");
+        }
+        delay(10000);
     }
     dbprintln("clock interface started");
     feedback.off();
-
 
     clk.setStayActive(true);
 
     uint8_t value;
     config.tp_duration = clk.readTPDuration(&value) ? DEFAULT_TP_DURATION : value;
     config.ap_duration = clk.readAPDuration(&value) ? DEFAULT_AP_DURATION : value;
-    config.ap_delay    = clk.readAPDelay(&value)    ? DEFAULT_AP_DELAY    : value;
+    config.ap_delay = clk.readAPDelay(&value) ? DEFAULT_AP_DELAY : value;
     config.sleep_delay = clk.readSleepDelay(&value) ? DEFAULT_SLEEP_DELAY : value;
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
 
     // Default to disabled (all tz_offsets = 0)
-    config.tc[0].occurrence  = 1;
+    config.tc[0].occurrence = 1;
     config.tc[0].day_of_week = 0;
-    config.tc[0].month       = 1;
-    config.tc[0].hour        = 0;
-    config.tc[0].tz_offset   = 0;
-    config.tc[1].occurrence  = 1;
+    config.tc[0].month = 1;
+    config.tc[0].hour = 0;
+    config.tc[0].tz_offset = 0;
+    config.tc[1].occurrence = 1;
     config.tc[1].day_of_week = 0;
-    config.tc[1].month       = 1;
-    config.tc[1].hour        = 0;
-    config.tc[1].tz_offset   = 0;
+    config.tc[1].month = 1;
+    config.tc[1].hour = 0;
+    config.tc[1].tz_offset = 0;
 
-    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration,
-            config.ap_delay, config.ntp_server, config.network_logger_host, config.network_logger_port);
+    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay,
+            config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
@@ -667,11 +719,12 @@ void setup()
         force_config = true;
     }
 
-    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration,
-            config.ap_delay, config.ntp_server, config.network_logger_host, config.network_logger_port);
+    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay,
+            config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dt.applyOffset(config.tz_offset);
-    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
+    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc,
+    TIME_CHANGE_COUNT);
 
     // if the time zone changed then save the new value and set the the clock
     if (config.tz_offset != new_offset)
@@ -714,7 +767,7 @@ void setup()
         }
         else
         {
-            sleep_duration       = dsd.sleep_delay_left;
+            sleep_duration = dsd.sleep_delay_left;
             dsd.sleep_delay_left = 0;
             dbprintf("delay less than max, mode=DEFAULT sleep_delay_left=%lu\n", dsd.sleep_delay_left);
         }
@@ -734,7 +787,7 @@ void setup()
     clk.writeAPDelay(config.ap_delay);
 
     boolean enabled = clk.getEnable();
-    dbprintf("clock enable is:%u\n",enabled);
+    dbprintf("clock enable is:%u\n", enabled);
 
     //
     // if the clock is not running advance it to sync tick/tock
@@ -742,7 +795,7 @@ void setup()
 #ifndef DISABLE_DEEP_SLEEP
     if (!enabled)
     {
-        force_config = true;    // force the config portal to set the position if the clock is not running
+        force_config = true; // force the config portal to set the position if the clock is not running
     }
 #endif
 
@@ -796,13 +849,13 @@ void setup()
     else
     {
         dsd.sleep_delay_left = 0;
-        sleep_duration       = config.sleep_duration;
-        mode                 = RF_DEFAULT;
+        sleep_duration = config.sleep_duration;
+        mode = RF_DEFAULT;
         if (sleep_duration > MAX_SLEEP_DURATION)
         {
             dsd.sleep_delay_left = sleep_duration - MAX_SLEEP_DURATION;
-            sleep_duration       = MAX_SLEEP_DURATION;
-            mode                 = RF_DISABLED;
+            sleep_duration = MAX_SLEEP_DURATION;
+            mode = RF_DISABLED;
             dbprintf("sleep_duration > max, mode=DISABLE, sleep_delay_left = %lu\n", dsd.sleep_delay_left);
         }
         writeDeepSleepData();
@@ -825,46 +878,46 @@ void loop()
 
 int setRTCfromOffset(double offset, bool sync)
 {
-	int32_t  seconds = floor(offset);
-	uint32_t msdelay = fabs((offset-seconds)*1000);
-	if (offset > 0)
-	{
-		seconds = seconds + 1;
-		msdelay = 1000 - msdelay;
-	}
-	dbprintf("offset: %lf seconds: %d msdelay: %d\n", offset, seconds, msdelay);
+    int32_t seconds = floor(offset);
+    uint32_t msdelay = fabs((offset - seconds) * 1000);
+    if (offset > 0)
+    {
+        seconds = seconds + 1;
+        msdelay = 1000 - msdelay;
+    }
+    dbprintf("offset: %lf seconds: %d msdelay: %d\n", offset, seconds, msdelay);
 
     DS3231DateTime dt;
 
-	clk.waitForEdge(CLOCK_EDGE_FALLING);
-	if (rtc.readTime(dt))
-	{
-		dbprintln("setRTCfromOffset: failed to read from RTC!");
-		return ERROR_RTC;
-	}
+    clk.waitForEdge(CLOCK_EDGE_FALLING);
+    if (rtc.readTime(dt))
+    {
+        dbprintln("setRTCfromOffset: failed to read from RTC!");
+        return ERROR_RTC;
+    }
 
-	// wait for where the next second should start
-	if (msdelay > 0 && msdelay < 1000)
-	{
-		delay(msdelay);
-	}
+    // wait for where the next second should start
+    if (msdelay > 0 && msdelay < 1000)
+    {
+        delay(msdelay);
+    }
 
-	uint32_t old_time = dt.getUnixTime();
-	uint32_t new_time = old_time + seconds;// + 1; // +1 because we waited for the next second
-	dt.setUnixTime(new_time);
+    uint32_t old_time = dt.getUnixTime();
+    uint32_t new_time = old_time + seconds; // + 1; // +1 because we waited for the next second
+    dt.setUnixTime(new_time);
 
-	if (sync)
-	{
-		if (rtc.writeTime(dt))
-		{
-			dbprintf("setRTCfromOffset: FAILED to set RTC: %s\n", dt.string());
-			return ERROR_RTC;
-		}
-	}
+    if (sync)
+    {
+        if (rtc.writeTime(dt))
+        {
+            dbprintf("setRTCfromOffset: FAILED to set RTC: %s\n", dt.string());
+            return ERROR_RTC;
+        }
+    }
 
-	dbprintf("old_time: %d new_time: %d\n", old_time, new_time);
-	dbprintf("set RTC: %s\n", dt.string());
-	return 0;
+    dbprintf("old_time: %d new_time: %d\n", old_time, new_time);
+    dbprintf("set RTC: %s\n", dt.string());
+    return 0;
 }
 
 /*
@@ -917,7 +970,7 @@ int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddres
 
     dbprintf("********* NTP OFFSET: %lf\n", offset);
 
-    int error =  setRTCfromOffset(offset, sync);
+    int error = setRTCfromOffset(offset, sync);
     if (error)
     {
         return error;
@@ -932,15 +985,16 @@ int setCLKfromRTC()
     // if there is already an adjustment in progress then stop it.
     if (clk.writeAdjustment(0))
     {
-    	dbprintln("setCLKfromRTC: failed to clear adjustment!");
-    	return -1;
+        dbprintln("setCLKfromRTC: failed to clear adjustment!");
+        return -1;
     }
 
 #ifdef USE_STOP_THE_CLOCK
     int delta;
     uint16_t clock_pos;
     uint16_t rtc_pos;
-    do {
+    do
+    {
         clk.waitForEdge(CLOCK_EDGE_FALLING);
         delay(10);
 
@@ -968,13 +1022,13 @@ int setCLKfromRTC()
 
             // stop the clock for delta seconds
             clk.setEnable(false);
-            delay(stop_for*1000);
+            delay(stop_for * 1000);
             clk.setEnable(true);
         }
         //
         // if we stopped the clock then repeat block to re-read clock & RTC
         //
-    } while(delta < 0 && abs(delta) < STOP_THE_CLOCK_MAX);
+    } while (delta < 0 && abs(delta) < STOP_THE_CLOCK_MAX);
 #else
     clk.waitForEdge(CLOCK_EDGE_FALLING);
     delay(10);
@@ -1007,8 +1061,8 @@ int setCLKfromRTC()
         clk.waitForEdge(CLOCK_EDGE_RISING);
         if (clk.writeAdjustment(adj))
         {
-        	dbprintln("setCLKfromRTC: failed to set adjustment!");
-        	return -1;
+            dbprintln("setCLKfromRTC: failed to set adjustment!");
+            return -1;
         }
     }
 
@@ -1084,7 +1138,7 @@ boolean readDeepSleepData()
 {
     RTCDeepSleepData rtcdsd;
     dbprintln("loading deep sleep data from RTC Memory");
-    if (!ESP.rtcUserMemoryRead(0, (uint32_t*)&rtcdsd, sizeof(rtcdsd)))
+    if (!ESP.rtcUserMemoryRead(0, (uint32_t*) &rtcdsd, sizeof(rtcdsd)))
     {
         dbprintln("readDeepSleepData: failed to read RTC Memory");
         return false;
@@ -1106,7 +1160,7 @@ boolean writeDeepSleepData()
     memcpy(&rtcdsd.data, &dsd, sizeof(rtcdsd.data));
     rtcdsd.crc = calculateCRC32(((uint8_t*) &rtcdsd.data), sizeof(rtcdsd.data));
 
-    if (!ESP.rtcUserMemoryWrite(0, (uint32_t*)&rtcdsd, sizeof(rtcdsd)))
+    if (!ESP.rtcUserMemoryWrite(0, (uint32_t*) &rtcdsd, sizeof(rtcdsd)))
     {
         dbprintln("writeDeepSleepData: failed to write RTC Memory");
         return false;
