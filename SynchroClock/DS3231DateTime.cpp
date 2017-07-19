@@ -23,7 +23,7 @@
 #include "DS3231DateTime.h"
 
 
-#define DEBUG
+//#define DEBUG
 #include "Logger.h"
 
 #ifdef DEBUG
