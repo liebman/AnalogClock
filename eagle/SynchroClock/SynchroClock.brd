@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="8.2.1">
+<eagle version="8.2.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -3050,7 +3050,7 @@ design rules under a new name.</description>
 <element name="C8" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" package="C2.5-2" value="0.1uf" x="68.58" y="15.24" rot="R90"/>
 <element name="C9" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" package="C2.5-2" value="0.1uf" x="31.75" y="17.78" rot="R90"/>
 <element name="IC2" library="SynchroClock" package="SO16W" value="DS3231/SO" x="77.47" y="15.24"/>
-<element name="IC1" library="SynchroClock" package="TO92-INLINE" value="MCP1702-18" x="12.7" y="8.89"/>
+<element name="IC1" library="SynchroClock" package="TO92-INLINE" value="MCP1702-15" x="12.7" y="8.89"/>
 <element name="JP2" library="pinhead" library_urn="urn:adsk.eagle:library:325" package="1X02" value="CLOCK" x="29.21" y="3.81" rot="R180"/>
 <element name="LED1" library="led" library_urn="urn:adsk.eagle:library:259" package="LED3MM" value="RED" x="3.81" y="34.29"/>
 <element name="MDL1" library="SynchroClock" package="ESP8266-ESP12E" value="ESP12E" x="40.64" y="31.115"/>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="8.2.1">
+<eagle version="8.2.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -530,7 +530,7 @@ or will meet your specific requirements.&lt;p&gt;
 <pin name="GND" x="0" y="-7.62" visible="off" length="short" direction="in" rot="R90"/>
 <pin name="OUT" x="7.62" y="0" visible="off" length="short" direction="pas" rot="R180"/>
 </symbol>
-<symbol name="+1V8">
+<symbol name="+1V5">
 <wire x1="1.27" y1="-1.905" x2="0" y2="0" width="0.254" layer="94"/>
 <wire x1="0" y1="0" x2="-1.27" y2="-1.905" width="0.254" layer="94"/>
 <text x="-2.54" y="-5.08" size="1.778" layer="96" rot="R90">&gt;VALUE</text>
@@ -745,10 +745,10 @@ or will meet your specific requirements.&lt;p&gt;
 </device>
 </devices>
 </deviceset>
-<deviceset name="+1V8" prefix="+3V3">
+<deviceset name="+1V5" prefix="+3V3">
 <description>&lt;b&gt;SUPPLY SYMBOL&lt;/b&gt;</description>
 <gates>
-<gate name="G$1" symbol="+1V8" x="0" y="2.54"/>
+<gate name="G$1" symbol="+1V5" x="0" y="2.54"/>
 </gates>
 <devices>
 <device name="">
@@ -17995,15 +17995,15 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <part name="U2" library="SynchroClock" deviceset="DRV883X-POLULU" device="" value="DRV8838"/>
 <part name="+3V313" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
 <part name="GND12" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="IC1" library="SynchroClock" deviceset="MCP1702" device="INLINE" value="MCP1702-18"/>
+<part name="IC1" library="SynchroClock" deviceset="MCP1702" device="INLINE" value="MCP1702-15"/>
 <part name="GND13" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="+3V315" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
 <part name="GND14" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="C1" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
 <part name="C4" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
 <part name="GND4" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="+3V33" library="SynchroClock" deviceset="+1V8" device=""/>
-<part name="+3V314" library="SynchroClock" deviceset="+1V8" device=""/>
+<part name="+3V33" library="SynchroClock" deviceset="+1V5" device=""/>
+<part name="+3V314" library="SynchroClock" deviceset="+1V5" device=""/>
 <part name="+3V31" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
 <part name="U1" library="SynchroClock" deviceset="TC1262" device=""/>
 <part name="C2" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
