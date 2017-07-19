@@ -22,7 +22,7 @@
 
 #include "DS3231.h"
 
-#define DEBUG
+//#define DEBUG
 #include "Logger.h"
 
 DS3231::DS3231()
