@@ -878,14 +878,17 @@ void loop()
 
 int setRTCfromOffset(double offset, bool sync)
 {
-    int32_t seconds = floor(offset);
-    uint32_t msdelay = fabs((offset - seconds) * 1000);
+    int32_t  seconds = (int32_t)offset;
+    uint32_t msdelay = fabs((offset - (double)seconds) * 1000);
+
     if (offset > 0)
     {
-        seconds = seconds + 1;
-        msdelay = 1000 - msdelay;
+        seconds = seconds + 1; // +1 because we go to the next second
+        msdelay = 1000.0 - msdelay;
     }
-    dbprintf("offset: %lf seconds: %d msdelay: %d\n", offset, seconds, msdelay);
+
+    dbprintf("setRTCfromOffset:: offset: %lf seconds: %d msdelay: %d sync: %s\n",
+            offset, seconds, msdelay, sync ? "true" : "false");
 
     DS3231DateTime dt;
 
@@ -903,7 +906,7 @@ int setRTCfromOffset(double offset, bool sync)
     }
 
     uint32_t old_time = dt.getUnixTime();
-    uint32_t new_time = old_time + seconds; // + 1; // +1 because we waited for the next second
+    uint32_t new_time = old_time + seconds;
     dt.setUnixTime(new_time);
 
     if (sync)
@@ -915,8 +918,8 @@ int setRTCfromOffset(double offset, bool sync)
         }
     }
 
-    dbprintf("old_time: %d new_time: %d\n", old_time, new_time);
-    dbprintf("set RTC: %s\n", dt.string());
+    dbprintf("setRTCfromOffset: old_time: %d new_time: %d\n", old_time, new_time);
+    dbprintf("setRTCfromOffset: RTC: %s\n", dt.string());
     return 0;
 }
 
