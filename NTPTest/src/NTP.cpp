@@ -42,18 +42,19 @@ void dumpNTPPacket(NTPPacket* ntp)
 #define dumpNTPPacket(x)
 #endif
 
-NTP::NTP(NTPRunTime *runtime, NTPPersist *persist, void (*savePersist)())
+NTP::NTP(NTPRunTime *runtime, NTPPersist *persist, void (*savePersist)(), int factor)
 {
     _runtime     = runtime;
     _persist     = persist;
     _savePersist = savePersist;
-    _port    = NTP_PORT;
+    _port        = NTP_PORT;
+    _factor      = factor;
     dbprintf("****** sizeof(NTPRunTime): %d\n", sizeof(NTPRunTime));
 }
 
 void NTP::begin(int port)
 {
-    _port = port;
+    _port   = port;
     _udp.begin(port);
     dbprintf("NTP::begin: nsamples: %d nadjustments: %d, drift: %f\n", _runtime->nsamples, _persist->nadjustments, _persist->drift);
 }
@@ -81,7 +82,7 @@ uint32_t NTP::getPollInterval()
     if (_runtime->nsamples < NTP_SAMPLE_COUNT)
     {
         dbprintln("NTP::getPollInterval: samples not full, 15 minutes!");
-        return 900; // 15 minutes
+        return 900 / _factor; // 15 minutes
     }
 
     //
@@ -90,7 +91,7 @@ uint32_t NTP::getPollInterval()
     if ((_runtime->reach & 0x07) == 0)
     {
         dbprintln("NTP::getPollInterval: last three polls failed, using 15 minutes!");
-        return 900;
+        return 900 / _factor;
     }
 
     //
@@ -99,23 +100,22 @@ uint32_t NTP::getPollInterval()
     if ((_runtime->reach & 0x01) == 0)
     {
         dbprintln("NTP::getPollInterval: last poll failed, using 1 hour!");
-        return 3600;
+        return 3600 / _factor;
     }
 
     //
     // if we don't have drift yet then use a shorter interval
     //
-    if (_persist->drift == 0.0)
+    if (_persist->nadjustments < NTP_ADJUSTMENT_COUNT)
     {
         dbprintln("NTP::getPollInterval: drift not calculated, using 1 hour!");
-        return 3600; // 1 hour
+        return 3600 / _factor; // 1 hour
     }
 
-    //
-    // we have drift compensation active, use a long interval
-    //
-    dbprintln("NTP::getPollInterval: we have drift compensation, using 12 hours!");
-    return 43200; // 12 hours
+    uint32_t seconds = _persist->adjustments[0].timestamp - _persist->adjustments[_persist->nadjustments-1].timestamp;
+    seconds = (seconds / _persist->nadjustments-1) / 2;
+    dbprintf("NTP::getPollInterval: we have drift compensation using avg interval between adjustments/2 %u\n", seconds);
+    return seconds;
 }
 
 int NTP::getOffsetUsingDrift(double *offset_result, int (*getTime)(uint32_t *result))
@@ -155,6 +155,7 @@ int NTP::getOffsetUsingDrift(double *offset_result, int (*getTime)(uint32_t *res
 
     *offset_result = offset;
     _runtime->drift_timestamp = now;
+    _runtime->drifted += offset;
     return 0;
 }
 
@@ -382,8 +383,6 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
 //
 void NTP::clock()
 {
-    double drift = 0.0;
-
     if (_runtime->nsamples >= NTP_SAMPLE_COUNT )
     {
         for (int i = _persist->nadjustments - 1; i >= 0; --i)
@@ -397,9 +396,10 @@ void NTP::clock()
                     i + 1, _persist->adjustments[i+1].adjustment, _persist->adjustments[i+1].timestamp);
         }
 
-        // use the newest sample.
+        // use the newest sample and include any drift we have applied.
         _persist->adjustments[0].timestamp  = _runtime->samples[0].timestamp;
-        _persist->adjustments[0].adjustment = _runtime->samples[0].offset;
+        _persist->adjustments[0].adjustment = _runtime->samples[0].offset + _runtime->drifted;
+        _runtime->drifted = 0.0;
         dbprintf("NTP::clock: adjustments[%d]: %lf timestamp:%u\n",
                 0, _persist->adjustments[0].adjustment, _persist->adjustments[0].timestamp);
 
@@ -411,12 +411,10 @@ void NTP::clock()
         //
         // calculate drift if we have all NTP_ADJUSTMENT_COUNT adjustments
         //
-        if (_persist->nadjustments >= NTP_ADJUSTMENT_COUNT)
+        if (_persist->nadjustments >= 2)
         {
-            computeDrift(&drift);
-            _persist->drift += drift;
-            dbprintf("NTP::clock: drift adjustment: %f mew drift: %f\n", drift, _persist->drift);
-            _persist->nadjustments = 1; // clear the older samples so we compute a new drift adjustment
+            computeDrift(&_persist->drift);
+            dbprintf("NTP::clock: drift: %f\n", _persist->drift);
         }
         dbprintln("NTP::clock: saving 'persist' data!");
         _savePersist();
@@ -431,7 +429,7 @@ int NTP::computeDrift(double* drift_result)
     double a = 0;
     double seconds = _persist->adjustments[0].timestamp - _persist->adjustments[_persist->nadjustments-1].timestamp;
     dbprintf("seconds: %f\n", seconds);
-    for (int i = 0; i < _persist->nadjustments-1; ++i)
+    for (int i = 0; i < _persist->nadjustments-2; ++i)
     {
         a += _persist->adjustments[i].adjustment;
     }

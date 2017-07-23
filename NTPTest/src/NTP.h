@@ -53,6 +53,7 @@ typedef struct ntp_runtime
     NTPSample       samples[NTP_SAMPLE_COUNT];
     int             nsamples;
     uint32_t        drift_timestamp;           // last time drift was applied
+    double          drifted;                   // how much drift we have applied since the last poll.
     // cache these to know when we need to lookup the host again and if its been unreachable.
     char            server[NTP_SERVER_LENGTH]; // cached server name
     uint32_t        ip;                        // cached server ip address (only works for tcp v4)
@@ -83,7 +84,7 @@ typedef struct ntp_packet
 class NTP
 {
 public:
-    NTP(NTPRunTime *runtime, NTPPersist *persist, void (*savePersist)());
+    NTP(NTPRunTime *runtime, NTPPersist *persist, void (*savePersist)(), int factor=1);
     void begin(int port = NTP_PORT);
 
     uint32_t getPollInterval();
@@ -92,14 +93,13 @@ public:
     int getOffset(const char* server, double* offset, int (*getTime)(uint32_t *result));
     int getLastOffset(double* offset);
     IPAddress getAddress();
-
 private:
     NTPRunTime *_runtime;
     NTPPersist *_persist;
     void      (*_savePersist)();
     UDPWrapper _udp;
     int        _port;
-
+    int        _factor; // only used when testing to reduce fixed values by factor
     int  packet(NTPPacket* packet, NTPTime now);
     void clock();
     int  computeDrift(double* drift_result);

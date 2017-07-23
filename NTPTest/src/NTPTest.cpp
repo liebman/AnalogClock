@@ -64,7 +64,7 @@ int getTime(uint32_t *result)
     if (last_time)
     {
         double drift = fake_drift_ppm * (((double)tp.tv_sec - (double)last_time) / 1000000.);
-        printf("this drift: %lf\n", drift);
+        printf("applying fake drift: %lfms\n", drift);
         current_offset += drift;
     }
 
@@ -96,7 +96,7 @@ int main(int argc, char**argv)
     memset(&persist, 0, sizeof(persist));
     memset(&runtime, 0, sizeof(runtime));
     loadPersist();
-    NTP test(&runtime, &persist, &savePersist);
+    NTP test(&runtime, &persist, &savePersist, SPEEDUP_FACTOR);
     test.begin();
     for (int i = 0; i < 1000; ++i)
     {
@@ -116,7 +116,7 @@ int main(int argc, char**argv)
                 current_offset += offset;
                 printf("****** OFFSET: %f current_offset: %f\n", offset, current_offset);
             }
-            sleep_left = test.getPollInterval() / SPEEDUP_FACTOR;
+            sleep_left = test.getPollInterval();
         }
         int interval = MAX_SLEEP;
         if (sleep_left > MAX_SLEEP)
