@@ -99,7 +99,7 @@ private:
     void      (*_savePersist)();
     UDPWrapper _udp;
     int        _port;
-    int        _factor; // only used when testing to reduce fixed values by factor
+    int        _factor; // only used when testing to reduce fixed poll interval values by factor
     int  packet(NTPPacket* packet, NTPTime now);
     void clock();
     int  computeDrift(double* drift_result);
