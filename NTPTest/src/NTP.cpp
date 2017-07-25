@@ -110,17 +110,28 @@ uint32_t NTP::getPollInterval()
         return 3600 / _factor;
     }
 
-    //
-    // if we don't have drift yet then use a shorter interval
-    //
-    if (_persist->drift == 0.0)
+    if (_runtime->poll_interval == 0.0)
     {
-        dbprintln("NTP::getPollInterval: drift not calculated, using 1 hour!");
+        dbprintln("NTP::getPollInterval: interval not calculated yet, using 1 hour!");
         return 3600 / _factor; // 1 hour
     }
 
-    double seconds = NTP_OFFSET_THRESHOLD / (((1.0/(_persist->nadjustments*2)) * fabs(_persist->drift)) / 1000000.0);
-    dbprintf("NTP::getPollInterval: computed based on %d adjustments and drift (%f): %f\n", _persist->nadjustments, _persist->drift, seconds);
+    //
+    // estimate the time till we apply the next offset
+    //
+    double seconds = _runtime->samples[0].offset / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
+    dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
+
+    if (seconds > (259200/_factor)) // 3 days!
+    {
+        dbprintln("NTP::getPollInterval: maxing interval out at 3 days!");
+        seconds = 259200/_factor;
+    }
+    else if (seconds < (900/_factor))
+    {
+        dbprintln("NTP::getPollInterval: min interval is 15 min!!");
+        seconds = 900/_factor;
+    }
     return (uint32_t)seconds;
 }
 
@@ -283,6 +294,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     }
 
     *offset = _runtime->samples[0].offset;
+    _runtime->update_timestamp = _runtime->samples[0].timestamp;
     return 0;
 }
 
@@ -374,6 +386,11 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
     _runtime->reach |= 1;
 
     //
+    // update drift estimate
+    //
+    updateDriftEstimate();
+
+    //
     // don't use this offset if it does not meet the threshold
     //
     if (fabs(offset) < NTP_OFFSET_THRESHOLD)
@@ -442,7 +459,7 @@ void NTP::clock()
 int NTP::computeDrift(double* drift_result)
 {
     double a = 0.0;
-#if 1
+
     uint32_t seconds = 0;
     for(int i = 0; i <= _persist->nadjustments-2; ++i)
     {
@@ -458,17 +475,6 @@ int NTP::computeDrift(double* drift_result)
     double drift = a * 1000000;
     dbprintf("NTP::computeDrift: seconds: %d a: %f drift: %f\n", seconds, a, drift);
 
-#else
-    double seconds = _persist->adjustments[0].timestamp - _persist->adjustments[_persist->nadjustments-1].timestamp;
-    dbprintf("seconds: %f\n", seconds);
-    for (int i = 0; i < _persist->nadjustments-2; ++i)
-    {
-        a += _persist->adjustments[i].adjustment;
-    }
-    a = a / seconds;
-    dbprintf("a: %f\n", a);
-    double drift = a * 1000000;
-#endif
     dbprintf("computeDrift: drift: %f PPM\n", drift);
     if (drift_result != NULL)
     {
@@ -476,4 +482,49 @@ int NTP::computeDrift(double* drift_result)
     }
 
     return 0;
+}
+
+void NTP::updateDriftEstimate()
+{
+    uint32_t timebase = _runtime->update_timestamp; // we only look at timestamps after this.
+    // no update yet!
+    if (timebase == 0)
+    {
+        timebase = _runtime->samples[_runtime->nsamples-1].timestamp;
+    }
+    double sx  = 0.0;
+    double sy  = 0.0;
+    double sxy = 0.0;
+    double sxx = 0.0;
+    int n = 0;
+    for (int i = 0; i <= _runtime->nsamples && _runtime->samples[i].timestamp >= timebase; ++i)
+    {
+        double x = (double)(_runtime->samples[i].timestamp - timebase);
+        double y = _runtime->samples[i].offset;
+        dbprintf("NTP::computeDriftEstimate: x:%-0.8f y:%-0.8f\n", x, y);
+        sx  += x;
+        sy  += y;
+        sxy += x*y;
+        sxx += x*x;
+        ++n;
+    }
+
+    dbprintf("NTP::computeDriftEstimate: found %d samples\n", n);
+
+    if (n < 2)
+    {
+        dbprintln("NTP::computeDriftEstimate: not enough points!");
+    }
+    else
+    {
+        double slope = ( sx*sy - n*sxy ) / ( sx*sx - n*sxx );
+        dbprintf("NTP::computeDriftEstimate: slope: %0.16f\n", slope);
+
+        _runtime->drift_estimate = slope * 1000000;
+
+        _runtime->poll_interval = NTP_OFFSET_THRESHOLD / (((1.0/(n*2)) * fabs(_runtime->drift_estimate)) / 1000000.0);
+        dbprintf("NTP::updateDriftEstimate: poll interval: %f\n", _runtime->poll_interval);
+    }
+
+    dbprintf("NTP::computeDriftEstimate: ESTIMATED DRIFT: %f\n", _runtime->drift_estimate);
 }
