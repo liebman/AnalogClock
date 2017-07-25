@@ -22,7 +22,7 @@
 
 #include "TimeUtils.h"
 
-#define DEBUG
+//#define DEBUG
 #include "Logger.h"
 
 uint8_t TimeUtils::parseSmallDuration(const char* value)

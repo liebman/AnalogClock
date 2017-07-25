@@ -22,7 +22,7 @@
 
 #include "ConfigParam.h"
 
-#define DEBUG
+//#define DEBUG
 #include "Logger.h"
 
 ConfigParam::ConfigParam(WiFiManager &wifi, const char *label)
@@ -65,6 +65,13 @@ ConfigParam::ConfigParam(WiFiManager &wifi, const char *id, const char *placehol
 {
     _apply = applyCB;
     snprintf(_value, MAX_VALUE_LENGTH, "%u", value);
+    init(wifi, id, placeholder, length);
+}
+
+ConfigParam::ConfigParam(WiFiManager &wifi, const char *id, const char *placeholder, double value, int length, void (*applyCB)(const char*))
+{
+    _apply = applyCB;
+    snprintf(_value, MAX_VALUE_LENGTH, "%lf", value);
     init(wifi, id, placeholder, length);
 }
 

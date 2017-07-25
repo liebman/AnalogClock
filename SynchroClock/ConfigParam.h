@@ -34,6 +34,7 @@ public:
     ConfigParam(WiFiManager &wifi, const char *id, const char *placeholder, uint32_t    value, int length, void (*applyCB)(const char* result));
     ConfigParam(WiFiManager &wifi, const char *id, const char *placeholder, uint16_t    value, int length, void (*applyCB)(const char* result));
     ConfigParam(WiFiManager &wifi, const char *id, const char *placeholder, uint8_t     value, int length, void (*applyCB)(const char* result));
+    ConfigParam(WiFiManager &wifi, const char *id, const char *placeholder, double      value, int length, void (*applyCB)(const char* result));
     ConfigParam(WiFiManager &wifi, const char *id, const char *placeholder, const char* value, int length, void (*applyCB)(const char* result));
     ~ConfigParam();
     void init(WiFiManager &wifi, const char *id, const char *placeholder, int length);

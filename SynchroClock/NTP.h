@@ -13,9 +13,6 @@
 #include "Timer.h"
 #include "UDPWrapper.h"
 
-#define DEBUG
-#include "Logger.h"
-
 #define NTP_PORT 123
 
 typedef struct ntp_sample
@@ -37,20 +34,31 @@ typedef struct ntp_adjustment
 #define NTP_OFFSET_THRESHOLD    0.04    // 40ms offset minimum for adjust!
 
 //
-// This is used to validate new NTP responses and compute the clock drift
+//  Long term persisted data includes drift an last adjustment information
+// so that we don't have to wait for a long time after power loss for drift
+// to be active once we have computed it the first time.
 //
 typedef struct ntp_persist
 {
-    NTPSample       samples[NTP_SAMPLE_COUNT];
     NTPAdjustment   adjustments[NTP_ADJUSTMENT_COUNT];
-    int             nsamples;
     int             nadjustments;
-    double          drift;
+    double          drift;                              // computed drift in parts per million
+} NTPPersist;
+
+//
+// This is used to validate new NTP responses and compute the clock drift
+//
+typedef struct ntp_runtime
+{
+    NTPSample       samples[NTP_SAMPLE_COUNT];
+    int             nsamples;
+    uint32_t        drift_timestamp;           // last time drift was applied
+    double          drifted;                   // how much drift we have applied since the last poll.
     // cache these to know when we need to lookup the host again and if its been unreachable.
     char            server[NTP_SERVER_LENGTH]; // cached server name
     uint32_t        ip;                        // cached server ip address (only works for tcp v4)
     uint8_t         reach;
-} NTPPersist;
+} NTPRunTime;
 
 typedef struct ntp_time
 {
@@ -76,23 +84,25 @@ typedef struct ntp_packet
 class NTP
 {
 public:
-    NTP(NTPPersist *persist);
-    void begin(int port = NTP_PORT, double drift = 0.0);
-    double getDrift();
+    NTP(NTPRunTime *runtime, NTPPersist *persist, void (*savePersist)(), int factor=1);
+    void begin(int port = NTP_PORT);
 
+    uint32_t getPollInterval();
+    int getOffsetUsingDrift(double *offset, int (*getTime)(uint32_t *result));
     // return next poll delay or -1 on error.
     int getOffset(const char* server, double* offset, int (*getTime)(uint32_t *result));
     int getLastOffset(double* offset);
     IPAddress getAddress();
-
 private:
+    NTPRunTime *_runtime;
     NTPPersist *_persist;
-    UDPWrapper        _udp;
+    void      (*_savePersist)();
+    UDPWrapper _udp;
     int        _port;
-
-    int packet(NTPPacket* packet, NTPTime now);
-    double clock();
-    int computeDrift(double* drift_result);
+    int        _factor; // only used when testing to reduce fixed poll interval values by factor
+    int  packet(NTPPacket* packet, NTPTime now);
+    void clock();
+    int  computeDrift(double* drift_result);
 };
 
 

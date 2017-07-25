@@ -44,7 +44,7 @@ Config           config;                    // configuration persisted in the EE
 DeepSleepData    dsd;                       // data persisted in the RTC memory
 FeedbackLED      feedback(LED_PIN);         // used to blink LED to indicate status
 ESP8266WebServer HTTP(80);                  // used when debugging/stay awake mode
-NTP              ntp(&(dsd.ntp_persist));   // handles NTP communication & filtering
+NTP              ntp(&(dsd.ntp_runtime), &(config.ntp_persist), &saveConfig);   // handles NTP communication & filtering
 Clock            clk(SYNC_PIN);             // clock ticker, manages position of clock
 DS3231           rtc;                       // real time clock on i2c interface
 
@@ -529,7 +529,15 @@ void initWiFi()
     {
         config.network_logger_port = atoi(result);
     });
-
+    ConfigParam clear_ntp_persist(wifi, "clear_ntp_persist", "Clear NTP Persist 'true'", "", 8, [](const char* result)
+    {
+        boolean clearit = parseBoolean(result);
+        dbprintf("clear_ntp_persist: result:'%s' -> clear_ntp_persist:%d\n", result, clearit);
+        if (clearit)
+        {
+            memset(&config.ntp_persist, 0, sizeof(config.ntp_persist));
+        }
+    });
     String ssid = "SynchroClock" + String(ESP.getChipId());
     dbflush();
 #ifdef HARD_CODE_WIFI
@@ -603,6 +611,7 @@ void initWiFi()
         sleep_duration.applyIfChanged();
         network_logger_host.applyIfChanged();
         network_logger_port.applyIfChanged();
+        clear_ntp_persist.applyIfChanged();
         saveConfig();
     }
 
@@ -618,10 +627,10 @@ void setup()
     dbbegin(115200);
     dbprintln("");
     dbprintln("Startup!");
-
+#if 0
     uint32_t sleep_duration = MAX_SLEEP_DURATION;
     RFMode mode = RF_DEFAULT;
-
+#endif
     pinMode(SYNC_PIN, INPUT);
     pinMode(FACTORY_RESET_PIN, INPUT);
     feedback.off();
@@ -664,7 +673,6 @@ void setup()
     //
     // initialize config to defaults then load.
     memset(&config, 0, sizeof(config));
-    config.drift = 0.0;
     config.sleep_duration = DEFAULT_SLEEP_DURATION;
     config.tz_offset = 0;
 
@@ -687,6 +695,25 @@ void setup()
     feedback.off();
 
     clk.setStayActive(true);
+
+    // if the reset/config button is pressed then force config
+    if (digitalRead(FACTORY_RESET_PIN) == 0)
+    {
+        //
+        // If we wake with the reset button pressed and sleep_delay_left then the radio is off
+        // so set it to 0 and use a very short deepSleep to turn the radio back on.
+        //
+        if (dsd.sleep_delay_left != 0)
+        {
+            clk.setStayActive(false);
+            dbprintln("reset button pressed with radio off, short sleep to enable!");
+            dsd.sleep_delay_left = 0;
+            writeDeepSleepData();
+            ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
+        }
+        dbprintln("reset button pressed, forcing config!");
+        force_config = true;
+    }
 
     uint8_t value;
     config.tp_duration = clk.readTPDuration(&value) ? DEFAULT_TP_DURATION : value;
@@ -711,6 +738,8 @@ void setup()
     dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
+    dbprintf("EEConfig size: %u\n", sizeof(EEConfig));
+
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
     // if the saved config was not good then force config.
@@ -726,58 +755,36 @@ void setup()
     int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc,
     TIME_CHANGE_COUNT);
 
+    bool clock_needs_sync = false;
     // if the time zone changed then save the new value and set the the clock
     if (config.tz_offset != new_offset)
     {
         dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
         config.tz_offset = new_offset;
         saveConfig();
-        setCLKfromRTC();
+        clock_needs_sync = true;
     }
 
-    // if the config button is pressed then force config
-    if (digitalRead(FACTORY_RESET_PIN) == 0)
+#ifdef USE_DRIFT
+    //
+    // apply drift to RTC
+    //
+    if (setRTCfromDrift() == 0)
     {
-        //
-        // If we wake with the reset button pressed and sleep_delay_left then the radio is off
-        // so set it to 0 and use a very short deepSleep to turn the radio back on.
-        //
-        if (dsd.sleep_delay_left != 0)
-        {
-            clk.setStayActive(false);
-            dbprintln("reset button pressed with radio off, short sleep to enable!");
-            dsd.sleep_delay_left = 0;
-            writeDeepSleepData();
-            ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
-        }
-        dbprintln("reset button pressed, forcing config!");
-        force_config = true;
+        clock_needs_sync = true;
     }
+#endif
 
     dbprintf("sleep_delay_left: %lu\n", dsd.sleep_delay_left);
 
     if (dsd.sleep_delay_left != 0)
     {
-
-        if (dsd.sleep_delay_left > MAX_SLEEP_DURATION)
+        if (clock_needs_sync)
         {
-            dsd.sleep_delay_left = dsd.sleep_delay_left - MAX_SLEEP_DURATION;
-            mode = RF_DISABLED;
-            dbprintf("delay still greater than max, mode=DISABLED sleep_delay_left=%lu\n", dsd.sleep_delay_left);
+            setCLKfromRTC();
         }
-        else
-        {
-            sleep_duration = dsd.sleep_delay_left;
-            dsd.sleep_delay_left = 0;
-            dbprintf("delay less than max, mode=DEFAULT sleep_delay_left=%lu\n", dsd.sleep_delay_left);
-        }
-
         clk.setStayActive(false);
-        writeDeepSleepData();
-        dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
-        dbflush();
-        dbend();
-        ESP.deepSleep(sleep_duration * 1000000, mode);
+        sleepFor(dsd.sleep_delay_left);
     }
 
     //
@@ -803,7 +810,7 @@ void setup()
 
     dbprintf("###### rtc data size: %d\n", sizeof(RTCDeepSleepData));
 
-    ntp.begin(NTP_PORT, config.drift);
+    ntp.begin(NTP_PORT);
 
     if (!enabled)
     {
@@ -819,6 +826,7 @@ void setup()
     dbprintln("syncing RTC from NTP!");
     setRTCfromNTP(config.ntp_server, true, NULL, NULL);
 #endif
+
 #ifndef DISABLE_INITIAL_SYNC
     dbprintln("syncing clock to RTC!");
     setCLKfromRTC();
@@ -830,41 +838,55 @@ void setup()
     stay_awake = true;
 #endif
 
-    if (stay_awake)
+    if (!stay_awake)
     {
-        dbprintln("starting HTTP");
-        HTTP.on("/offset", HTTP_GET, handleOffset);
-        HTTP.on("/adjust", HTTP_GET, handleAdjustment);
-        HTTP.on("/position", HTTP_GET, handlePosition);
-        HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
-        HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
-        HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
-        HTTP.on("/sleep_delay", HTTP_GET, handleSleepDelay);
-        HTTP.on("/enable", HTTP_GET, handleEnable);
-        HTTP.on("/rtc", HTTP_GET, handleRTC);
-        HTTP.on("/ntp", HTTP_GET, handleNTP);
-        HTTP.on("/wire", HTTP_GET, handleWire);
-        HTTP.begin();
+#if 1
+        sleepFor(ntp.getPollInterval());
+#else
+        sleepFor(config.sleep_duration);
+#endif
+    }
+
+    dbprintln("starting HTTP");
+    HTTP.on("/offset", HTTP_GET, handleOffset);
+    HTTP.on("/adjust", HTTP_GET, handleAdjustment);
+    HTTP.on("/position", HTTP_GET, handlePosition);
+    HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
+    HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
+    HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
+    HTTP.on("/sleep_delay", HTTP_GET, handleSleepDelay);
+    HTTP.on("/enable", HTTP_GET, handleEnable);
+    HTTP.on("/rtc", HTTP_GET, handleRTC);
+    HTTP.on("/ntp", HTTP_GET, handleNTP);
+    HTTP.on("/wire", HTTP_GET, handleWire);
+    HTTP.begin();
+
+}
+
+void sleepFor(uint32_t sleep_duration)
+{
+    dbprintf("sleepFor: %u\n", sleep_duration);
+    dsd.sleep_delay_left = sleep_duration;
+    sleep_duration = MAX_SLEEP_DURATION;
+    RFMode mode = RF_DEFAULT;
+    if (dsd.sleep_delay_left > MAX_SLEEP_DURATION)
+    {
+        dsd.sleep_delay_left = dsd.sleep_delay_left - MAX_SLEEP_DURATION;
+        mode = RF_DISABLED;
+        dbprintf("sleepFor: sleep_duration > max, mode=DISABLED sleep_delay_left=%lu\n", dsd.sleep_delay_left);
     }
     else
     {
+        sleep_duration = dsd.sleep_delay_left;
         dsd.sleep_delay_left = 0;
-        sleep_duration = config.sleep_duration;
-        mode = RF_DEFAULT;
-        if (sleep_duration > MAX_SLEEP_DURATION)
-        {
-            dsd.sleep_delay_left = sleep_duration - MAX_SLEEP_DURATION;
-            sleep_duration = MAX_SLEEP_DURATION;
-            mode = RF_DISABLED;
-            dbprintf("sleep_duration > max, mode=DISABLE, sleep_delay_left = %lu\n", dsd.sleep_delay_left);
-        }
-        writeDeepSleepData();
-        dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
-        dbflush();
-        delay(100);
-        dbend();
-        ESP.deepSleep(sleep_duration * 1000000, mode);
+        dbprintf("sleepFor: delay less than max, mode=DEFAULT sleep_delay_left=%lu\n", dsd.sleep_delay_left);
     }
+
+    writeDeepSleepData();
+    dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
+    dbflush();
+    dbend();
+    ESP.deepSleep(sleep_duration * 1000000, mode);
 }
 
 void loop()
@@ -937,6 +959,27 @@ int getTime(uint32_t *result)
         return -1;
     }
     *result = dt.getUnixTime();
+    return 0;
+}
+
+int setRTCfromDrift()
+{
+    double offset;
+    if (ntp.getOffsetUsingDrift(&offset, &getTime))
+    {
+        dbprintln("setRTCfromDrift: failed, not adjusting for drift!");
+        return -1;
+    }
+
+    dbprintf("********* DRIFT OFFSET: %lf\n", offset);
+
+    int error = setRTCfromOffset(offset, true);
+    if (error)
+    {
+        return error;
+    }
+
+    dbprintln("setRTCfromDrift: returning OK");
     return 0;
 }
 
@@ -1095,18 +1138,20 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length)
     return crc;
 }
 
+
 boolean loadConfig()
 {
     EEConfig cfg;
     // Read struct from EEPROM
-    dbprintln("loading config from EEPROM");
-    uint8_t i;
+    dbprintln("loadConfig: loading from EEPROM");
+    unsigned int i;
     uint8_t* p = (uint8_t*) &cfg;
     for (i = 0; i < sizeof(cfg); ++i)
     {
         p[i] = EEPROM.read(i);
+        //dbprintf("loadConfig: p[%u] = %u\n", i, p[i]);
     }
-
+    dbprintln("loadConfig: checking CRC");
     uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
     //dbprintf("CRC32 of data: %08x\n", crcOfData);
     //dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
@@ -1126,9 +1171,9 @@ void saveConfig()
     memcpy(&cfg.data, &config, sizeof(cfg.data));
     cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
     //dbprintf("caculated CRC: %08x\n", cfg.crc);
-    //dbprintln("Saving config to EEPROM");
+    dbprintln("Saving configuration to EEPROM!");
 
-    uint8_t i;
+    unsigned int i;
     uint8_t* p = (uint8_t*) &cfg;
     for (i = 0; i < sizeof(cfg); ++i)
     {

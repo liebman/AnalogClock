@@ -36,6 +36,7 @@
 #include "TimeUtils.h"
 #include "ConfigParam.h"
 
+#define USE_DRIFT                   // apply drift
 #define USE_STOP_THE_CLOCK          // if defined then stop the clock for small negative adjustments
 #define STOP_THE_CLOCK_MAX     60   // maximum difference where we will use stop the clock
 #define STOP_THE_CLOCK_EXTRA   2    // extra seconds to leave the clock stopped
@@ -68,17 +69,17 @@
 
 typedef struct
 {
-    double     drift;
     uint32_t   sleep_duration;           // deep sleep duration in seconds
     int        tz_offset;                // time offset in seconds from UTC
     uint8_t    tp_duration;              // tick pulse duration in ms
     uint8_t    ap_duration;              // adjust pulse duration in ms
     uint8_t    ap_delay;                 // delay in ms between ticks during adjust
     uint8_t    sleep_delay;              // delay in ms before sleeping DR8838
-    uint16_t    network_logger_port;     // port for network logging
+    uint16_t   network_logger_port;      // port for network logging
     TimeChange tc[TIME_CHANGE_COUNT];    // time change description
     char       ntp_server[64];           // host to use for ntp
     char       network_logger_host[64];  // host for network logging
+    NTPPersist ntp_persist;              // ntp persisted data
 } Config;
 
 typedef struct
@@ -89,8 +90,8 @@ typedef struct
 
 typedef struct
 {
-    uint32_t sleep_delay_left;
-    NTPPersist ntp_persist;
+    uint32_t sleep_delay_left;          // number seconds still to sleep
+    NTPRunTime ntp_runtime;             // NTP runtime data
 } DeepSleepData;
 
 typedef struct
@@ -117,8 +118,10 @@ void handleSleepDelay();
 void handleEnable();
 void handleRTC();
 void handleNTP();
+void sleepFor(uint32_t sleep_duration);
 int setRTCfromOffset(double offset_ms, bool sync);
 int getTime(uint32_t *result);
+int setRTCfromDrift();
 int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddress* result_address);
 int setCLKfromRTC();
 void saveConfig();

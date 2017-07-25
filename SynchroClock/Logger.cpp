@@ -73,6 +73,7 @@ void Logger::println(const char* message)
 {
     snprintf(_buffer, LOGGER_BUFFER_SIZE-1, "%s\n", message);
     Serial.print(_buffer);
+    Serial.flush();
     send(_buffer);
 }
 
@@ -87,6 +88,7 @@ void Logger::printf(const char* fmt, ...)
     va_end(argp);
 
     Serial.print(_buffer);
+    Serial.flush();
     send(_buffer);
 }
 
