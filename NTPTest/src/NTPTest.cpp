@@ -64,7 +64,7 @@ int getTime(uint32_t *result)
     if (last_time)
     {
         double drift = fake_drift_ppm * (((double)tp.tv_sec - (double)last_time) / 1000000.);
-        printf("applying fake drift: %lfms\n", drift);
+        printf("applying fake drift: %lfms for %ld seconds\n", drift, tp.tv_sec - last_time);
         current_offset += drift;
     }
 
@@ -74,13 +74,14 @@ int getTime(uint32_t *result)
     tp.tv_sec  = (int)x;
     tp.tv_usec = (uint32_t)((x-(double)tp.tv_sec) * 1000000.);
 
+    last_time = tp.tv_sec;
+
     // sync to the next second boundary
     if (tp.tv_usec != 0)
     {
         usleep(1000000-tp.tv_usec);
     }
     *result = tp.tv_sec+1;
-    last_time = *result;
     return 0;
 }
 

@@ -57,6 +57,13 @@ void NTP::begin(int port)
     _port   = port;
     _udp.begin(port);
     dbprintf("NTP::begin: nsamples: %d nadjustments: %d, drift: %f\n", _runtime->nsamples, _persist->nadjustments, _persist->drift);
+    if (_runtime->nsamples == 0 && _runtime->drifted == 0.0)
+    {
+        // if we have no samples and drifted is 0 then we probably had a power cycle so invalidate the
+        // most recent adjustment timestamp.
+        _persist->adjustments[0].timestamp = 0;
+        dbprintln("power cycle detected! marking last adjustment as invalid for drift!");
+    }
 }
 
 IPAddress NTP::getAddress()
@@ -106,16 +113,15 @@ uint32_t NTP::getPollInterval()
     //
     // if we don't have drift yet then use a shorter interval
     //
-    if (_persist->nadjustments < NTP_ADJUSTMENT_COUNT)
+    if (_persist->drift == 0.0)
     {
         dbprintln("NTP::getPollInterval: drift not calculated, using 1 hour!");
         return 3600 / _factor; // 1 hour
     }
 
-    uint32_t seconds = _persist->adjustments[0].timestamp - _persist->adjustments[_persist->nadjustments-1].timestamp;
-    seconds = (seconds / _persist->nadjustments-1) / 2;
-    dbprintf("NTP::getPollInterval: we have drift compensation using avg interval between adjustments/2 %u\n", seconds);
-    return seconds;
+    double seconds = NTP_OFFSET_THRESHOLD / (((1.0/(_persist->nadjustments*2)) * fabs(_persist->drift)) / 1000000.0);
+    dbprintf("NTP::getPollInterval: computed based on %d adjustments and drift (%f): %f\n", _persist->nadjustments, _persist->drift, seconds);
+    return (uint32_t)seconds;
 }
 
 int NTP::getOffsetUsingDrift(double *offset_result, int (*getTime)(uint32_t *result))
@@ -136,6 +142,13 @@ int NTP::getOffsetUsingDrift(double *offset_result, int (*getTime)(uint32_t *res
     if (_runtime->drift_timestamp == 0)
     {
         dbprintln("NTP::getOffsetUsingDrift: first time, setting initial timestamp!");
+        _runtime->drift_timestamp = now;
+        return -1;
+    }
+
+    if (_runtime->drift_timestamp >= now)
+    {
+        dbprintln("NTP::getOffsetUsingDrift: timewarped! resetting timestamp!");
         _runtime->drift_timestamp = now;
         return -1;
     }
@@ -178,7 +191,6 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
             dbprintf("NTP::getOffset: DNS lookup on %s failed!\n", server);
             return -1;
         }
-
 
         memset((void*)_runtime->server, 0, sizeof(_runtime->server ));
         strncpy(_runtime->server, server, NTP_SERVER_LENGTH-1);
@@ -299,8 +311,6 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
     //    return -1;                 /* invalid header values */
     //}
 
-    _runtime->reach |= 1;
-
     uint64_t T1 = toUINT64(ntp->orig_time);
     uint64_t T2 = toUINT64(ntp->recv_time);
     uint64_t T3 = toUINT64(ntp->xmit_time);
@@ -357,6 +367,11 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
         dbprintln("NTP::packet: sample delay too big!");
         return -1;
     }
+
+    //
+    // good delay - we can mark this as reachable
+    //
+    _runtime->reach |= 1;
 
     //
     // don't use this offset if it does not meet the threshold
@@ -426,7 +441,24 @@ void NTP::clock()
 //
 int NTP::computeDrift(double* drift_result)
 {
-    double a = 0;
+    double a = 0.0;
+#if 1
+    uint32_t seconds = 0;
+    for(int i = 0; i <= _persist->nadjustments-2; ++i)
+    {
+        if (_persist->adjustments[i].timestamp != 0 &&  _persist->adjustments[i+1].timestamp != 0)
+        {
+            // valid sample!
+            seconds += _persist->adjustments[i].timestamp - _persist->adjustments[i+1].timestamp;
+            a += _persist->adjustments[i].adjustment;
+            dbprintf("NTP::computeDrift: using adjustment %d and %d delta: %d adj:%f\n", i, i+1, _persist->adjustments[i].timestamp - _persist->adjustments[i+1].timestamp, _persist->adjustments[i].adjustment);
+        }
+    }
+    a = a / (double)seconds;
+    double drift = a * 1000000;
+    dbprintf("NTP::computeDrift: seconds: %d a: %f drift: %f\n", seconds, a, drift);
+
+#else
     double seconds = _persist->adjustments[0].timestamp - _persist->adjustments[_persist->nadjustments-1].timestamp;
     dbprintf("seconds: %f\n", seconds);
     for (int i = 0; i < _persist->nadjustments-2; ++i)
@@ -436,7 +468,7 @@ int NTP::computeDrift(double* drift_result)
     a = a / seconds;
     dbprintf("a: %f\n", a);
     double drift = a * 1000000;
-
+#endif
     dbprintf("computeDrift: drift: %f PPM\n", drift);
     if (drift_result != NULL)
     {
