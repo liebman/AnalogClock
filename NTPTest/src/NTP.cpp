@@ -83,55 +83,53 @@ int NTP::getLastOffset(double *offset)
 
 uint32_t NTP::getPollInterval()
 {
-    //
-    // if we don;t have all the samples yet, use a very short interval
-    //
+    double seconds = 3600;
+
+    if (_runtime->poll_interval > 0.0)
+    {
+        //
+        // estimate the time till we apply the next offset
+        //
+        seconds = fabs(_runtime->samples[0].offset) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
+        dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
+
+        if (seconds > (259200/_factor)) // 3 days!
+        {
+            dbprintln("NTP::getPollInterval: maxing interval out at 3 days!");
+            seconds = 259200/_factor;
+        }
+        else if (seconds < (900/_factor))
+        {
+            dbprintln("NTP::getPollInterval: min interval is 15 min!!");
+            seconds = 900/_factor;
+        }
+    }
+
     if (_runtime->nsamples < NTP_SAMPLE_COUNT)
     {
+        //
+        // if we don't have all the samples yet, use a very short interval
+        //
         dbprintln("NTP::getPollInterval: samples not full, 15 minutes!");
-        return 900 / _factor; // 15 minutes
+        seconds = 900 / _factor; // 15 minutes
     }
-
-    //
-    // if the last three polls failed use a very short interval
-    //
-    if ((_runtime->reach & 0x07) == 0)
+    else if ((_runtime->reach & 0x07) == 0)
     {
+        //
+        // if the last three polls failed use a very short interval
+        //
         dbprintln("NTP::getPollInterval: last three polls failed, using 15 minutes!");
-        return 900 / _factor;
+        seconds =  900 / _factor;
     }
-
-    //
-    // if the last poll failed then use a shorter interval
-    //
-    if ((_runtime->reach & 0x01) == 0)
+    else if ((_runtime->reach & 0x01) == 0)
     {
+        //
+        // if the last poll failed then use a shorter interval
+        //
         dbprintln("NTP::getPollInterval: last poll failed, using 1 hour!");
-        return 3600 / _factor;
+        seconds =  3600 / _factor;
     }
 
-    if (_runtime->poll_interval == 0.0)
-    {
-        dbprintln("NTP::getPollInterval: interval not calculated yet, using 1 hour!");
-        return 3600 / _factor; // 1 hour
-    }
-
-    //
-    // estimate the time till we apply the next offset
-    //
-    double seconds = _runtime->samples[0].offset / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
-    dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
-
-    if (seconds > (259200/_factor)) // 3 days!
-    {
-        dbprintln("NTP::getPollInterval: maxing interval out at 3 days!");
-        seconds = 259200/_factor;
-    }
-    else if (seconds < (900/_factor))
-    {
-        dbprintln("NTP::getPollInterval: min interval is 15 min!!");
-        seconds = 900/_factor;
-    }
     return (uint32_t)seconds;
 }
 
