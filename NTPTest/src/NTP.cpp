@@ -90,8 +90,15 @@ uint32_t NTP::getPollInterval()
         //
         // estimate the time till we apply the next offset
         //
-        seconds = fabs(_runtime->samples[0].offset) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
-        dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
+        if (_runtime->samples[0].timestamp == _runtime->update_timestamp)
+        {
+            seconds = _runtime->poll_interval;
+        }
+        else
+        {
+            seconds = fabs(_runtime->samples[0].offset) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
+            dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
+        }
 
         if (seconds > (259200/_factor)) // 3 days!
         {
@@ -495,7 +502,7 @@ void NTP::updateDriftEstimate()
     double sxy = 0.0;
     double sxx = 0.0;
     int n = 0;
-    for (int i = 0; i <= _runtime->nsamples && _runtime->samples[i].timestamp >= timebase; ++i)
+    for (int i = 0; i < _runtime->nsamples && _runtime->samples[i].timestamp >= timebase; ++i)
     {
         double x = (double)(_runtime->samples[i].timestamp - timebase);
         double y = _runtime->samples[i].offset;
@@ -520,9 +527,9 @@ void NTP::updateDriftEstimate()
 
         _runtime->drift_estimate = slope * 1000000;
 
-        _runtime->poll_interval = NTP_OFFSET_THRESHOLD / (((1.0/(n*2)) * fabs(_runtime->drift_estimate)) / 1000000.0);
+        _runtime->poll_interval = NTP_OFFSET_THRESHOLD / (fabs(_runtime->drift_estimate) / 1000000.0);
         dbprintf("NTP::updateDriftEstimate: poll interval: %f\n", _runtime->poll_interval);
     }
 
-    dbprintf("NTP::computeDriftEstimate: ESTIMATED DRIFT: %f\n", _runtime->drift_estimate);
+    dbprintf("NTP::computeDriftEstimate: ESTIMATED DRIFT: %0.16f\n", _runtime->drift_estimate);
 }
