@@ -83,9 +83,12 @@ int NTP::getLastOffset(double *offset)
 
 uint32_t NTP::getPollInterval()
 {
-    double seconds = 3600;
+    double seconds = 3600/_factor;
 
-    if (_runtime->poll_interval > 0.0)
+    dbprintf("NTP::getPollInterval: drift_estimate: %0.16f poll_interval: %0.16f\n", _runtime->drift_estimate, _runtime->poll_interval);
+
+    //if (_runtime->poll_interval > 0.0)
+    if (_runtime->drift_estimate != 0.0)
     {
         //
         // estimate the time till we apply the next offset
@@ -97,8 +100,8 @@ uint32_t NTP::getPollInterval()
         else
         {
             seconds = fabs(_runtime->samples[0].offset) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
-            dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
         }
+        dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
 
         if (seconds > (259200/_factor)) // 3 days!
         {
@@ -299,7 +302,12 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     }
 
     *offset = _runtime->samples[0].offset;
+
+    //
+    // set the update and drift timestamps.
+    //
     _runtime->update_timestamp = _runtime->samples[0].timestamp;
+    _runtime->drift_timestamp  = _runtime->samples[0].timestamp;
     return 0;
 }
 
@@ -446,9 +454,9 @@ void NTP::clock()
         }
 
         //
-        // calculate drift if we have all NTP_ADJUSTMENT_COUNT adjustments
+        // calculate drift if we have some NTP_ADJUSTMENT_COUNT adjustments
         //
-        if (_persist->nadjustments >= 2)
+        if (_persist->nadjustments >= 4)
         {
             computeDrift(&_persist->drift);
             dbprintf("NTP::clock: drift: %f\n", _persist->drift);
@@ -516,7 +524,7 @@ void NTP::updateDriftEstimate()
 
     dbprintf("NTP::computeDriftEstimate: found %d samples\n", n);
 
-    if (n < 2)
+    if (n < 4)
     {
         dbprintln("NTP::computeDriftEstimate: not enough points!");
     }

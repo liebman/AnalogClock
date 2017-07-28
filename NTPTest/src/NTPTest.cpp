@@ -67,34 +67,20 @@ void adjustOffsetByDrift()
         current_offset += drift;
         printf("applying fake drift: %lfms for %ld seconds current_offset: %f\n", drift, tp.tv_sec - last_time, current_offset);
     }
-
-    // apply the current offset
-    double x = (double)tp.tv_sec + (double)tp.tv_usec / 1000000.;
-    x += current_offset;
-    last_time =  (int)x;
+    last_time =  (uint32_t)tp.tv_sec;
 }
 
 int getTime(uint32_t *result)
 {
     struct timeval tp;
     gettimeofday(&tp, NULL);
-#if 0
-    // add fake drift to offset
-    if (last_time)
-    {
-        double drift = fake_drift_ppm * (((double)tp.tv_sec - (double)last_time) / 1000000.);
-        printf("applying fake drift: %lfms for %ld seconds\n", drift, tp.tv_sec - last_time);
-        current_offset += drift;
-    }
-#endif
+
     // apply the current offset
     double x = (double)tp.tv_sec + (double)tp.tv_usec / 1000000.;
     x += current_offset;
-    tp.tv_sec  = (int)x;
+    tp.tv_sec  = (long)x;
     tp.tv_usec = (uint32_t)((x-(double)tp.tv_sec) * 1000000.);
-#if 0
-    last_time = tp.tv_sec;
-#endif
+
     // sync to the next second boundary
     if (tp.tv_usec != 0)
     {
@@ -103,7 +89,6 @@ int getTime(uint32_t *result)
     *result = tp.tv_sec+1;
     return 0;
 }
-
 
 int main(int argc, char**argv)
 {
