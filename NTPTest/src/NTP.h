@@ -31,7 +31,7 @@ typedef struct ntp_adjustment
 #define NTP_SERVER_LENGTH       64      // max length+1 of ntp server name
 #define NTP_SAMPLE_COUNT        8       // number of NTP samples to keep for std devation filtering
 #define NTP_ADJUSTMENT_COUNT    8       // number of NTP adjustments to keep for least squares drift
-#define NTP_OFFSET_THRESHOLD    0.04    // 40ms offset minimum for adjust!
+#define NTP_OFFSET_THRESHOLD    0.02    // 20ms offset minimum for adjust!
 
 //
 //  Long term persisted data includes drift an last adjustment information

@@ -16,10 +16,12 @@
 #define MAX_SLEEP      (3600 / SPEEDUP_FACTOR)
 #define PERSIST_FILE   "/tmp/ntp_persist.data"
 
-uint32_t last_time;
+uint32_t start_time   = 0;
+uint32_t last_time    = 0;
 double current_offset = 0.0;
-double fake_drift_ppm = -100.0;
-uint32_t sleep_left;
+double fake_drift_ppm = 1.0*SPEEDUP_FACTOR;
+uint32_t sleep_left   = 0;
+
 NTPPersist persist;
 
 void loadPersist()
@@ -60,12 +62,18 @@ void adjustOffsetByDrift()
     struct timeval tp;
     gettimeofday(&tp, NULL);
 
+    if (!start_time)
+    {
+        start_time = (uint32_t)tp.tv_sec;
+    }
+
     // add fake drift to offset
     if (last_time)
     {
         double drift = fake_drift_ppm * (((double)tp.tv_sec - (double)last_time) / 1000000.);
         current_offset += drift;
-        printf("applying fake drift: %lfms for %ld seconds current_offset: %f\n", drift, tp.tv_sec - last_time, current_offset);
+        double hours = (double)(tp.tv_sec - start_time) / (3600.0 / SPEEDUP_FACTOR);
+        printf("HOURS: %f applying fake drift: %lfms for %ld seconds current_offset: %f\n", hours, drift, tp.tv_sec - last_time, current_offset);
     }
     last_time =  (uint32_t)tp.tv_sec;
 }
@@ -137,6 +145,7 @@ int main(int argc, char**argv)
             sleep_left = 0;
         }
         printf("sleeping %d seconds (sleep_left: %u)\n", interval, sleep_left);
+        fflush(stdout);
         sleep(interval);
     }
 
