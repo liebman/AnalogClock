@@ -44,3 +44,6 @@ Advanced options:
 * Network Logger Host - (optional) hostname to send log lines to.
 * Network Logger Port - (optional) tcp port to send log lines to.
 * Clear NTP Persist - when set 'true' clears any saved adjustments and drift calculations.
+
+## Schematic
+![Schematic](images/SynchroClock.png)
