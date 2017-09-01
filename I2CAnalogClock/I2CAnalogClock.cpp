@@ -27,9 +27,7 @@ volatile uint16_t adjustment;   // This is the adjustment to be made.
 volatile uint8_t tp_duration;
 volatile uint8_t ap_duration;
 volatile uint8_t ap_delay;     // delay in ms between ticks during adjustment
-#ifdef DRV8838
 volatile uint8_t sleep_delay;  // delay to sleep the DEV8838
-#endif
 
 volatile uint8_t control;       // This is our control "register".
 volatile uint8_t status;        // status register (has tick bit)
@@ -142,6 +140,7 @@ void i2crequest()
 void (*timer_cb)();
 volatile bool timer_running;
 volatile unsigned int start_time;
+
 #ifdef DEBUG_TIMER
 volatile unsigned int starts;
 volatile unsigned int stops;
@@ -158,7 +157,7 @@ ISR(TIMER1_COMPA_vect)
 #endif
 
     // why to we get an immediate interrupt? (ignore it)
-    if (int_time == start_time)
+    if (int_time == start_time || int_time == start_time+1)
     {
         return;
     }
@@ -226,8 +225,20 @@ void startTick()
     digitalWrite(DRV_PHASE, isTick());
     digitalWrite(DRV_ENABLE, TICK_ON);
 #else
-    // toggle the pins.
-    digitalWrite(A_PIN, !digitalRead(A_PIN));
+    if (isTick())
+    {
+        digitalWrite(A_PIN, TICK_ON);
+#ifndef __AVR_ATtinyX5__
+        digitalWrite(A2_PIN, TICK_ON);
+#endif
+    }
+    else
+    {
+        digitalWrite(B_PIN, TICK_ON);
+#ifndef __AVR_ATtinyX5__
+        digitalWrite(B2_PIN, TICK_ON);
+#endif
+    }
 #endif
 }
 
@@ -236,6 +247,23 @@ void endTick()
 #ifdef DRV8838
     digitalWrite(DRV_ENABLE, TICK_OFF);
     digitalWrite(DRV_PHASE, LOW); // per DRV8838 datasheet this reduces power usage
+#else
+    if (isTick())
+    {
+        digitalWrite(A_PIN, TICK_OFF);
+#ifndef __AVR_ATtinyX5__
+        digitalWrite(A2_PIN, TICK_OFF);
+#endif
+    }
+    else
+    {
+        digitalWrite(B_PIN, TICK_OFF);
+#ifndef __AVR_ATtinyX5__
+        digitalWrite(B2_PIN, TICK_OFF);
+#endif
+    }
+#endif
+
     toggleTick();
 
     if (adjustment != 0)
@@ -263,9 +291,7 @@ void endTick()
         }
         startTimer(sleep_delay, &sleepDRV8838);
     }
-#else
-    digitalWrite(B_PIN, !digitalRead(B_PIN));
-#endif
+
 }
 
 void sleepDRV8838()
@@ -362,8 +388,10 @@ void setup()
     pinMode(LED_PIN, OUTPUT);
 #endif
 
+#ifndef TEST_MODE
     ADCSRA &= ~(1 << ADEN); // Disable ADC as we don't use it, saves ~230uA
     PRR |= (1 << PRADC); // Turn off ADC clock
+#endif
 
     tp_duration = DEFAULT_TP_DURATION_MS;
     ap_duration = DEFAULT_AP_DURATION_MS;
@@ -377,21 +405,42 @@ void setup()
     // is out of sync and after that will be in sync.
     position = MAX_SECONDS - 1;
     adjustment = 1;
-    //control = BIT_ENABLE;
+#ifdef TEST_MODE
+    control = BIT_ENABLE;
+#endif
 
+#ifndef TEST_MODE
     Wire.begin(I2C_ADDRESS);
     Wire.onReceive(&i2creceive);
     Wire.onRequest(&i2crequest);
+#endif
 
-    digitalWrite(B_PIN, TICK_OFF);
     digitalWrite(A_PIN, TICK_OFF);
+#ifndef __AVR_ATtinyX5__
+    digitalWrite(A2_PIN, TICK_OFF);
+#endif
+    digitalWrite(B_PIN, TICK_OFF);
+#ifndef __AVR_ATtinyX5__
+    digitalWrite(B2_PIN, TICK_OFF);
+#endif
+
+#ifdef DRV8838
     digitalWrite(DRV_SLEEP, LOW);
+    pinMode(DRV_SLEEP, OUTPUT);
+#endif
 
     pinMode(A_PIN, OUTPUT);
+#ifndef __AVR_ATtinyX5__
+    pinMode(A2_PIN, OUTPUT);
+#endif
     pinMode(B_PIN, OUTPUT);
-    pinMode(DRV_SLEEP, OUTPUT);
+#ifndef __AVR_ATtinyX5__
+    pinMode(B2_PIN, OUTPUT);
+#endif
+#ifndef TEST_MODE
     pinMode(INT_PIN, INPUT);
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
+#endif
 }
 
 #ifdef DEBUG_I2CAC
@@ -428,23 +477,25 @@ void loop()
 #ifdef DEBUG_I2CAC
     unsigned int now = ticks;
     char buffer[256];
-    if (now != last_print)
+    if (now != last_print && (now%10)==0)
     {
         last_print = now;
 #ifdef DEBUG_TIMER
         if (timer_running)
         {
             Serial.println("timer running, adding delay!");
-            delay(33);
+            delay(100);
         }
         int last_actual = stop_time - start_time;
         snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
                 starts, stops, ints, last_duration, last_actual);
         Serial.print(buffer);
 #endif
+#ifdef DEBUG_POSITION
         snprintf(buffer, 255, "position:%u adjustment:%u control:0x%02x status:0x%02x drvsleep:%d adjust_active:%d sleep_count:%u control_count:%u id_count:%u\n",
                 position, adjustment, control, status, digitalRead(DRV_SLEEP), adjust_active, sleep_count, control_count, id_count);
         Serial.print(buffer);
+#endif
 #ifdef DEBUG_I2C
         snprintf(buffer, 127, "receives:%d requests:%d errors: %d\n",
                 receives, requests, errors);
@@ -453,6 +504,14 @@ void loop()
     }
 #endif
 #ifndef USE_SLEEP
+#ifdef TEST_MODE
+    if (!timer_running)
+    {
+        tick();
+        delay(1000);
+    }
+#else
     delay(100);
+#endif
 #endif
 }

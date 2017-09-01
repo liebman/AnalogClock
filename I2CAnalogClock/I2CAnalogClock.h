@@ -30,15 +30,20 @@
 #include "USIWire.h"
 #else
 #include "Wire.h"
-#define DEBUG_I2CAC     1
-#define DEBUG_I2C       1
-//#define DEBUG_TIMER     1
+//#define DEBUG_I2CAC
+//#define DEBUG_POSITION
+//#define DEBUG_I2C
+//#define DEBUG_TIMER
 #define SERIAL_BAUD     115200
 #endif
 
+//#define TEST_MODE
+
+#ifndef TEST_MODE
 #define USE_SLEEP
-#define USE_POWER_DOWN_MODE 1
-#define DRV8838         1
+#define USE_POWER_DOWN_MODE
+#endif
+//#define DRV8838
 
 #ifdef __AVR_ATtinyX5__
 #define INT_PIN         1
@@ -50,6 +55,8 @@
 #define INT_PIN         3
 #define A_PIN           4
 #define B_PIN           5
+#define A2_PIN          6
+#define B2_PIN          7
 #define DRV_SLEEP       6
 #define LED_PIN         LED_BUILTIN
 #endif
@@ -58,12 +65,18 @@
 #ifdef DRV8838
 #define DRV_PHASE       A_PIN
 #define DRV_ENABLE      B_PIN
+
+#define TICK_ON         HIGH
+#define TICK_OFF        LOW
+
+#else
+
+#define TICK_ON         LOW
+#define TICK_OFF        HIGH
 #endif
 
 #define MAX_SECONDS     43200
 
-#define TICK_ON         HIGH
-#define TICK_OFF        LOW
 
 #define I2C_ADDRESS     0x09
 
