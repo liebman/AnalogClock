@@ -1,27 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="8.2.2">
+<eagle version="8.3.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
+<setting keepoldvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
 <grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
-<layer number="1" name="Top" color="4" fill="1" visible="yes" active="no"/>
-<layer number="16" name="Bottom" color="1" fill="1" visible="yes" active="no"/>
-<layer number="17" name="Pads" color="2" fill="1" visible="yes" active="no"/>
-<layer number="18" name="Vias" color="2" fill="1" visible="yes" active="no"/>
-<layer number="19" name="Unrouted" color="6" fill="1" visible="yes" active="no"/>
-<layer number="20" name="Dimension" color="15" fill="1" visible="yes" active="no"/>
-<layer number="21" name="tPlace" color="7" fill="1" visible="yes" active="no"/>
-<layer number="22" name="bPlace" color="7" fill="1" visible="yes" active="no"/>
-<layer number="23" name="tOrigins" color="15" fill="1" visible="yes" active="no"/>
-<layer number="24" name="bOrigins" color="15" fill="1" visible="yes" active="no"/>
-<layer number="25" name="tNames" color="7" fill="1" visible="yes" active="no"/>
-<layer number="26" name="bNames" color="7" fill="1" visible="yes" active="no"/>
-<layer number="27" name="tValues" color="7" fill="1" visible="yes" active="no"/>
-<layer number="28" name="bValues" color="7" fill="1" visible="yes" active="no"/>
+<layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
+<layer number="16" name="Bottom" color="1" fill="1" visible="no" active="no"/>
+<layer number="17" name="Pads" color="2" fill="1" visible="no" active="no"/>
+<layer number="18" name="Vias" color="2" fill="1" visible="no" active="no"/>
+<layer number="19" name="Unrouted" color="6" fill="1" visible="no" active="no"/>
+<layer number="20" name="Dimension" color="15" fill="1" visible="no" active="no"/>
+<layer number="21" name="tPlace" color="7" fill="1" visible="no" active="no"/>
+<layer number="22" name="bPlace" color="7" fill="1" visible="no" active="no"/>
+<layer number="23" name="tOrigins" color="15" fill="1" visible="no" active="no"/>
+<layer number="24" name="bOrigins" color="15" fill="1" visible="no" active="no"/>
+<layer number="25" name="tNames" color="7" fill="1" visible="no" active="no"/>
+<layer number="26" name="bNames" color="7" fill="1" visible="no" active="no"/>
+<layer number="27" name="tValues" color="7" fill="1" visible="no" active="no"/>
+<layer number="28" name="bValues" color="7" fill="1" visible="no" active="no"/>
 <layer number="29" name="tStop" color="7" fill="3" visible="no" active="no"/>
 <layer number="30" name="bStop" color="7" fill="6" visible="no" active="no"/>
 <layer number="31" name="tCream" color="7" fill="4" visible="no" active="no"/>
@@ -30,8 +31,8 @@
 <layer number="34" name="bFinish" color="6" fill="6" visible="no" active="no"/>
 <layer number="35" name="tGlue" color="7" fill="4" visible="no" active="no"/>
 <layer number="36" name="bGlue" color="7" fill="5" visible="no" active="no"/>
-<layer number="37" name="tTest" color="7" fill="1" visible="yes" active="no"/>
-<layer number="38" name="bTest" color="7" fill="1" visible="yes" active="no"/>
+<layer number="37" name="tTest" color="7" fill="1" visible="no" active="no"/>
+<layer number="38" name="bTest" color="7" fill="1" visible="no" active="no"/>
 <layer number="39" name="tKeepout" color="4" fill="11" visible="no" active="no"/>
 <layer number="40" name="bKeepout" color="1" fill="11" visible="no" active="no"/>
 <layer number="41" name="tRestrict" color="4" fill="10" visible="no" active="no"/>
@@ -39,19 +40,19 @@
 <layer number="43" name="vRestrict" color="2" fill="10" visible="no" active="no"/>
 <layer number="44" name="Drills" color="7" fill="1" visible="no" active="no"/>
 <layer number="45" name="Holes" color="7" fill="1" visible="no" active="no"/>
-<layer number="46" name="Milling" color="3" fill="1" visible="yes" active="no"/>
-<layer number="47" name="Measures" color="7" fill="1" visible="yes" active="no"/>
-<layer number="48" name="Document" color="7" fill="1" visible="yes" active="no"/>
-<layer number="49" name="Reference" color="7" fill="1" visible="yes" active="no"/>
-<layer number="50" name="dxf" color="7" fill="1" visible="yes" active="no"/>
-<layer number="51" name="tDocu" color="7" fill="1" visible="yes" active="no"/>
-<layer number="52" name="bDocu" color="7" fill="1" visible="yes" active="no"/>
-<layer number="53" name="tGND_GNDA" color="7" fill="9" visible="yes" active="no"/>
-<layer number="54" name="bGND_GNDA" color="1" fill="9" visible="yes" active="no"/>
-<layer number="56" name="wert" color="7" fill="1" visible="yes" active="no"/>
-<layer number="57" name="tCAD" color="7" fill="1" visible="yes" active="no"/>
-<layer number="59" name="tCarbon" color="7" fill="1" visible="yes" active="no"/>
-<layer number="60" name="bCarbon" color="7" fill="1" visible="yes" active="no"/>
+<layer number="46" name="Milling" color="3" fill="1" visible="no" active="no"/>
+<layer number="47" name="Measures" color="7" fill="1" visible="no" active="no"/>
+<layer number="48" name="Document" color="7" fill="1" visible="no" active="no"/>
+<layer number="49" name="Reference" color="7" fill="1" visible="no" active="no"/>
+<layer number="50" name="dxf" color="7" fill="1" visible="no" active="no"/>
+<layer number="51" name="tDocu" color="7" fill="1" visible="no" active="no"/>
+<layer number="52" name="bDocu" color="7" fill="1" visible="no" active="no"/>
+<layer number="53" name="tGND_GNDA" color="7" fill="9" visible="no" active="no"/>
+<layer number="54" name="bGND_GNDA" color="1" fill="9" visible="no" active="no"/>
+<layer number="56" name="wert" color="7" fill="1" visible="no" active="no"/>
+<layer number="57" name="tCAD" color="7" fill="1" visible="no" active="no"/>
+<layer number="59" name="tCarbon" color="7" fill="1" visible="no" active="no"/>
+<layer number="60" name="bCarbon" color="7" fill="1" visible="no" active="no"/>
 <layer number="90" name="Modules" color="5" fill="1" visible="yes" active="yes"/>
 <layer number="91" name="Nets" color="2" fill="1" visible="yes" active="yes"/>
 <layer number="92" name="Busses" color="1" fill="1" visible="yes" active="yes"/>
@@ -303,58 +304,6 @@ or will meet your specific requirements.&lt;p&gt;
 <rectangle x1="-7.62" y1="6.985" x2="8.89" y2="13.97" layer="42"/>
 <rectangle x1="-7.62" y1="6.985" x2="8.89" y2="13.97" layer="41"/>
 </package>
-<package name="DIL10">
-<description>&lt;b&gt;Dual In Line Package&lt;/b&gt;</description>
-<wire x1="5.08" y1="2.921" x2="-7.62" y2="2.921" width="0.1524" layer="21"/>
-<wire x1="-7.62" y1="-2.921" x2="5.08" y2="-2.921" width="0.1524" layer="21"/>
-<wire x1="5.08" y1="2.921" x2="5.08" y2="-2.921" width="0.1524" layer="21"/>
-<wire x1="-7.62" y1="2.921" x2="-7.62" y2="1.016" width="0.1524" layer="21"/>
-<wire x1="-7.62" y1="-2.921" x2="-7.62" y2="-1.016" width="0.1524" layer="21"/>
-<wire x1="-7.62" y1="1.016" x2="-7.62" y2="-1.016" width="0.1524" layer="21" curve="-180"/>
-<pad name="1" x="-6.35" y="-3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="2" x="-3.81" y="-3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="7" x="1.27" y="3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="8" x="-1.27" y="3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="3" x="-1.27" y="-3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="4" x="1.27" y="-3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="6" x="3.81" y="3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="5" x="3.81" y="-3.81" drill="0.8128" shape="long" rot="R90"/>
-<text x="-7.874" y="-2.921" size="1.27" layer="25" ratio="10" rot="R90">&gt;NAME</text>
-<text x="-3.556" y="-0.635" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
-<pad name="9" x="-3.81" y="3.81" drill="0.8128" shape="long" rot="R90"/>
-<pad name="10" x="-6.35" y="3.81" drill="0.8128" shape="long" rot="R90"/>
-</package>
-<package name="TO92-INLINE">
-<description>&lt;b&gt;VOLTAGE REGULATOR&lt;/b&gt;</description>
-<wire x1="-2.0946" y1="-1.651" x2="-0.7863" y2="2.5485" width="0.1524" layer="21" curve="-111.098957" cap="flat"/>
-<wire x1="0.7868" y1="2.5484" x2="2.095" y2="-1.651" width="0.1524" layer="21" curve="-111.09954" cap="flat"/>
-<wire x1="-2.095" y1="-1.651" x2="2.095" y2="-1.651" width="0.1524" layer="21"/>
-<wire x1="-2.655" y1="-0.254" x2="-2.254" y2="-0.254" width="0.1524" layer="21"/>
-<wire x1="2.254" y1="-0.254" x2="2.655" y2="-0.254" width="0.1524" layer="21"/>
-<wire x1="-0.7863" y1="2.5485" x2="0.7863" y2="2.5485" width="0.1524" layer="51" curve="-34.293591" cap="flat"/>
-<pad name="1" x="-2.159" y="0" drill="0.8128" diameter="1.6764" shape="octagon"/>
-<pad name="2" x="0" y="0" drill="0.8128" diameter="1.6764" shape="octagon"/>
-<pad name="3" x="2.159" y="0" drill="0.8128" diameter="1.6764" shape="octagon"/>
-<text x="3.175" y="0.635" size="1.27" layer="25" ratio="10">&gt;NAME</text>
-<text x="3.175" y="-1.27" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
-</package>
-<package name="TO92">
-<description>&lt;b&gt;TO-92&lt;/b&gt;</description>
-<wire x1="-2.095" y1="-1.651" x2="-0.7869" y2="2.5484" width="0.1524" layer="21" curve="-111.097684" cap="flat"/>
-<wire x1="0.7869" y1="2.5484" x2="2.095" y2="-1.651" width="0.1524" layer="21" curve="-111.097684" cap="flat"/>
-<wire x1="-2.095" y1="-1.651" x2="2.095" y2="-1.651" width="0.1524" layer="21"/>
-<wire x1="-2.254" y1="-0.254" x2="-0.286" y2="-0.254" width="0.1524" layer="51"/>
-<wire x1="-2.655" y1="-0.254" x2="-2.254" y2="-0.254" width="0.1524" layer="21"/>
-<wire x1="-0.286" y1="-0.254" x2="0.286" y2="-0.254" width="0.1524" layer="21"/>
-<wire x1="2.254" y1="-0.254" x2="2.655" y2="-0.254" width="0.1524" layer="21"/>
-<wire x1="0.286" y1="-0.254" x2="2.254" y2="-0.254" width="0.1524" layer="51"/>
-<wire x1="-0.7864" y1="2.5484" x2="0.7864" y2="2.5484" width="0.1524" layer="51" curve="-34.298964" cap="flat"/>
-<pad name="1" x="-1.27" y="0" drill="0.8128" diameter="1.6764" shape="octagon"/>
-<pad name="2" x="0" y="1.905" drill="0.8128" diameter="1.6764" shape="octagon"/>
-<pad name="3" x="1.27" y="0" drill="0.8128" diameter="1.6764" shape="octagon"/>
-<text x="2.413" y="1.651" size="1.27" layer="25" ratio="10">&gt;NAME</text>
-<text x="2.921" y="-1.27" size="1.27" layer="27" ratio="10">&gt;VALUE</text>
-</package>
 <package name="TO220-3V">
 <description>&lt;b&gt;TO 220 3 pin vertical&lt;/b&gt;</description>
 <wire x1="5.08" y1="-1.143" x2="5.08" y2="-4.064" width="0.1524" layer="21"/>
@@ -498,24 +447,6 @@ or will meet your specific requirements.&lt;p&gt;
 <pin name="MOSI" x="-2.54" y="-25.4" length="middle" rot="R90"/>
 <pin name="SCLK" x="0" y="-25.4" length="middle" rot="R90"/>
 </symbol>
-<symbol name="DRV883X-POLULU">
-<wire x1="-15.24" y1="7.62" x2="-15.24" y2="-12.7" width="0.254" layer="94"/>
-<wire x1="-15.24" y1="-12.7" x2="15.24" y2="-12.7" width="0.254" layer="94"/>
-<wire x1="15.24" y1="-12.7" x2="15.24" y2="7.62" width="0.254" layer="94"/>
-<wire x1="15.24" y1="7.62" x2="-15.24" y2="7.62" width="0.254" layer="94"/>
-<pin name="SLP" x="-20.32" y="-5.08" length="middle" direction="in"/>
-<pin name="EN/IN2" x="-20.32" y="-2.54" length="middle" direction="in"/>
-<pin name="PH/IN1" x="-20.32" y="0" length="middle" direction="in"/>
-<pin name="VCC" x="-20.32" y="5.08" length="middle" direction="pwr"/>
-<pin name="VM" x="20.32" y="5.08" length="middle" direction="pwr" rot="R180"/>
-<pin name="OUT1" x="20.32" y="-2.54" length="middle" direction="out" rot="R180"/>
-<pin name="OUT2" x="20.32" y="-5.08" length="middle" direction="out" rot="R180"/>
-<pin name="GND@1" x="-20.32" y="-10.16" length="middle" direction="pwr"/>
-<text x="15.24" y="7.62" size="1.778" layer="95" align="bottom-right">&gt;NAME</text>
-<text x="-15.24" y="-12.7" size="1.778" layer="96" align="top-left">&gt;VALUE</text>
-<pin name="GND@2" x="20.32" y="-10.16" length="middle" direction="pwr" rot="R180"/>
-<pin name="VIN" x="20.32" y="2.54" length="middle" direction="pwr" rot="R180"/>
-</symbol>
 <symbol name="78XX-1">
 <wire x1="-5.08" y1="-5.08" x2="5.08" y2="-5.08" width="0.4064" layer="94"/>
 <wire x1="5.08" y1="-5.08" x2="5.08" y2="2.54" width="0.4064" layer="94"/>
@@ -529,12 +460,6 @@ or will meet your specific requirements.&lt;p&gt;
 <pin name="IN" x="-7.62" y="0" visible="off" length="short" direction="in"/>
 <pin name="GND" x="0" y="-7.62" visible="off" length="short" direction="in" rot="R90"/>
 <pin name="OUT" x="7.62" y="0" visible="off" length="short" direction="pas" rot="R180"/>
-</symbol>
-<symbol name="+1V5">
-<wire x1="1.27" y1="-1.905" x2="0" y2="0" width="0.254" layer="94"/>
-<wire x1="0" y1="0" x2="-1.27" y2="-1.905" width="0.254" layer="94"/>
-<text x="-2.54" y="-5.08" size="1.778" layer="96" rot="R90">&gt;VALUE</text>
-<pin name="+1V8" x="0" y="-2.54" visible="off" length="short" direction="sup" rot="R90"/>
 </symbol>
 <symbol name="CR2032">
 <pin name="POS" x="0" y="7.62" visible="off" length="short" rot="R270"/>
@@ -687,71 +612,6 @@ or will meet your specific requirements.&lt;p&gt;
 <connect gate="G$1" pin="TXD" pad="16"/>
 <connect gate="G$1" pin="VCC" pad="8"/>
 </connects>
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-</devices>
-</deviceset>
-<deviceset name="DRV883X-POLULU" prefix="U">
-<gates>
-<gate name="G$1" symbol="DRV883X-POLULU" x="0" y="0"/>
-</gates>
-<devices>
-<device name="" package="DIL10">
-<connects>
-<connect gate="G$1" pin="EN/IN2" pad="3"/>
-<connect gate="G$1" pin="GND@1" pad="1"/>
-<connect gate="G$1" pin="GND@2" pad="10"/>
-<connect gate="G$1" pin="OUT1" pad="7"/>
-<connect gate="G$1" pin="OUT2" pad="8"/>
-<connect gate="G$1" pin="PH/IN1" pad="4"/>
-<connect gate="G$1" pin="SLP" pad="5"/>
-<connect gate="G$1" pin="VCC" pad="2"/>
-<connect gate="G$1" pin="VIN" pad="9"/>
-<connect gate="G$1" pin="VM" pad="6"/>
-</connects>
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-</devices>
-</deviceset>
-<deviceset name="MCP1702" prefix="IC" uservalue="yes">
-<description>&lt;b&gt;VOLTAGE REGULATOR&lt;/b&gt;</description>
-<gates>
-<gate name="1" symbol="78XX-1" x="0" y="0"/>
-</gates>
-<devices>
-<device name="INLINE" package="TO92-INLINE">
-<connects>
-<connect gate="1" pin="GND" pad="1"/>
-<connect gate="1" pin="IN" pad="2"/>
-<connect gate="1" pin="OUT" pad="3"/>
-</connects>
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-<device name="TRI" package="TO92">
-<connects>
-<connect gate="1" pin="GND" pad="1"/>
-<connect gate="1" pin="IN" pad="2"/>
-<connect gate="1" pin="OUT" pad="3"/>
-</connects>
-<technologies>
-<technology name=""/>
-</technologies>
-</device>
-</devices>
-</deviceset>
-<deviceset name="+1V5" prefix="+3V3">
-<description>&lt;b&gt;SUPPLY SYMBOL&lt;/b&gt;</description>
-<gates>
-<gate name="G$1" symbol="+1V5" x="0" y="2.54"/>
-</gates>
-<devices>
-<device name="">
 <technologies>
 <technology name=""/>
 </technologies>
@@ -17992,19 +17852,8 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <part name="GND6" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="R9" library="resistor" library_urn="urn:adsk.eagle:library:348" deviceset="R-US_" device="0204/2V" value="10k"/>
 <part name="GND2" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="U2" library="SynchroClock" deviceset="DRV883X-POLULU" device="" value="DRV8838"/>
-<part name="+3V313" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
-<part name="GND12" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="IC1" library="SynchroClock" deviceset="MCP1702" device="INLINE" value="MCP1702-15"/>
-<part name="GND13" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="+3V315" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
 <part name="GND14" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="C1" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
-<part name="C4" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
-<part name="GND4" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
-<part name="+3V33" library="SynchroClock" deviceset="+1V5" device=""/>
-<part name="+3V314" library="SynchroClock" deviceset="+1V5" device=""/>
-<part name="+3V31" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
 <part name="U1" library="SynchroClock" deviceset="TC1262" device=""/>
 <part name="C2" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
 <part name="GND5" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
@@ -18013,9 +17862,6 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <part name="GND3" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="+3V34" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
 <part name="JP2" library="pinhead" library_urn="urn:adsk.eagle:library:325" deviceset="PINHD-1X2" device="" value="CLOCK"/>
-<part name="C6" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
-<part name="+3V37" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
-<part name="GND8" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
 <part name="C7" library="capacitor-wima" library_urn="urn:adsk.eagle:library:116" deviceset="C" device="2.5/2" value="0.1uf"/>
 <part name="+3V38" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="+3V3" device=""/>
 <part name="GND9" library="supply1" library_urn="urn:adsk.eagle:library:371" deviceset="GND" device=""/>
@@ -18071,19 +17917,8 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <instance part="GND6" gate="1" x="137.16" y="116.84"/>
 <instance part="R9" gate="G$1" x="142.24" y="127" rot="R90"/>
 <instance part="GND2" gate="1" x="40.64" y="93.98"/>
-<instance part="U2" gate="G$1" x="213.36" y="91.44"/>
-<instance part="+3V313" gate="G$1" x="193.04" y="104.14"/>
-<instance part="GND12" gate="1" x="193.04" y="73.66"/>
-<instance part="IC1" gate="1" x="76.2" y="68.58"/>
-<instance part="GND13" gate="1" x="233.68" y="73.66"/>
 <instance part="+3V315" gate="G$1" x="246.38" y="160.02"/>
 <instance part="GND14" gate="1" x="246.38" y="129.54"/>
-<instance part="C1" gate="G$1" x="63.5" y="60.96" rot="R180"/>
-<instance part="C4" gate="G$1" x="91.44" y="60.96" rot="R180"/>
-<instance part="GND4" gate="1" x="76.2" y="55.88"/>
-<instance part="+3V33" gate="G$1" x="96.52" y="68.58" rot="R270"/>
-<instance part="+3V314" gate="G$1" x="233.68" y="104.14"/>
-<instance part="+3V31" gate="G$1" x="63.5" y="76.2"/>
 <instance part="U1" gate="G$1" x="76.2" y="40.64"/>
 <instance part="C2" gate="G$1" x="63.5" y="33.02" rot="R180"/>
 <instance part="GND5" gate="1" x="76.2" y="25.4"/>
@@ -18092,9 +17927,6 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <instance part="GND3" gate="1" x="50.8" y="27.94"/>
 <instance part="+3V34" gate="G$1" x="99.06" y="40.64" rot="R270"/>
 <instance part="JP2" gate="G$1" x="251.46" y="86.36"/>
-<instance part="C6" gate="G$1" x="142.24" y="182.88" rot="R180"/>
-<instance part="+3V37" gate="G$1" x="142.24" y="193.04"/>
-<instance part="GND8" gate="1" x="142.24" y="175.26"/>
 <instance part="C7" gate="G$1" x="157.48" y="182.88" rot="R180"/>
 <instance part="+3V38" gate="G$1" x="157.48" y="193.04"/>
 <instance part="GND9" gate="1" x="157.48" y="175.26"/>
@@ -18160,23 +17992,9 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <junction x="116.84" y="101.6"/>
 </segment>
 <segment>
-<pinref part="U2" gate="G$1" pin="VCC"/>
-<pinref part="+3V313" gate="G$1" pin="+3V3"/>
-<wire x1="193.04" y1="96.52" x2="193.04" y2="101.6" width="0.1524" layer="91"/>
-</segment>
-<segment>
 <pinref part="+3V315" gate="G$1" pin="+3V3"/>
 <pinref part="U3" gate="G$1" pin="VCC"/>
 <wire x1="246.38" y1="157.48" x2="246.38" y2="149.86" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="C1" gate="G$1" pin="2"/>
-<pinref part="+3V31" gate="G$1" pin="+3V3"/>
-<wire x1="63.5" y1="66.04" x2="63.5" y2="68.58" width="0.1524" layer="91"/>
-<pinref part="IC1" gate="1" pin="IN"/>
-<wire x1="63.5" y1="68.58" x2="63.5" y2="73.66" width="0.1524" layer="91"/>
-<wire x1="68.58" y1="68.58" x2="63.5" y2="68.58" width="0.1524" layer="91"/>
-<junction x="63.5" y="68.58"/>
 </segment>
 <segment>
 <pinref part="U1" gate="G$1" pin="OUT"/>
@@ -18186,11 +18004,6 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <wire x1="91.44" y1="40.64" x2="96.52" y2="40.64" width="0.1524" layer="91"/>
 <wire x1="91.44" y1="38.1" x2="91.44" y2="40.64" width="0.1524" layer="91"/>
 <junction x="91.44" y="40.64"/>
-</segment>
-<segment>
-<pinref part="C6" gate="G$1" pin="2"/>
-<pinref part="+3V37" gate="G$1" pin="+3V3"/>
-<wire x1="142.24" y1="190.5" x2="142.24" y2="187.96" width="0.1524" layer="91"/>
 </segment>
 <segment>
 <pinref part="+3V38" gate="G$1" pin="+3V3"/>
@@ -18327,29 +18140,9 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <junction x="137.16" y="119.38"/>
 </segment>
 <segment>
-<pinref part="U2" gate="G$1" pin="GND@1"/>
-<pinref part="GND12" gate="1" pin="GND"/>
-<wire x1="193.04" y1="81.28" x2="193.04" y2="76.2" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="U2" gate="G$1" pin="GND@2"/>
-<pinref part="GND13" gate="1" pin="GND"/>
-<wire x1="233.68" y1="81.28" x2="233.68" y2="76.2" width="0.1524" layer="91"/>
-</segment>
-<segment>
 <pinref part="U3" gate="G$1" pin="GND"/>
 <pinref part="GND14" gate="1" pin="GND"/>
 <wire x1="246.38" y1="137.16" x2="246.38" y2="132.08" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="IC1" gate="1" pin="GND"/>
-<pinref part="GND4" gate="1" pin="GND"/>
-<wire x1="76.2" y1="60.96" x2="76.2" y2="58.42" width="0.1524" layer="91"/>
-<pinref part="C1" gate="G$1" pin="1"/>
-<wire x1="63.5" y1="58.42" x2="76.2" y2="58.42" width="0.1524" layer="91"/>
-<junction x="76.2" y="58.42"/>
-<pinref part="C4" gate="G$1" pin="1"/>
-<wire x1="91.44" y1="58.42" x2="76.2" y2="58.42" width="0.1524" layer="91"/>
 </segment>
 <segment>
 <pinref part="GND3" gate="1" pin="GND"/>
@@ -18367,11 +18160,6 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <junction x="76.2" y="30.48"/>
 <pinref part="C5" gate="G$1" pin="-"/>
 <wire x1="91.44" y1="30.48" x2="76.2" y2="30.48" width="0.1524" layer="91"/>
-</segment>
-<segment>
-<pinref part="C6" gate="G$1" pin="1"/>
-<pinref part="GND8" gate="1" pin="GND"/>
-<wire x1="142.24" y1="177.8" x2="142.24" y2="180.34" width="0.1524" layer="91"/>
 </segment>
 <segment>
 <pinref part="C7" gate="G$1" pin="1"/>
@@ -18465,9 +18253,9 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <junction x="111.76" y="88.9"/>
 </segment>
 <segment>
-<wire x1="213.36" y1="139.7" x2="203.2" y2="139.7" width="0.1524" layer="91"/>
-<label x="203.2" y="139.7" size="1.778" layer="95"/>
-<pinref part="U3" gate="G$1" pin="PB1"/>
+<pinref part="U3" gate="G$1" pin="PB3"/>
+<wire x1="213.36" y1="144.78" x2="203.2" y2="144.78" width="0.1524" layer="91"/>
+<label x="203.2" y="144.78" size="1.778" layer="95"/>
 </segment>
 </net>
 <net name="RXD" class="0">
@@ -18556,58 +18344,6 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <wire x1="142.24" y1="134.62" x2="134.62" y2="134.62" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="PH" class="0">
-<segment>
-<pinref part="U2" gate="G$1" pin="PH/IN1"/>
-<wire x1="193.04" y1="91.44" x2="182.88" y2="91.44" width="0.1524" layer="91"/>
-<label x="182.88" y="91.44" size="1.778" layer="95"/>
-</segment>
-<segment>
-<wire x1="213.36" y1="144.78" x2="203.2" y2="144.78" width="0.1524" layer="91"/>
-<label x="203.2" y="144.78" size="1.778" layer="95"/>
-<pinref part="U3" gate="G$1" pin="PB3"/>
-</segment>
-</net>
-<net name="EN" class="0">
-<segment>
-<pinref part="U2" gate="G$1" pin="EN/IN2"/>
-<wire x1="193.04" y1="88.9" x2="182.88" y2="88.9" width="0.1524" layer="91"/>
-<label x="182.88" y="88.9" size="1.778" layer="95"/>
-</segment>
-<segment>
-<wire x1="213.36" y1="147.32" x2="203.2" y2="147.32" width="0.1524" layer="91"/>
-<label x="203.2" y="147.32" size="1.778" layer="95"/>
-<pinref part="U3" gate="G$1" pin="PB4"/>
-</segment>
-</net>
-<net name="SLP" class="0">
-<segment>
-<pinref part="U2" gate="G$1" pin="SLP"/>
-<wire x1="193.04" y1="86.36" x2="182.88" y2="86.36" width="0.1524" layer="91"/>
-<label x="182.88" y="86.36" size="1.778" layer="95"/>
-</segment>
-<segment>
-<wire x1="213.36" y1="149.86" x2="203.2" y2="149.86" width="0.1524" layer="91"/>
-<label x="203.2" y="149.86" size="1.778" layer="95"/>
-<pinref part="U3" gate="G$1" pin="NRES/PB5"/>
-</segment>
-</net>
-<net name="+1V8" class="1">
-<segment>
-<pinref part="IC1" gate="1" pin="OUT"/>
-<pinref part="+3V33" gate="G$1" pin="+1V8"/>
-<wire x1="83.82" y1="68.58" x2="91.44" y2="68.58" width="0.1524" layer="91"/>
-<pinref part="C4" gate="G$1" pin="2"/>
-<wire x1="91.44" y1="68.58" x2="93.98" y2="68.58" width="0.1524" layer="91"/>
-<wire x1="91.44" y1="66.04" x2="91.44" y2="68.58" width="0.1524" layer="91"/>
-<junction x="91.44" y="68.58"/>
-</segment>
-<segment>
-<pinref part="U2" gate="G$1" pin="VM"/>
-<pinref part="+3V314" gate="G$1" pin="+1V8"/>
-<wire x1="233.68" y1="96.52" x2="233.68" y2="101.6" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="+5V" class="1">
 <segment>
 <pinref part="U1" gate="G$1" pin="IN"/>
@@ -18619,20 +18355,6 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <pinref part="J1" gate="J$1" pin="2"/>
 </segment>
 </net>
-<net name="N$12" class="0">
-<segment>
-<pinref part="U2" gate="G$1" pin="OUT1"/>
-<pinref part="JP2" gate="G$1" pin="1"/>
-<wire x1="233.68" y1="88.9" x2="248.92" y2="88.9" width="0.1524" layer="91"/>
-</segment>
-</net>
-<net name="N$13" class="0">
-<segment>
-<pinref part="U2" gate="G$1" pin="OUT2"/>
-<pinref part="JP2" gate="G$1" pin="2"/>
-<wire x1="233.68" y1="86.36" x2="248.92" y2="86.36" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="VBAT" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="VBAT"/>
@@ -18641,19 +18363,50 @@ Source: http://www.murata.com .. GRM43DR72E224KW01.pdf</description>
 <wire x1="162.56" y1="88.9" x2="162.56" y2="83.82" width="0.1524" layer="91"/>
 </segment>
 </net>
+<net name="A" class="0">
+<segment>
+<pinref part="JP2" gate="G$1" pin="1"/>
+<wire x1="248.92" y1="88.9" x2="236.22" y2="88.9" width="0.1524" layer="91"/>
+<label x="236.22" y="88.9" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U3" gate="G$1" pin="PB1"/>
+<wire x1="213.36" y1="139.7" x2="203.2" y2="139.7" width="0.1524" layer="91"/>
+<label x="203.2" y="139.7" size="1.778" layer="95"/>
+</segment>
+</net>
+<net name="B" class="0">
+<segment>
+<pinref part="JP2" gate="G$1" pin="2"/>
+<wire x1="248.92" y1="86.36" x2="236.22" y2="86.36" width="0.1524" layer="91"/>
+<label x="236.22" y="86.36" size="1.778" layer="95"/>
+</segment>
+<segment>
+<pinref part="U3" gate="G$1" pin="PB4"/>
+<wire x1="213.36" y1="147.32" x2="203.2" y2="147.32" width="0.1524" layer="91"/>
+<label x="203.2" y="147.32" size="1.778" layer="95"/>
+</segment>
+</net>
 </nets>
 </sheet>
 </sheets>
 <errors>
-<approved hash="104,1,193.04,96.52,U2,VCC,+3V3,,,"/>
-<approved hash="104,1,233.68,96.52,U2,VM,+1V8,,,"/>
-<approved hash="204,1,233.68,93.98,U2,VIN,,,,"/>
+<approved hash="104,1,246.38,149.86,U3,VCC,+3V3,,,"/>
+<approved hash="104,1,121.92,91.44,IC2,VCC,+3V3,,,"/>
+<approved hash="103,1,121.92,83.82,IC2,NC,GND,,,"/>
+<approved hash="103,1,121.92,81.28,IC2,NC1,GND,,,"/>
+<approved hash="103,1,121.92,78.74,IC2,NC2,GND,,,"/>
+<approved hash="103,1,121.92,76.2,IC2,NC3,GND,,,"/>
+<approved hash="103,1,152.4,76.2,IC2,NC4,GND,,,"/>
+<approved hash="103,1,152.4,78.74,IC2,NC5,GND,,,"/>
+<approved hash="103,1,152.4,81.28,IC2,NC6,GND,,,"/>
+<approved hash="103,1,152.4,83.82,IC2,NC7,GND,,,"/>
 </errors>
 </schematic>
 </drawing>
 <compatibility>
 <note version="8.2" severity="warning">
-Since Version 8.2, Eagle supports online libraries. The ids
+Since Version 8.2, EAGLE supports online libraries. The ids
 of those online libraries will not be understood (or retained)
 with this version.
 </note>
