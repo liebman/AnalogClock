@@ -25,15 +25,20 @@
 volatile uint16_t position; // This is the position that we believe the clock is in.
 volatile uint16_t adjustment;   // This is the adjustment to be made.
 volatile uint8_t tp_duration;
+volatile uint8_t tp_duty;
 volatile uint8_t ap_duration;
+volatile uint8_t ap_duty;
 volatile uint8_t ap_delay;     // delay in ms between ticks during adjustment
+#if defined(DRV8838)
 volatile uint8_t sleep_delay;  // delay to sleep the DEV8838
+#endif
 
 volatile uint8_t control;       // This is our control "register".
 volatile uint8_t status;        // status register (has tick bit)
 
 volatile uint8_t command;       // This is which "register" to be read/written.
 
+volatile unsigned int pwm_duration;
 volatile bool adjust_active;
 volatile unsigned int receives;
 volatile unsigned int requests;
@@ -63,15 +68,23 @@ void i2creceive(int size)
         case CMD_TP_DURATION:
             tp_duration = Wire.read();
             break;
+        case CMD_TP_DUTY:
+            tp_duty = Wire.read();
+            break;
         case CMD_AP_DURATION:
             ap_duration = Wire.read();
+            break;
+        case CMD_AP_DUTY:
+            ap_duty = Wire.read();
             break;
         case CMD_AP_DELAY:
             ap_delay = Wire.read();
             break;
+#if defined(DRV8838)
         case CMD_SLEEP_DELAY:
             sleep_delay = Wire.read();
             break;
+#endif
         case CMD_CONTROL:
             control = Wire.read();
             ++control_count;
@@ -108,18 +121,28 @@ void i2crequest()
         value = tp_duration;
         Wire.write(value);
         break;
+    case CMD_TP_DUTY:
+        value = tp_duty;
+        Wire.write(value);
+        break;
     case CMD_AP_DURATION:
         value = ap_duration;
+        Wire.write(value);
+        break;
+    case CMD_AP_DUTY:
+        value = ap_duty;
         Wire.write(value);
         break;
     case CMD_AP_DELAY:
         value = ap_delay;
         Wire.write(value);
         break;
+#if defined(DRV8838)
     case CMD_SLEEP_DELAY:
         value = sleep_delay;
         Wire.write(value);
         break;
+#endif
     case CMD_CONTROL:
         size_t res;
         res = Wire.write(control);
@@ -149,6 +172,41 @@ volatile unsigned int last_duration;
 volatile unsigned int stop_time;
 #endif
 
+
+void clearTimer()
+{
+#if defined(__AVR_ATtinyX5__)
+    TCCR1 = 0;
+    GTCCR = 0;
+    TIMSK &= ~(_BV(TOIE1) | _BV(OCIE1A) | _BV(OCIE1A));
+#else
+    TCCR1A = 0;
+    TCCR1B = 0;
+    TIMSK1 = 0;
+#endif
+    OCR1A  = 0;
+    OCR1B  = 0;
+}
+
+ISR(TIMER1_OVF_vect)
+{
+    if (pwm_duration == 0)
+    {
+        return;
+    }
+
+    pwm_duration -= 1;
+    if (pwm_duration == 0)
+    {
+        clearTimer();
+        timer_running = false;
+        if (timer_cb != NULL)
+        {
+            timer_cb();
+        }
+    }
+}
+
 ISR(TIMER1_COMPA_vect)
 {
     unsigned int int_time = millis();
@@ -162,7 +220,7 @@ ISR(TIMER1_COMPA_vect)
         return;
     }
 
-#ifdef __AVR_ATtinyX5__
+#if defined(__AVR_ATtinyX5__) //|| defined(__AVR_ATtinyX4__)
     TIMSK &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #else
     TIMSK1 &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
@@ -190,7 +248,7 @@ void startTimer(int ms, void (*func)())
     noInterrupts();
     // disable all interrupts
     timer_cb = func;
-#ifdef __AVR_ATtinyX5__
+#if defined(__AVR_ATtinyX5__) //|| defined(__AVR_ATtinyX4__)
     TCCR1 = 0;
     TCNT1 = 0;
 
@@ -217,6 +275,48 @@ void startTimer(int ms, void (*func)())
     // enable all interrupts
 }
 
+void startPWM(unsigned int duration, unsigned int duty, void (*func)())
+{
+    noInterrupts();
+    timer_cb = func;
+
+    clearTimer();
+
+    TCNT1 = 200; // needed???
+
+    if (isTick())
+    {
+#if defined(__AVR_ATtinyX5__)
+        TCCR1 = _BV(COM1A1) | _BV(PWM1A) | PWM_PRESCALE_BITS;
+#else
+        TCCR1A =  _BV(COM1A1) | _BV(WGM10);
+#endif
+        OCR1A = duty2pwm(duty);
+    }
+    else
+    {
+#if defined(__AVR_ATtinyX5__)
+        TCCR1 = PWM_PRESCALE_BITS;
+        GTCCR = _BV(COM1B1) | _BV(PWM1B);
+#else
+        TCCR1A =  _BV(COM1B1) | _BV(WGM10);
+#endif
+        OCR1B = duty2pwm(duty);
+    }
+
+#if defined(__AVR_ATtinyX5__)
+    TIMSK |= _BV(TOIE1);
+#else
+    TCCR1B = _BV(WGM12) | PWM_PRESCALE_BITS;
+    TIMSK1 = _BV(TOIE1);
+#endif
+
+    pwm_duration = ms2PWMCount(duration);;
+    timer_running = true;
+    interrupts();
+}
+
+#if !defined(USE_PWM)
 void startTick()
 {
 #ifdef DRV8838
@@ -241,9 +341,11 @@ void startTick()
     }
 #endif
 }
+#endif
 
 void endTick()
 {
+#if !defined(USE_PWM)
 #ifdef DRV8838
     digitalWrite(DRV_ENABLE, TICK_OFF);
     digitalWrite(DRV_PHASE, LOW); // per DRV8838 datasheet this reduces power usage
@@ -263,7 +365,13 @@ void endTick()
 #endif
     }
 #endif
+#endif
 
+#ifdef TEST_MODE
+    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+#endif
+
+    timer_cb = NULL;
     toggleTick();
 
     if (adjustment != 0)
@@ -280,7 +388,9 @@ void endTick()
             // and schedule the sleep.
             //
             adjust_active = false;
+#if defined(DRV8838)
             startTimer(sleep_delay, &sleepDRV8838);
+#endif
         }
     }
     else
@@ -289,21 +399,22 @@ void endTick()
         {
             adjust_active = false;
         }
+#if defined(DRV8838)
         startTimer(sleep_delay, &sleepDRV8838);
+#endif
     }
-
 }
 
+#if defined(DRV8838)
 void sleepDRV8838()
 {
-#ifdef DRV8838
     // only sleep the chip if we are not adjusting
     if (adjustment == 0)
     {
         digitalWrite(DRV_SLEEP, LOW);
     }
-#endif
 }
+#endif
 
 // advance the position
 void advancePosition()
@@ -317,17 +428,29 @@ void advancePosition()
 
 void adjustClock()
 {
-    advanceClock(ap_duration);
+#ifdef USE_PWM
+            advanceClock(ap_duration, ap_duty);
+#else
+            advanceClock(ap_duration);
+#endif
 }
 
 //
 //  Advance the clock by one second.
 //
+#ifdef USE_PWM
+void advanceClock(uint16_t duration, uint8_t duty)
+#else
 void advanceClock(uint16_t duration)
+#endif
 {
     advancePosition();
+#if defined(USE_PWM)
+    startPWM(duration, duty, &endTick);
+#else
     startTick();
     startTimer(duration, &endTick);
+#endif
 }
 
 void startAdjust()
@@ -335,7 +458,12 @@ void startAdjust()
     if (!adjust_active)
     {
         adjust_active = true;
-        advanceClock(ap_duration);
+
+#ifdef USE_PWM
+            advanceClock(ap_duration, ap_duty);
+#else
+            advanceClock(ap_duration);
+#endif
     }
 }
 
@@ -345,7 +473,7 @@ void startAdjust()
 void tick()
 {
     ++ticks;
-#ifndef __AVR_ATtinyX5__
+#if !defined(__AVR_ATtinyX5__) && !defined(__AVR_ATtinyX4__)
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 #endif
     if (isEnabled())
@@ -357,7 +485,11 @@ void tick()
         }
         else
         {
+#ifdef USE_PWM
+            advanceClock(tp_duration, tp_duty);
+#else
             advanceClock(tp_duration);
+#endif
         }
     }
     else
@@ -366,12 +498,14 @@ void tick()
         {
             startAdjust();
         }
+#if defined(DRV8838)
         else
         {
             // start a timer to sleep the DRV - we just need a timer going
             // so we stay awake for a bit to receive commands.
             startTimer(sleep_delay, &sleepDRV8838);
         }
+#endif
     }
 }
 
@@ -383,7 +517,7 @@ void setup()
     Serial.println("Startup!");
 #endif
 
-#ifndef __AVR_ATtinyX5__
+#if !defined(__AVR_ATtinyX5__) && !defined(__AVR_ATtinyX4__)
     digitalWrite(LED_PIN, LOW);
     pinMode(LED_PIN, OUTPUT);
 #endif
@@ -393,20 +527,32 @@ void setup()
     PRR |= (1 << PRADC); // Turn off ADC clock
 #endif
 
-    tp_duration = DEFAULT_TP_DURATION_MS;
-    ap_duration = DEFAULT_AP_DURATION_MS;
-    ap_delay = DEFAULT_AP_DELAY_MS;
-    sleep_delay = DEFAULT_SLEEP_DELAY;
+    tp_duration   = DEFAULT_TP_DURATION_MS;
+    tp_duty       = DEFAULT_TP_DUTY;
+    ap_duration   = DEFAULT_AP_DURATION_MS;
+    ap_duty       = DEFAULT_AP_DUTY;
+    ap_delay      = DEFAULT_AP_DELAY_MS;
+#if defined(DRV8838)
+    sleep_delay   = DEFAULT_SLEEP_DELAY;
+#endif
     adjust_active = false;
 
+#ifdef SKIP_INITIAL_ADJUST
+    position      = 0;
+    adjustment    = 0;
+#else
     //
     // we need a single adjust at startup to insure that the clock motor
     // is synched as a tick/tock.  This first tick will "misfire" if the motor
     // is out of sync and after that will be in sync.
-    position = MAX_SECONDS - 1;
-    adjustment = 1;
-#ifdef TEST_MODE
-    control = BIT_ENABLE;
+    position      = MAX_SECONDS - 1;
+    adjustment    = 1;
+#endif
+
+#if defined(TEST_MODE) || defined(START_ENABLED)
+    control       = BIT_ENABLE;
+#else
+    control       = 0;
 #endif
 
 #ifndef TEST_MODE
@@ -437,7 +583,10 @@ void setup()
 #ifndef __AVR_ATtinyX5__
     pinMode(B2_PIN, OUTPUT);
 #endif
-#ifndef TEST_MODE
+#ifdef TEST_MODE
+    digitalWrite(LED_PIN, LOW);
+    pinMode(LED_PIN, OUTPUT);
+#else
     pinMode(INT_PIN, INPUT);
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
 #endif
@@ -453,10 +602,10 @@ void loop()
 #ifdef USE_SLEEP
 #ifdef USE_POWER_DOWN_MODE
     //
-    // conserve power if we are not in stay active and
-    // there is no timer running
+    // conserve power if i2c is not active and
+    // there is no timer/PWM running
     //
-    if (!timer_running && !isStayActive()) {
+    if (!timer_running && !Wire.isActive()) {
         set_sleep_mode(SLEEP_MODE_PWR_DOWN);
     }
     else
@@ -508,7 +657,7 @@ void loop()
     if (!timer_running)
     {
         tick();
-        delay(1000);
+        delay(1000-tp_duration);
     }
 #else
     delay(100);

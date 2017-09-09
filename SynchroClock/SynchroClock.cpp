@@ -28,10 +28,16 @@
 //
 // These are only used when debugging
 //
-//#define DISABLE_DEEP_SLEEP
-//#define DISABLE_INITIAL_NTP
-//#define DISABLE_INITIAL_SYNC
+#define USE_BUILTIN_LED
+#define DISABLE_DEEP_SLEEP
+#define DISABLE_INITIAL_NTP
+#define DISABLE_INITIAL_SYNC
 //#define HARD_CODE_WIFI
+
+#ifdef USE_BUILTIN_LED
+#undef LED_PIN
+#define LED_PIN LED_BUILTIN
+#endif
 
 #ifdef HARD_CODED_WIFI
 #define HARD_CODED_SSID "Whatever"
@@ -63,6 +69,17 @@ boolean parseBoolean(const char* value)
     return false;
 }
 
+uint8_t parseDuty(const char* value)
+{
+    int i = atoi(value);
+    if (i < 1 || i > 100)
+    {
+        dbprintf("parseDuty: invalid value %s: using 50 instead!\n", value);
+        i = 50;
+    }
+    return (uint8_t) i;
+}
+
 int getValidOffset(String name)
 {
     int result = TimeUtils::parseOffset(HTTP.arg(name).c_str());
@@ -80,6 +97,12 @@ uint16_t getValidPosition(String name)
 uint8_t getValidDuration(String name)
 {
     uint8_t result = TimeUtils::parseSmallDuration(HTTP.arg(name).c_str());
+    return result;
+}
+
+uint8_t getValidDuty(String name)
+{
+    uint8_t result = parseDuty(HTTP.arg(name).c_str());
     return result;
 }
 
@@ -104,7 +127,6 @@ void handleOffset()
 void handleAdjustment()
 {
     uint16_t adj;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         if (HTTP.arg("set").equalsIgnoreCase("auto"))
@@ -132,15 +154,12 @@ void handleAdjustment()
         sprintf(message, "adjustment: %d\n", adj);
     }
 
-    clk.setStayActive(false);
-
     HTTP.send(200, "text/plain", message);
 }
 
 void handlePosition()
 {
     uint16_t pos;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
@@ -163,15 +182,12 @@ void handlePosition()
         sprintf(message, "position: %d (%02d:%02d:%02d)\n", pos, hours, minutes, seconds);
     }
 
-    clk.setStayActive(false);
-
     HTTP.send(200, "text/Plain", message);
 }
 
 void handleTPDuration()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -190,7 +206,31 @@ void handleTPDuration()
     {
         sprintf(message, "TP duration: %u\n", value);
     }
-    clk.setStayActive(false);
+
+    HTTP.send(200, "text/plain", message);
+}
+
+void handleTPDuty()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidDuty("set");
+        dbprintf("setting tp_duty:%u\n", value);
+        if (clk.writeTPDuty(value))
+        {
+            dbprintln("failed to set TP duty!");
+        }
+    }
+
+    if (clk.readTPDuty(&value))
+    {
+        sprintf(message, "failed to read TP duty\n");
+    }
+    else
+    {
+        sprintf(message, "TP duty: %u\n", value);
+    }
 
     HTTP.send(200, "text/plain", message);
 }
@@ -198,7 +238,6 @@ void handleTPDuration()
 void handleAPDuration()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -217,7 +256,31 @@ void handleAPDuration()
     {
         sprintf(message, "AP duration: %u\n", value);
     }
-    clk.setStayActive(false);
+
+    HTTP.send(200, "text/plain", message);
+}
+
+void handleAPDuty()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidDuty("set");
+        dbprintf("setting ap_duty:%u\n", value);
+        if (clk.writeAPDuty(value))
+        {
+            dbprintln("failed to set AP duty!");
+        }
+    }
+
+    if (clk.readAPDuty(&value))
+    {
+        sprintf(message, "failed to read AP duty\n");
+    }
+    else
+    {
+        sprintf(message, "AP duty: %u\n", value);
+    }
 
     HTTP.send(200, "text/plain", message);
 }
@@ -225,7 +288,6 @@ void handleAPDuration()
 void handleAPDelay()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -244,7 +306,6 @@ void handleAPDelay()
     {
         sprintf(message, "AP delay: %u\n", value);
     }
-    clk.setStayActive(false);
 
     HTTP.send(200, "text/plain", message);
 }
@@ -252,7 +313,6 @@ void handleAPDelay()
 void handleSleepDelay()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -271,7 +331,6 @@ void handleSleepDelay()
     {
         sprintf(message, "sleep delay: %u\n", value);
     }
-    clk.setStayActive(false);
 
     HTTP.send(200, "text/plain", String(value) + "\n");
 }
@@ -279,14 +338,12 @@ void handleSleepDelay()
 void handleEnable()
 {
     boolean enable;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         enable = getValidBoolean("set");
         clk.setEnable(enable);
     }
     enable = clk.getEnable();
-    clk.setStayActive(false);
     HTTP.send(200, "text/Plain", String(enable) + "\n");
 }
 
@@ -299,8 +356,6 @@ void handleRTC()
     if (!err)
     {
         dbprintf("handleRTC: RTC : %s (UTC)\n", dt.string());
-
-        clk.setStayActive(true);
 
         if (HTTP.hasArg("offset"))
         {
@@ -315,7 +370,6 @@ void handleRTC()
 
         uint16_t value = dt.getPosition(config.tz_offset);
 
-        clk.setStayActive(false);
         int hours = value / 3600;
         int minutes = (value - (hours * 3600)) / 60;
         int seconds = value - (hours * 3600) - (minutes * 60);
@@ -347,8 +401,6 @@ void handleNTP()
         sync = getValidBoolean("sync");
     }
 
-    clk.setStayActive(true);
-
     double offset;
     IPAddress address;
     char message[64];
@@ -369,8 +421,6 @@ void handleNTP()
 
         snprintf(message, 64, "OFFSET: %0.6lf (%s)\n", offset, address.toString().c_str());
     }
-
-    clk.setStayActive(false);
 
     dbprintf(message);
     HTTP.send(code, "text/Plain", message);
@@ -694,8 +744,6 @@ void setup()
     dbprintln("clock interface started");
     feedback.off();
 
-    clk.setStayActive(true);
-
     // if the reset/config button is pressed then force config
     if (digitalRead(FACTORY_RESET_PIN) == 0)
     {
@@ -705,7 +753,6 @@ void setup()
         //
         if (dsd.sleep_delay_left != 0)
         {
-            clk.setStayActive(false);
             dbprintln("reset button pressed with radio off, short sleep to enable!");
             dsd.sleep_delay_left = 0;
             writeDeepSleepData();
@@ -783,7 +830,6 @@ void setup()
         {
             setCLKfromRTC();
         }
-        clk.setStayActive(false);
         sleepFor(dsd.sleep_delay_left);
     }
 
@@ -832,8 +878,6 @@ void setup()
     setCLKfromRTC();
 #endif
 
-    clk.setStayActive(false);
-
 #ifdef DISABLE_DEEP_SLEEP
     stay_awake = true;
 #endif
@@ -852,7 +896,9 @@ void setup()
     HTTP.on("/adjust", HTTP_GET, handleAdjustment);
     HTTP.on("/position", HTTP_GET, handlePosition);
     HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
+    HTTP.on("/tp_duty", HTTP_GET, handleTPDuty);
     HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
+    HTTP.on("/ap_duty", HTTP_GET, handleAPDuty);
     HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
     HTTP.on("/sleep_delay", HTTP_GET, handleSleepDelay);
     HTTP.on("/enable", HTTP_GET, handleEnable);

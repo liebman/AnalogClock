@@ -100,18 +100,21 @@ typedef struct
     uint8_t data[sizeof(DeepSleepData)];
 } RTCDeepSleepData;
 
-int parseOffset(const char* offset_string);
-uint16_t parsePosition(const char* position_string);
+boolean parseBoolean(const char* value);
+uint8_t parseDuty(const char* value);
 int getValidOffset(String name);
 uint16_t getValidPosition(String name);
 uint8_t getValidDuration(String name);
+uint8_t getValidDuty(String name);
 boolean getValidBoolean(String name);
 void handleOffset();
 void handleAdjustment();
 void handlePosition();
 void handleTPDuration();
+void handleTPDuty();
 void handleTPCount();
 void handleAPDuration();
+void handleAPDuty();
 void handleAPCount();
 void handleAPDelay();
 void handleSleepDelay();
