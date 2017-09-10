@@ -428,11 +428,23 @@ void advancePosition()
 
 void adjustClock()
 {
+    if (adjustment == 1)
+    {
+        // last aduustment uses tick pulse settings
 #ifdef USE_PWM
-            advanceClock(ap_duration, ap_duty);
+        advanceClock(tp_duration, tp_duty);
 #else
-            advanceClock(ap_duration);
+        advanceClock(tp_duration);
 #endif
+    }
+    else
+    {
+#ifdef USE_PWM
+        advanceClock(ap_duration, ap_duty);
+#else
+        advanceClock(ap_duration);
+#endif
+    }
 }
 
 //
@@ -459,10 +471,12 @@ void startAdjust()
     {
         adjust_active = true;
 
+        //
+        // the first adjustment uses the tick pulse timing
 #ifdef USE_PWM
-            advanceClock(ap_duration, ap_duty);
+            advanceClock(tp_duration, tp_duty);
 #else
-            advanceClock(ap_duration);
+            advanceClock(tp_duration);
 #endif
     }
 }

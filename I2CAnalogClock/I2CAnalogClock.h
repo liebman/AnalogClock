@@ -162,9 +162,9 @@
 #endif
 #define DEFAULT_TP_DURATION_MS 32  // pulse duration in ms.
 #define DEFAULT_TP_DUTY        65  // duty cycle %.
-#define DEFAULT_AP_DURATION_MS 32  // pulse duration during adjust
+#define DEFAULT_AP_DURATION_MS 18  // pulse duration during adjust
 #define DEFAULT_AP_DUTY        65  // duty cycle %.
-#define DEFAULT_AP_DELAY_MS    16  // delay between adjust pulses in ms.
+#define DEFAULT_AP_DELAY_MS    9   // delay between adjust pulses in ms.
 #if defined(DRV8838)
 #define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
 #endif

@@ -50,10 +50,12 @@
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
 #define DEFAULT_SLEEP_DURATION 3600 // default is 1hr
 
-#define DEFAULT_TP_DURATION    24   // pulse duration in ms.
-#define DEFAULT_AP_DURATION    16  // pulse duration during adjust
-#define DEFAULT_AP_DELAY       12  // delay between adjust pulses in ms.
-#define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
+#define DEFAULT_TP_DURATION    32   // pulse duration in ms.
+#define DEFAULT_TP_DUTY        65   // pulse duty cycle.
+#define DEFAULT_AP_DURATION    18   // pulse duration during adjust
+#define DEFAULT_AP_DUTY        65   // pulse duty cycle.
+#define DEFAULT_AP_DELAY        9   // delay between adjust pulses in ms.
+#define DEFAULT_SLEEP_DELAY    50   // delay before sleeping the DEV8838
 
 #define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
 #define CONNECTION_TIMEOUT     300  // wifi portal timeout - we will deep sleep and try again later
@@ -80,6 +82,8 @@ typedef struct
     char       ntp_server[64];           // host to use for ntp
     char       network_logger_host[64];  // host for network logging
     NTPPersist ntp_persist;              // ntp persisted data
+    uint8_t    tp_duty;                  // tick pulse PWM duty cycle
+    uint8_t    ap_duty;                  // adjust pulse PWM duty cycle
 } Config;
 
 typedef struct

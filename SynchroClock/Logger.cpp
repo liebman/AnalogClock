@@ -43,7 +43,9 @@ Logger::Logger()
 	_host       = NULL;
 	_port       = 0;
 	_failed     = 0;
+#if defined(USE_NETWORK) && defined(USE_TCP)
 	_client.setTimeout(1000); // 1 second connect timeout
+#endif
 }
 
 void Logger::begin()
@@ -58,7 +60,7 @@ void Logger::begin(long int baud)
 
 void Logger::end()
 {
-#ifdef USE_TCP
+#if defined(USE_NETWORK) && defined(USE_TCP)
     _client.stop();
 #endif
 }
@@ -95,15 +97,17 @@ void Logger::printf(const char* fmt, ...)
 void Logger::flush()
 {
     Serial.flush();
+#if defined(USE_NETWORK) && defined(USE_TCP)
     if (_client.connected())
     {
         _client.flush();
     }
+#endif
 }
 
 void Logger::send(const char* message)
 {
-
+#ifdef USE_NETWORK
     // if we are not configured for TCP then just return
     if (_host == NULL)
     {
@@ -148,6 +152,7 @@ void Logger::send(const char* message)
     {
         dbprintln("Logger::log failed to send packet!");
     }
+#endif
 #endif
 }
 

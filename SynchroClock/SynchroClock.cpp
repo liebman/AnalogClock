@@ -28,10 +28,10 @@
 //
 // These are only used when debugging
 //
-#define USE_BUILTIN_LED
-#define DISABLE_DEEP_SLEEP
-#define DISABLE_INITIAL_NTP
-#define DISABLE_INITIAL_SYNC
+//#define USE_BUILTIN_LED
+//#define DISABLE_DEEP_SLEEP
+//#define DISABLE_INITIAL_NTP
+//#define DISABLE_INITIAL_SYNC
 //#define HARD_CODE_WIFI
 
 #ifdef USE_BUILTIN_LED
@@ -462,7 +462,7 @@ void initWiFi()
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
 
-    WiFiManager wifi(30);
+    WiFiManager wifi(32);
     wifi.setDebugOutput(false);
     wifi.setConnectTimeout(CONNECTION_TIMEOUT);
 
@@ -519,7 +519,7 @@ void initWiFi()
         config.tc[0].tz_offset = TimeUtils::parseOffset(result);
     });
 
-    ConfigParam tc2_label(wifi, "<p>2ns Time Change</p>");
+    ConfigParam tc2_label(wifi, "<p>2nd Time Change</p>");
     ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 2, [](const char* result)
     {
         config.tc[1].occurrence = TimeUtils::parseOccurrence(result);
@@ -556,10 +556,20 @@ void initWiFi()
         config.tp_duration = TimeUtils::parseSmallDuration(result);
         clk.writeTPDuration(config.tp_duration);
     });
+    ConfigParam tp_duty(wifi, "tp_duty", "Tick Pulse Duty", config.tp_duty, 8, [](const char* result)
+    {
+        config.tp_duty = parseDuty(result);
+        clk.writeTPDuty(config.tp_duty);
+    });
     ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", config.ap_duration, 4, [](const char* result)
     {
         config.ap_duration = TimeUtils::parseSmallDuration(result);
         clk.writeAPDuration(config.ap_duration);
+    });
+    ConfigParam ap_duty(wifi, "ap_duty", "Adjust Pulse Duty", config.ap_duty, 8, [](const char* result)
+    {
+        config.ap_duty = parseDuty(result);
+        clk.writeAPDuty(config.ap_duty);
     });
     ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", config.ap_delay, 4, [](const char* result)
     {
@@ -655,7 +665,9 @@ void initWiFi()
         tc2_offset.applyIfChanged();
         no_sleep.applyIfChanged();
         tp_duration.applyIfChanged();
+        tp_duty.applyIfChanged();
         ap_duration.applyIfChanged();
+        ap_duty.applyIfChanged();
         ap_delay.applyIfChanged();
         sleep_delay.applyIfChanged();
         sleep_duration.applyIfChanged();
@@ -764,8 +776,10 @@ void setup()
 
     uint8_t value;
     config.tp_duration = clk.readTPDuration(&value) ? DEFAULT_TP_DURATION : value;
+    config.tp_duty     = clk.readTPDuty(&value)     ? DEFAULT_TP_DUTY     : value;
     config.ap_duration = clk.readAPDuration(&value) ? DEFAULT_AP_DURATION : value;
-    config.ap_delay = clk.readAPDelay(&value) ? DEFAULT_AP_DELAY : value;
+    config.ap_duty     = clk.readAPDuty(&value)     ? DEFAULT_AP_DUTY     : value;
+    config.ap_delay = clk.readAPDelay(&value)       ? DEFAULT_AP_DELAY    : value;
     config.sleep_delay = clk.readSleepDelay(&value) ? DEFAULT_SLEEP_DELAY : value;
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
