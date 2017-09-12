@@ -779,7 +779,7 @@ void setup()
     config.tp_duty     = clk.readTPDuty(&value)     ? DEFAULT_TP_DUTY     : value;
     config.ap_duration = clk.readAPDuration(&value) ? DEFAULT_AP_DURATION : value;
     config.ap_duty     = clk.readAPDuty(&value)     ? DEFAULT_AP_DUTY     : value;
-    config.ap_delay = clk.readAPDelay(&value)       ? DEFAULT_AP_DELAY    : value;
+    config.ap_delay    = clk.readAPDelay(&value)    ? DEFAULT_AP_DELAY    : value;
     config.sleep_delay = clk.readSleepDelay(&value) ? DEFAULT_SLEEP_DELAY : value;
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
@@ -847,14 +847,31 @@ void setup()
         sleepFor(dsd.sleep_delay_left);
     }
 
-    //
-    // clock parameters could have changed, set them
-    clk.writeTPDuration(config.tp_duration);
-    clk.writeAPDuration(config.ap_duration);
-    clk.writeAPDelay(config.ap_delay);
-
-    boolean enabled = clk.getEnable();
+    bool enabled = clk.getEnable();
     dbprintf("clock enable is:%u\n", enabled);
+
+    //
+    // if the clock is enabled then we want to keep clk settings
+    //
+    if (enabled)
+    {
+        clk.readTPDuration(&config.tp_duration);
+        clk.readTPDuty(&config.tp_duty);
+        clk.readAPDuration(&config.ap_duration);
+        clk.readAPDuty(&config.ap_duty);
+        clk.readAPDelay(&config.ap_delay);
+        clk.readSleepDelay(&config.sleep_delay);
+    }
+    else
+    {
+        // clock parameters could have changed, set them
+        clk.writeTPDuration(config.tp_duration);
+        clk.writeTPDuty(config.tp_duty);
+        clk.writeAPDuration(config.ap_duration);
+        clk.writeAPDuty(config.ap_duty);
+        clk.writeAPDelay(config.ap_delay);
+        clk.writeSleepDelay(config.sleep_delay);
+    }
 
     //
     // if the clock is not running advance it to sync tick/tock
