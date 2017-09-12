@@ -37,7 +37,6 @@
 #define CMD_TP_DURATION 0x05
 #define CMD_AP_DURATION 0x07
 #define CMD_AP_DELAY    0x09
-#define CMD_SLEEP_DELAY 0x0a
 #define CMD_TP_DUTY     0x0b
 #define CMD_AP_DUTY     0x0c
 
@@ -73,9 +72,6 @@ public:
     int writeAPDuty(uint8_t value);
     int readAPDelay(uint8_t* value);
     int writeAPDelay(uint8_t value);
-    int readSleepDelay(uint8_t* value);
-    int writeSleepDelay(uint8_t value);
-    void setSleepDelay(uint8_t value);
     bool getEnable();
     void setEnable(bool enable);
     bool getCommandBit(uint8_t);

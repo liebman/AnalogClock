@@ -310,31 +310,6 @@ void handleAPDelay()
     HTTP.send(200, "text/plain", message);
 }
 
-void handleSleepDelay()
-{
-    uint8_t value;
-    if (HTTP.hasArg("set"))
-    {
-        value = getValidDuration("set");
-        dbprintf("setting sleep_delay:%u\n", value);
-        if (clk.writeSleepDelay(value))
-        {
-            dbprintln("failed to set sleep delay");
-        }
-    }
-
-    if (clk.readSleepDelay(&value))
-    {
-        sprintf(message, "failed to read sleep delay\n");
-    }
-    else
-    {
-        sprintf(message, "sleep delay: %u\n", value);
-    }
-
-    HTTP.send(200, "text/plain", String(value) + "\n");
-}
-
 void handleEnable()
 {
     boolean enable;
@@ -576,11 +551,6 @@ void initWiFi()
         config.ap_delay = TimeUtils::parseSmallDuration(result);
         clk.writeAPDelay(config.ap_delay);
     });
-    ConfigParam sleep_delay(wifi, "sleep_delay", "Sleep Delay", config.sleep_delay, 5, [](const char* result)
-    {
-        config.sleep_delay = TimeUtils::parseSmallDuration(result);
-        clk.writeSleepDelay(config.sleep_delay);
-    });
     ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
     {
         strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
@@ -669,7 +639,6 @@ void initWiFi()
         ap_duration.applyIfChanged();
         ap_duty.applyIfChanged();
         ap_delay.applyIfChanged();
-        sleep_delay.applyIfChanged();
         sleep_duration.applyIfChanged();
         network_logger_host.applyIfChanged();
         network_logger_port.applyIfChanged();
@@ -780,7 +749,6 @@ void setup()
     config.ap_duration = clk.readAPDuration(&value) ? DEFAULT_AP_DURATION : value;
     config.ap_duty     = clk.readAPDuty(&value)     ? DEFAULT_AP_DUTY     : value;
     config.ap_delay    = clk.readAPDelay(&value)    ? DEFAULT_AP_DELAY    : value;
-    config.sleep_delay = clk.readSleepDelay(&value) ? DEFAULT_SLEEP_DELAY : value;
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
 
@@ -860,7 +828,6 @@ void setup()
         clk.readAPDuration(&config.ap_duration);
         clk.readAPDuty(&config.ap_duty);
         clk.readAPDelay(&config.ap_delay);
-        clk.readSleepDelay(&config.sleep_delay);
     }
     else
     {
@@ -870,7 +837,6 @@ void setup()
         clk.writeAPDuration(config.ap_duration);
         clk.writeAPDuty(config.ap_duty);
         clk.writeAPDelay(config.ap_delay);
-        clk.writeSleepDelay(config.sleep_delay);
     }
 
     //
@@ -923,21 +889,19 @@ void setup()
     }
 
     dbprintln("starting HTTP");
-    HTTP.on("/offset", HTTP_GET, handleOffset);
-    HTTP.on("/adjust", HTTP_GET, handleAdjustment);
-    HTTP.on("/position", HTTP_GET, handlePosition);
+    HTTP.on("/offset",      HTTP_GET, handleOffset);
+    HTTP.on("/adjust",      HTTP_GET, handleAdjustment);
+    HTTP.on("/position",    HTTP_GET, handlePosition);
     HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
-    HTTP.on("/tp_duty", HTTP_GET, handleTPDuty);
+    HTTP.on("/tp_duty",     HTTP_GET, handleTPDuty);
     HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
-    HTTP.on("/ap_duty", HTTP_GET, handleAPDuty);
-    HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
-    HTTP.on("/sleep_delay", HTTP_GET, handleSleepDelay);
-    HTTP.on("/enable", HTTP_GET, handleEnable);
-    HTTP.on("/rtc", HTTP_GET, handleRTC);
-    HTTP.on("/ntp", HTTP_GET, handleNTP);
-    HTTP.on("/wire", HTTP_GET, handleWire);
+    HTTP.on("/ap_duty",     HTTP_GET, handleAPDuty);
+    HTTP.on("/ap_delay",    HTTP_GET, handleAPDelay);
+    HTTP.on("/enable",      HTTP_GET, handleEnable);
+    HTTP.on("/rtc",         HTTP_GET, handleRTC);
+    HTTP.on("/ntp",         HTTP_GET, handleNTP);
+    HTTP.on("/wire",        HTTP_GET, handleWire);
     HTTP.begin();
-
 }
 
 void sleepFor(uint32_t sleep_duration)

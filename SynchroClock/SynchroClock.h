@@ -55,7 +55,6 @@
 #define DEFAULT_AP_DURATION    18   // pulse duration during adjust
 #define DEFAULT_AP_DUTY        65   // pulse duty cycle.
 #define DEFAULT_AP_DELAY        9   // delay between adjust pulses in ms.
-#define DEFAULT_SLEEP_DELAY    50   // delay before sleeping the DEV8838
 
 #define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
 #define CONNECTION_TIMEOUT     300  // wifi portal timeout - we will deep sleep and try again later
@@ -76,7 +75,7 @@ typedef struct
     uint8_t    tp_duration;              // tick pulse duration in ms
     uint8_t    ap_duration;              // adjust pulse duration in ms
     uint8_t    ap_delay;                 // delay in ms between ticks during adjust
-    uint8_t    sleep_delay;              // delay in ms before sleeping DR8838
+    uint8_t    unused01;
     uint16_t   network_logger_port;      // port for network logging
     TimeChange tc[TIME_CHANGE_COUNT];    // time change description
     char       ntp_server[64];           // host to use for ntp
@@ -121,7 +120,6 @@ void handleAPDuration();
 void handleAPDuty();
 void handleAPCount();
 void handleAPDelay();
-void handleSleepDelay();
 void handleEnable();
 void handleRTC();
 void handleNTP();

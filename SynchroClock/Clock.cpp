@@ -140,16 +140,6 @@ int Clock::writeAPDelay(uint8_t value)
     return write(CMD_AP_DELAY, value);
 }
 
-int Clock::readSleepDelay(uint8_t* value)
-{
-    return read(CMD_SLEEP_DELAY, value);
-}
-
-int Clock::writeSleepDelay(uint8_t value)
-{
-    return write(CMD_SLEEP_DELAY, value);
-}
-
 bool Clock::getEnable()
 {
     return getCommandBit(BIT_ENABLE);
