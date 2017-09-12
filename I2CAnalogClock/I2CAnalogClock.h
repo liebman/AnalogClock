@@ -46,7 +46,6 @@
 #define USE_POWER_DOWN_MODE
 #endif
 
-//#define DRV8838
 #define USE_PWM
 
 #ifdef __AVR_ATtinyX5__
@@ -57,46 +56,23 @@
 #endif
 #define A_PIN           1
 #define B_PIN           4
-#ifdef DRV8838
-#define DRV_SLEEP       5 // reset pin!
-#endif
 //#define LED_PIN         LED_BUILTIN
 #else
 #ifdef __AVR_ATtinyX4__
 #define INT_PIN         5
 #define A_PIN           7
 #define B_PIN           9
-#define A2_PIN          8
-#define B2_PIN          10
-#define DRV_SLEEP       11 // reset pin
 //#define LED_PIN         LED_BUILTIN
 #else
 #define INT_PIN         3
 #define A_PIN           4
 #define B_PIN           5
-#define A2_PIN          6
-#define B2_PIN          7
-#define DRV_SLEEP       6
 #define LED_PIN         LED_BUILTIN
 #endif
 #endif
 
-#ifdef DRV8838
-#define DRV_PHASE       A_PIN
-#define DRV_ENABLE      B_PIN
-
 #define TICK_ON         HIGH
 #define TICK_OFF        LOW
-
-#else
-#ifdef USE_PWM
-#define TICK_ON         HIGH
-#define TICK_OFF        LOW
-#else
-#define TICK_ON         HIGH
-#define TICK_OFF        LOW
-#endif
-#endif
 
 #define MAX_SECONDS     43200
 
@@ -111,7 +87,6 @@
 #define CMD_TP_DURATION 0x05
 #define CMD_AP_DURATION 0x07
 #define CMD_AP_DELAY    0x09
-#define CMD_SLEEP_DELAY 0x0a
 #define CMD_TP_DUTY     0x0b
 #define CMD_AP_DUTY     0x0c
 
@@ -165,18 +140,10 @@
 #define DEFAULT_AP_DURATION_MS 18  // pulse duration during adjust
 #define DEFAULT_AP_DUTY        65  // duty cycle %.
 #define DEFAULT_AP_DELAY_MS    9   // delay between adjust pulses in ms.
-#if defined(DRV8838)
-#define DEFAULT_SLEEP_DELAY    50  // delay before sleeping the DEV8838
-#endif
 
 void startAdjust();
 void adjustClock();
-#ifdef USE_PWM
 void advanceClock(uint16_t duration, uint8_t duty);
-#else
-void advanceClock(uint16_t duration);
-#endif
 void tick();
-void sleepDRV8838();
 
 #endif /* _I2CAnalogClock_H_ */

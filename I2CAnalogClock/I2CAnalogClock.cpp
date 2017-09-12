@@ -29,9 +29,6 @@ volatile uint8_t tp_duty;
 volatile uint8_t ap_duration;
 volatile uint8_t ap_duty;
 volatile uint8_t ap_delay;     // delay in ms between ticks during adjustment
-#if defined(DRV8838)
-volatile uint8_t sleep_delay;  // delay to sleep the DEV8838
-#endif
 
 volatile uint8_t control;       // This is our control "register".
 volatile uint8_t status;        // status register (has tick bit)
@@ -80,11 +77,6 @@ void i2creceive(int size)
         case CMD_AP_DELAY:
             ap_delay = Wire.read();
             break;
-#if defined(DRV8838)
-        case CMD_SLEEP_DELAY:
-            sleep_delay = Wire.read();
-            break;
-#endif
         case CMD_CONTROL:
             control = Wire.read();
             ++control_count;
@@ -137,12 +129,6 @@ void i2crequest()
         value = ap_delay;
         Wire.write(value);
         break;
-#if defined(DRV8838)
-    case CMD_SLEEP_DELAY:
-        value = sleep_delay;
-        Wire.write(value);
-        break;
-#endif
     case CMD_CONTROL:
         size_t res;
         res = Wire.write(control);
@@ -316,57 +302,8 @@ void startPWM(unsigned int duration, unsigned int duty, void (*func)())
     interrupts();
 }
 
-#if !defined(USE_PWM)
-void startTick()
-{
-#ifdef DRV8838
-    digitalWrite(DRV_SLEEP, HIGH);
-    delayMicroseconds(30); // data sheet says the DRV8838 take 30us to wake from sleep
-    digitalWrite(DRV_PHASE, isTick());
-    digitalWrite(DRV_ENABLE, TICK_ON);
-#else
-    if (isTick())
-    {
-        digitalWrite(A_PIN, TICK_ON);
-#ifndef __AVR_ATtinyX5__
-        digitalWrite(A2_PIN, TICK_ON);
-#endif
-    }
-    else
-    {
-        digitalWrite(B_PIN, TICK_ON);
-#ifndef __AVR_ATtinyX5__
-        digitalWrite(B2_PIN, TICK_ON);
-#endif
-    }
-#endif
-}
-#endif
-
 void endTick()
 {
-#if !defined(USE_PWM)
-#ifdef DRV8838
-    digitalWrite(DRV_ENABLE, TICK_OFF);
-    digitalWrite(DRV_PHASE, LOW); // per DRV8838 datasheet this reduces power usage
-#else
-    if (isTick())
-    {
-        digitalWrite(A_PIN, TICK_OFF);
-#ifndef __AVR_ATtinyX5__
-        digitalWrite(A2_PIN, TICK_OFF);
-#endif
-    }
-    else
-    {
-        digitalWrite(B_PIN, TICK_OFF);
-#ifndef __AVR_ATtinyX5__
-        digitalWrite(B2_PIN, TICK_OFF);
-#endif
-    }
-#endif
-#endif
-
 #ifdef TEST_MODE
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 #endif
@@ -388,9 +325,6 @@ void endTick()
             // and schedule the sleep.
             //
             adjust_active = false;
-#if defined(DRV8838)
-            startTimer(sleep_delay, &sleepDRV8838);
-#endif
         }
     }
     else
@@ -399,22 +333,8 @@ void endTick()
         {
             adjust_active = false;
         }
-#if defined(DRV8838)
-        startTimer(sleep_delay, &sleepDRV8838);
-#endif
     }
 }
-
-#if defined(DRV8838)
-void sleepDRV8838()
-{
-    // only sleep the chip if we are not adjusting
-    if (adjustment == 0)
-    {
-        digitalWrite(DRV_SLEEP, LOW);
-    }
-}
-#endif
 
 // advance the position
 void advancePosition()
@@ -430,39 +350,22 @@ void adjustClock()
 {
     if (adjustment == 1)
     {
-        // last aduustment uses tick pulse settings
-#ifdef USE_PWM
+        // last adustment uses tick pulse settings
         advanceClock(tp_duration, tp_duty);
-#else
-        advanceClock(tp_duration);
-#endif
     }
     else
     {
-#ifdef USE_PWM
         advanceClock(ap_duration, ap_duty);
-#else
-        advanceClock(ap_duration);
-#endif
     }
 }
 
 //
 //  Advance the clock by one second.
 //
-#ifdef USE_PWM
 void advanceClock(uint16_t duration, uint8_t duty)
-#else
-void advanceClock(uint16_t duration)
-#endif
 {
     advancePosition();
-#if defined(USE_PWM)
     startPWM(duration, duty, &endTick);
-#else
-    startTick();
-    startTimer(duration, &endTick);
-#endif
 }
 
 void startAdjust()
@@ -473,11 +376,7 @@ void startAdjust()
 
         //
         // the first adjustment uses the tick pulse timing
-#ifdef USE_PWM
             advanceClock(tp_duration, tp_duty);
-#else
-            advanceClock(tp_duration);
-#endif
     }
 }
 
@@ -499,11 +398,7 @@ void tick()
         }
         else
         {
-#ifdef USE_PWM
             advanceClock(tp_duration, tp_duty);
-#else
-            advanceClock(tp_duration);
-#endif
         }
     }
     else
@@ -512,14 +407,6 @@ void tick()
         {
             startAdjust();
         }
-#if defined(DRV8838)
-        else
-        {
-            // start a timer to sleep the DRV - we just need a timer going
-            // so we stay awake for a bit to receive commands.
-            startTimer(sleep_delay, &sleepDRV8838);
-        }
-#endif
     }
 }
 
@@ -546,9 +433,6 @@ void setup()
     ap_duration   = DEFAULT_AP_DURATION_MS;
     ap_duty       = DEFAULT_AP_DUTY;
     ap_delay      = DEFAULT_AP_DELAY_MS;
-#if defined(DRV8838)
-    sleep_delay   = DEFAULT_SLEEP_DELAY;
-#endif
     adjust_active = false;
 
 #ifdef SKIP_INITIAL_ADJUST
@@ -576,27 +460,10 @@ void setup()
 #endif
 
     digitalWrite(A_PIN, TICK_OFF);
-#ifndef __AVR_ATtinyX5__
-    digitalWrite(A2_PIN, TICK_OFF);
-#endif
     digitalWrite(B_PIN, TICK_OFF);
-#ifndef __AVR_ATtinyX5__
-    digitalWrite(B2_PIN, TICK_OFF);
-#endif
-
-#ifdef DRV8838
-    digitalWrite(DRV_SLEEP, LOW);
-    pinMode(DRV_SLEEP, OUTPUT);
-#endif
 
     pinMode(A_PIN, OUTPUT);
-#ifndef __AVR_ATtinyX5__
-    pinMode(A2_PIN, OUTPUT);
-#endif
     pinMode(B_PIN, OUTPUT);
-#ifndef __AVR_ATtinyX5__
-    pinMode(B2_PIN, OUTPUT);
-#endif
 #ifdef TEST_MODE
     digitalWrite(LED_PIN, LOW);
     pinMode(LED_PIN, OUTPUT);
