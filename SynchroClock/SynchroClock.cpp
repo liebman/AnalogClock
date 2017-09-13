@@ -837,17 +837,10 @@ void setup()
         clk.writeAPDuration(config.ap_duration);
         clk.writeAPDuty(config.ap_duty);
         clk.writeAPDelay(config.ap_delay);
-    }
-
-    //
-    // if the clock is not running advance it to sync tick/tock
-    //
 #ifndef DISABLE_DEEP_SLEEP
-    if (!enabled)
-    {
         force_config = true; // force the config portal to set the position if the clock is not running
-    }
 #endif
+    }
 
     initWiFi();
 

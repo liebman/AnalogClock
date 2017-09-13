@@ -135,8 +135,8 @@
 #define ms2Timer(x) ((uint16_t)(F_CPU /(PRESCALE * (1/((double)x/1000)))))
 #endif
 #endif
-#define DEFAULT_TP_DURATION_MS 32  // pulse duration in ms.
-#define DEFAULT_TP_DUTY        65  // duty cycle %.
+#define DEFAULT_TP_DURATION_MS 38  // pulse duration in ms.
+#define DEFAULT_TP_DUTY        60  // duty cycle %.
 #define DEFAULT_AP_DURATION_MS 18  // pulse duration during adjust
 #define DEFAULT_AP_DUTY        65  // duty cycle %.
 #define DEFAULT_AP_DELAY_MS    9   // delay between adjust pulses in ms.
