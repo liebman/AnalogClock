@@ -40,7 +40,6 @@
 #define LOGGER_DEFAULT_BAUD 115200L
 #define LOGGER_BUFFER_SIZE  256
 
-
 class Logger {
 public:
 	Logger();

@@ -103,10 +103,10 @@ uint32_t NTP::getPollInterval()
         }
         dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
 
-        if (seconds > (259200/_factor)) // 3 days!
+        if (seconds > (NTP_MAX_INTERVAL/_factor))
         {
-            dbprintln("NTP::getPollInterval: maxing interval out at 3 days!");
-            seconds = 259200/_factor;
+            dbprintf("NTP::getPollInterval: maxing interval out at %f days!\n", (double)NTP_MAX_INTERVAL/86400.0);
+            seconds = NTP_MAX_INTERVAL/_factor;
         }
         else if (seconds < (900/_factor))
         {

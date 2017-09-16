@@ -22,10 +22,8 @@
 
 #include "Clock.h"
 
-#define DEBUG
+//#define DEBUG
 #include "Logger.h"
-
-//#define DISABLE_EDGE
 
 Clock::Clock(int _pin)
 {
@@ -325,7 +323,6 @@ int Clock::write(uint8_t command, uint16_t value)
 
 void Clock::waitForEdge(int edge)
 {
-#ifndef DISABLE_EDGE
     while (digitalRead(pin) == edge)
     {
         delay(1);
@@ -334,7 +331,4 @@ void Clock::waitForEdge(int edge)
     {
         delay(1);
     }
-#else
-    dbprintln("Clock::waitForEdge DISABLED!!!!");
-#endif
 }

@@ -425,7 +425,12 @@ uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, in
 
 int TimeUtils::computeUTCOffset(uint16_t year, uint8_t month, uint8_t mday, uint8_t hour, TimeChange* tc, int tc_count)
 {
-    int offset = 0;
+    //
+    // we default to the last offset which handles
+    // dates before the first offset and after the start of the year.
+    //
+    int  offset = tc[tc_count-1].tz_offset;
+
     for (int i = 0; i < tc_count;++i)
     {
         dbprintf("TimeUtils::computeUTCOffset: index:%d offset:%d month:%u dow:%u occurrence:%u hour:%u\n",
@@ -493,5 +498,6 @@ int TimeUtils::computeUTCOffset(uint16_t year, uint8_t month, uint8_t mday, uint
         dbprintf("TimeUtils::computeUTCOffset: its all a match, offset: %d\n", offset);
         offset = tc[i].tz_offset;
     }
+
     return offset;
 }

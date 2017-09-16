@@ -37,14 +37,15 @@
 #include "ConfigParam.h"
 
 #define USE_DRIFT                   // apply drift
+#define USE_NTP_POLL_ESTIMATE       // use ntp estimated drift for sleep duration calculation
 #define USE_STOP_THE_CLOCK          // if defined then stop the clock for small negative adjustments
 #define STOP_THE_CLOCK_MAX     60   // maximum difference where we will use stop the clock
 #define STOP_THE_CLOCK_EXTRA   2    // extra seconds to leave the clock stopped
 
 // pin definitions
-#define LED_PIN           D7        // (GPIO13) LED on pin, active low
-#define SYNC_PIN          D5        // (GPIO14) pin tied to 1hz square wave from RTC
-#define FACTORY_RESET_PIN D6        // (GPIO12) button tied to pin
+#define LED_PIN                D7   // (GPIO13) LED on pin, active low
+#define SYNC_PIN               D5   // (GPIO14) pin tied to 1hz square wave from RTC
+#define CONFIG_PIN             D6   // (GPIO12) button tied to pin
 
 #define DEFAULT_TZ_OFFSET      0    // default timzezone offset in seconds
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
@@ -68,7 +69,7 @@
 
 #define TIME_CHANGE_COUNT  2
 
-typedef struct
+typedef struct config
 {
     uint32_t   sleep_duration;           // deep sleep duration in seconds
     int        tz_offset;                // time offset in seconds from UTC
@@ -85,19 +86,19 @@ typedef struct
     uint8_t    ap_duty;                  // adjust pulse PWM duty cycle
 } Config;
 
-typedef struct
+typedef struct ee_config
 {
     uint32_t crc;
     uint8_t data[sizeof(Config)];
 } EEConfig;
 
-typedef struct
+typedef struct deep_sleep_data
 {
     uint32_t sleep_delay_left;          // number seconds still to sleep
     NTPRunTime ntp_runtime;             // NTP runtime data
 } DeepSleepData;
 
-typedef struct
+typedef struct rtc_deep_sleep_data
 {
     uint32_t crc;
     uint8_t data[sizeof(DeepSleepData)];
@@ -123,6 +124,7 @@ void handleAPDelay();
 void handleEnable();
 void handleRTC();
 void handleNTP();
+void handleSave();
 void sleepFor(uint32_t sleep_duration);
 int setRTCfromOffset(double offset_ms, bool sync);
 int getTime(uint32_t *result);

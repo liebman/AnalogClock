@@ -26,7 +26,7 @@
 //#define DEBUG
 #include "Logger.h"
 
-#ifdef DEBUG
+#if defined(DEBUG)
 #define dbvalue(prefix) { \
     dbprintf("%s position:%u (%04u-%02u-%02u %02u:%02u:%02u) weekday:%u century:%d unix:%lu\n", \
             prefix, \

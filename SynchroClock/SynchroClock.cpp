@@ -28,16 +28,10 @@
 //
 // These are only used when debugging
 //
-//#define USE_BUILTIN_LED
 //#define DISABLE_DEEP_SLEEP
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
 //#define HARD_CODE_WIFI
-
-#ifdef USE_BUILTIN_LED
-#undef LED_PIN
-#define LED_PIN LED_BUILTIN
-#endif
 
 #ifdef HARD_CODED_WIFI
 #define HARD_CODED_SSID "Whatever"
@@ -118,7 +112,6 @@ void handleOffset()
     {
         config.tz_offset = getValidOffset("set");
         dbprintf("seconds offset:%d\n", config.tz_offset);
-        saveConfig();
     }
 
     HTTP.send(200, "text/plain", String(config.tz_offset) + "\n");
@@ -430,6 +423,12 @@ void handleWire()
     HTTP.send(200, "text/Plain", message);
 }
 
+void handleSave()
+{
+    saveConfig();
+    HTTP.send(200, "text/plain", "Saved!\n");
+}
+
 void initWiFi()
 {
     dbprintln("starting wifi!");
@@ -450,11 +449,6 @@ void initWiFi()
         feedback.blink(FEEDBACK_LED_FAST);
     });
 
-    ConfigParam offset(wifi, "offset", "Time Zone", config.tz_offset, 8, [](const char* result)
-    {
-        config.tz_offset = TimeUtils::parseOffset(result);
-        dbprintf("setting tz_offset to %d\n", config.tz_offset);
-    });
     ConfigParam position(wifi, "position", "Clock Position", "", 8, [](const char* result)
     {
         if (strlen(result))
@@ -570,10 +564,10 @@ void initWiFi()
     });
     String ssid = "SynchroClock" + String(ESP.getChipId());
     dbflush();
-#ifdef HARD_CODE_WIFI
+#if defined(HARD_CODE_WIFI)
     config.network_logger_host[0] = 0;
     save_config = true;
-#ifdef HARD_CODED_POSITION
+#if defined(HARD_CODED_POSITION)
     if (!clk.getEnable())
     {
         uint16_t position = TimeUtils::parsePosition(HARD_CODED_POSITION);
@@ -620,7 +614,6 @@ void initWiFi()
     //
     if (save_config)
     {
-        offset.applyIfChanged();
         position.applyIfChanged();
         ntp_server.applyIfChanged();
         tc1_occurence.applyIfChanged();
@@ -658,12 +651,9 @@ void setup()
     dbbegin(115200);
     dbprintln("");
     dbprintln("Startup!");
-#if 0
-    uint32_t sleep_duration = MAX_SLEEP_DURATION;
-    RFMode mode = RF_DEFAULT;
-#endif
+
     pinMode(SYNC_PIN, INPUT);
-    pinMode(FACTORY_RESET_PIN, INPUT);
+    pinMode(CONFIG_PIN, INPUT);
     feedback.off();
 
     //
@@ -726,7 +716,7 @@ void setup()
     feedback.off();
 
     // if the reset/config button is pressed then force config
-    if (digitalRead(FACTORY_RESET_PIN) == 0)
+    if (digitalRead(CONFIG_PIN) == 0)
     {
         //
         // If we wake with the reset button pressed and sleep_delay_left then the radio is off
@@ -781,8 +771,7 @@ void setup()
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dt.applyOffset(config.tz_offset);
-    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc,
-    TIME_CHANGE_COUNT);
+    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
 
     bool clock_needs_sync = false;
     // if the time zone changed then save the new value and set the the clock
@@ -794,7 +783,7 @@ void setup()
         clock_needs_sync = true;
     }
 
-#ifdef USE_DRIFT
+#if defined(USE_DRIFT)
     //
     // apply drift to RTC
     //
@@ -837,7 +826,7 @@ void setup()
         clk.writeAPDuration(config.ap_duration);
         clk.writeAPDuty(config.ap_duty);
         clk.writeAPDelay(config.ap_delay);
-#ifndef DISABLE_DEEP_SLEEP
+#if !defined(DISABLE_DEEP_SLEEP)
         force_config = true; // force the config portal to set the position if the clock is not running
 #endif
     }
@@ -858,23 +847,23 @@ void setup()
         dbprintln("clock is enabled, skipping init of RTC");
     }
 
-#ifndef DISABLE_INITIAL_NTP
+#if !defined(DISABLE_INITIAL_NTP)
     dbprintln("syncing RTC from NTP!");
     setRTCfromNTP(config.ntp_server, true, NULL, NULL);
 #endif
 
-#ifndef DISABLE_INITIAL_SYNC
+#if !defined(DISABLE_INITIAL_SYNC)
     dbprintln("syncing clock to RTC!");
     setCLKfromRTC();
 #endif
 
-#ifdef DISABLE_DEEP_SLEEP
+#if defined(DISABLE_DEEP_SLEEP)
     stay_awake = true;
 #endif
 
     if (!stay_awake)
     {
-#if 1
+#if defined(USE_NTP_POLL_ESTIMATE)
         sleepFor(ntp.getPollInterval());
 #else
         sleepFor(config.sleep_duration);
@@ -894,6 +883,7 @@ void setup()
     HTTP.on("/rtc",         HTTP_GET, handleRTC);
     HTTP.on("/ntp",         HTTP_GET, handleNTP);
     HTTP.on("/wire",        HTTP_GET, handleWire);
+    HTTP.on("/save",        HTTP_GET, handleSave);
     HTTP.begin();
 }
 
@@ -1069,7 +1059,7 @@ int setCLKfromRTC()
         return -1;
     }
 
-#ifdef USE_STOP_THE_CLOCK
+#if defined(USE_STOP_THE_CLOCK)
     int delta;
     uint16_t clock_pos;
     uint16_t rtc_pos;

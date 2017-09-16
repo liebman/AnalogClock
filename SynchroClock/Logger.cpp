@@ -107,7 +107,7 @@ void Logger::flush()
 
 void Logger::send(const char* message)
 {
-#ifdef USE_NETWORK
+#if defined(USE_NETWORK)
     // if we are not configured for TCP then just return
     if (_host == NULL)
     {
@@ -128,7 +128,7 @@ void Logger::send(const char* message)
         return;
     }
 
-#ifdef USE_TCP
+#if  defined(USE_TCP)
     if (!_client.connected() && _failed < 3) // try 3 times at most to connect then give up.
     {
         if(!_client.connect(ip, _port) && _failed < 3)

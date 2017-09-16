@@ -25,15 +25,11 @@
 #include "Arduino.h"
 #include "PinChangeInterrupt.h"
 #include <avr/sleep.h>
-
-#if defined(__AVR_ATtinyX5__) || defined(__AVR_ATtinyX4__)
-#include "USIWire.h"
-#else
 #include "Wire.h"
+
+#if !defined(__AVR_ATtinyX5__)
 //#define DEBUG_I2CAC
 //#define DEBUG_POSITION
-//#define DEBUG_I2C
-//#define DEBUG_TIMER
 #define SERIAL_BAUD     115200
 #endif
 
@@ -46,8 +42,6 @@
 #define USE_POWER_DOWN_MODE
 #endif
 
-#define USE_PWM
-
 #ifdef __AVR_ATtinyX5__
 #ifdef TEST_MODE
 #define LED_PIN         3
@@ -56,19 +50,11 @@
 #endif
 #define A_PIN           1
 #define B_PIN           4
-//#define LED_PIN         LED_BUILTIN
-#else
-#ifdef __AVR_ATtinyX4__
-#define INT_PIN         5
-#define A_PIN           7
-#define B_PIN           9
-//#define LED_PIN         LED_BUILTIN
 #else
 #define INT_PIN         3
 #define A_PIN           4
 #define B_PIN           5
 #define LED_PIN         LED_BUILTIN
-#endif
 #endif
 
 #define TICK_ON         HIGH
@@ -111,8 +97,6 @@
 #define PWM_PRESCALE      4
 #define PWM_PRESCALE_BITS (_BV(CS11) | _BV(CS10))
 #else
-//#define PWM_PRESCALE      64
-//#define PWM_PRESCALE_BITS (_BV(CS10) | _BV(CS11))
 #define PWM_PRESCALE      8
 #define PWM_PRESCALE_BITS (_BV(CS11))
 #endif
@@ -125,16 +109,11 @@
 #define PRESCALE_BITS   ((1 << CS13) | (1 << CS12) | (1 <<CS10)) // 4096 prescaler
 #define ms2Timer(x) ((uint8_t)(F_CPU /(PRESCALE * (1/((double)x/1000)))))
 #else
-#ifdef __AVR_ATtinyX4__
-#define PRESCALE        256
-#define PRESCALE_BITS   (1 << CS12) // 256 prescaler
-#define ms2Timer(x) ((uint8_t)(F_CPU /(PRESCALE * (1/((double)x/1000)))))
-#else
 #define PRESCALE        256
 #define PRESCALE_BITS   (1 << CS12) // 256 prescaler
 #define ms2Timer(x) ((uint16_t)(F_CPU /(PRESCALE * (1/((double)x/1000)))))
 #endif
-#endif
+
 #define DEFAULT_TP_DURATION_MS 38  // pulse duration in ms.
 #define DEFAULT_TP_DUTY        60  // duty cycle %.
 #define DEFAULT_AP_DURATION_MS 18  // pulse duration during adjust

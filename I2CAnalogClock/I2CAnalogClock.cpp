@@ -36,18 +36,13 @@ volatile uint8_t status;        // status register (has tick bit)
 volatile uint8_t command;       // This is which "register" to be read/written.
 
 volatile unsigned int pwm_duration;
-volatile bool adjust_active;
-volatile unsigned int receives;
-volatile unsigned int requests;
-volatile unsigned int errors;
+volatile bool         adjust_active;
 volatile unsigned int ticks;
-volatile unsigned int control_count;
 volatile unsigned int id_count;
 
 // i2c receive handler
 void i2creceive(int size)
 {
-    ++receives;
     command = Wire.read();
     --size;
     // check for a write command
@@ -79,10 +74,7 @@ void i2creceive(int size)
             break;
         case CMD_CONTROL:
             control = Wire.read();
-            ++control_count;
             break;
-        default:
-            ++errors;
         }
         command = 0xff;
     }
@@ -91,7 +83,6 @@ void i2creceive(int size)
 // i2c request handler
 void i2crequest()
 {
-    ++requests;
     uint16_t value;
     switch (command)
     {
@@ -130,18 +121,11 @@ void i2crequest()
         Wire.write(value);
         break;
     case CMD_CONTROL:
-        size_t res;
-        res = Wire.write(control);
-        if (res == 0)
-        {
-            ++errors;
-        }
+        Wire.write(control);
         break;
     case CMD_STATUS:
         Wire.write(status);
         break;
-    default:
-        ++errors;
     }
     command = 0xff;
 }
@@ -149,15 +133,6 @@ void i2crequest()
 void (*timer_cb)();
 volatile bool timer_running;
 volatile unsigned int start_time;
-
-#ifdef DEBUG_TIMER
-volatile unsigned int starts;
-volatile unsigned int stops;
-volatile unsigned int ints;
-volatile unsigned int last_duration;
-volatile unsigned int stop_time;
-#endif
-
 
 void clearTimer()
 {
@@ -196,9 +171,6 @@ ISR(TIMER1_OVF_vect)
 ISR(TIMER1_COMPA_vect)
 {
     unsigned int int_time = millis();
-#ifdef DEBUG_TIMER
-    ints += 1;
-#endif
 
     // why to we get an immediate interrupt? (ignore it)
     if (int_time == start_time || int_time == start_time+1)
@@ -206,7 +178,7 @@ ISR(TIMER1_COMPA_vect)
         return;
     }
 
-#if defined(__AVR_ATtinyX5__) //|| defined(__AVR_ATtinyX4__)
+#if defined(__AVR_ATtinyX5__)
     TIMSK &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
 #else
     TIMSK1 &= ~(1 << OCIE1A); // disable timer1 interrupts as we only want this one.
@@ -214,27 +186,19 @@ ISR(TIMER1_COMPA_vect)
     timer_running = false;
     if (timer_cb != NULL)
     {
-#ifdef DEBUG_TIMER
-        stops+= 1;
-        stop_time = int_time;
-#endif
         timer_cb();
     }
 }
 
 void startTimer(int ms, void (*func)())
 {
-#ifdef DEBUG_TIMER
-    starts += 1;
-    last_duration = ms;
-#endif
     start_time = millis();
     uint16_t timer = ms2Timer(ms);
     // initialize timer1
     noInterrupts();
     // disable all interrupts
     timer_cb = func;
-#if defined(__AVR_ATtinyX5__) //|| defined(__AVR_ATtinyX4__)
+#if defined(__AVR_ATtinyX5__)
     TCCR1 = 0;
     TCNT1 = 0;
 
@@ -376,7 +340,7 @@ void startAdjust()
 
         //
         // the first adjustment uses the tick pulse timing
-            advanceClock(tp_duration, tp_duty);
+        advanceClock(tp_duration, tp_duty);
     }
 }
 
@@ -386,7 +350,7 @@ void startAdjust()
 void tick()
 {
     ++ticks;
-#if !defined(__AVR_ATtinyX5__) && !defined(__AVR_ATtinyX4__)
+#if defined(LED_PIN)
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 #endif
     if (isEnabled())
@@ -412,20 +376,20 @@ void tick()
 
 void setup()
 {
-#ifdef DEBUG_I2CAC
+#if defined(SERIAL_BAUD)
     Serial.begin(SERIAL_BAUD);
     Serial.println("");
     Serial.println("Startup!");
 #endif
 
-#if !defined(__AVR_ATtinyX5__) && !defined(__AVR_ATtinyX4__)
+#if defined(LED_PIN)
     digitalWrite(LED_PIN, LOW);
     pinMode(LED_PIN, OUTPUT);
 #endif
 
 #ifndef TEST_MODE
     ADCSRA &= ~(1 << ADEN); // Disable ADC as we don't use it, saves ~230uA
-    PRR |= (1 << PRADC); // Turn off ADC clock
+    PRR |= (1 << PRADC);    // Turn off ADC clock
 #endif
 
     tp_duration   = DEFAULT_TP_DURATION_MS;
@@ -510,22 +474,6 @@ void loop()
     if (now != last_print && (now%10)==0)
     {
         last_print = now;
-#ifdef DEBUG_TIMER
-        if (timer_running)
-        {
-            Serial.println("timer running, adding delay!");
-            delay(100);
-        }
-        int last_actual = stop_time - start_time;
-        snprintf(buffer, 127, "starts:%d stops: %d ints:%d duration:%d actual:%d\n",
-                starts, stops, ints, last_duration, last_actual);
-        Serial.print(buffer);
-#endif
-#ifdef DEBUG_POSITION
-        snprintf(buffer, 255, "position:%u adjustment:%u control:0x%02x status:0x%02x drvsleep:%d adjust_active:%d sleep_count:%u control_count:%u id_count:%u\n",
-                position, adjustment, control, status, digitalRead(DRV_SLEEP), adjust_active, sleep_count, control_count, id_count);
-        Serial.print(buffer);
-#endif
 #ifdef DEBUG_I2C
         snprintf(buffer, 127, "receives:%d requests:%d errors: %d\n",
                 receives, requests, errors);
@@ -533,6 +481,7 @@ void loop()
 #endif
     }
 #endif
+
 #ifndef USE_SLEEP
 #ifdef TEST_MODE
     if (!timer_running)
