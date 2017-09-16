@@ -1,4 +1,4 @@
-# AnalogClock
+# AnalogClock 2.X
 Project to sync analog clocks to a few milliseconds using NTP for time synchronization.
 
 Its a work in progress - more documentation coming soon-ish.
