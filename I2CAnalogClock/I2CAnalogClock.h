@@ -26,6 +26,7 @@
 #include "PinChangeInterrupt.h"
 #include <avr/sleep.h>
 #include "Wire.h"
+#include "EEPROM.h"
 
 #if !defined(__AVR_ATtinyX5__)
 //#define DEBUG_I2CAC
@@ -50,10 +51,12 @@
 #endif
 #define A_PIN           1
 #define B_PIN           4
+#define PWRFAIL_PIN     5
 #else
 #define INT_PIN         3
-#define A_PIN           4
-#define B_PIN           5
+#define A_PIN           9
+#define B_PIN           10
+#define PWRFAIL_PIN     2
 #define LED_PIN         LED_BUILTIN
 #endif
 
@@ -120,9 +123,33 @@
 #define DEFAULT_AP_DUTY        65  // duty cycle %.
 #define DEFAULT_AP_DELAY_MS    9   // delay between adjust pulses in ms.
 
+typedef struct power_fail_data
+{
+    uint8_t  pfd_control;
+    uint8_t  pfd_status;
+    volatile uint8_t tp_duration;
+    volatile uint8_t tp_duty;
+    volatile uint8_t ap_duration;
+    volatile uint8_t ap_duty;
+    volatile uint8_t ap_delay;
+    uint16_t pfd_position;
+} PowerFailData;
+
+typedef struct ee_power_fail_data
+{
+    PowerFailData data;
+    uint32_t      crc;
+} EEPowerFailData;
+
 void startAdjust();
 void adjustClock();
 void advanceClock(uint16_t duration, uint8_t duty);
 void tick();
+
+#if defined(PWRFAIL_PIN)
+uint32_t calculateCRC32(const uint8_t *data, size_t length);
+boolean loadPowerFailData();
+void savePowerFailData();
+#endif
 
 #endif /* _I2CAnalogClock_H_ */

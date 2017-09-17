@@ -40,6 +40,11 @@ volatile bool         adjust_active;
 volatile unsigned int ticks;
 volatile unsigned int id_count;
 
+#if defined(PWRFAIL_PIN)
+volatile bool         power_failed;
+volatile uint8_t      pwrfail_control; // saved control register during power fail
+#endif
+
 // i2c receive handler
 void i2creceive(int size)
 {
@@ -374,6 +379,27 @@ void tick()
     }
 }
 
+#if defined(PWRFAIL_PIN)
+void powerFail()
+{
+    power_failed = true;
+
+    //
+    // save the control register and clear the enable bit
+    //
+    pwrfail_control = control;
+    control &= ~BIT_ENABLE;
+
+    //
+    // force any adjustment to finish up.
+    //
+    if (adjustment > 1)
+    {
+        adjustment = 1;
+    }
+}
+#endif
+
 void setup()
 {
 #if defined(SERIAL_BAUD)
@@ -423,6 +449,20 @@ void setup()
     Wire.onRequest(&i2crequest);
 #endif
 
+#if defined(PWRFAIL_PIN)
+    //
+    // restore clock state if there is power fail data
+    //
+    loadPowerFailData();
+
+    //
+    // setup the power fail interrupt
+    //
+    power_failed = false;
+    pinMode(PWRFAIL_PIN, INPUT);
+    attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(PWRFAIL_PIN), &powerFail, FALLING);
+#endif
+
     digitalWrite(A_PIN, TICK_OFF);
     digitalWrite(B_PIN, TICK_OFF);
 
@@ -435,6 +475,7 @@ void setup()
     pinMode(INT_PIN, INPUT);
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
 #endif
+
 }
 
 #ifdef DEBUG_I2CAC
@@ -468,6 +509,38 @@ void loop()
     sleep_disable();
 #endif
 
+#if defined(PWRFAIL_PIN)
+    //
+    // power failed and any running timers have finished
+    //
+    if (power_failed && !timer_running)
+    {
+        //
+        // write current clock state to EEPROM
+        //
+        savePowerFailData();
+
+        //
+        //  Now wait for power to return.  Its more likely that the
+        // capacitor will run out first and the we will run from start up.
+        //
+        while (digitalRead(PWRFAIL_PIN) == 0)
+        {
+            sleep_enable();
+            sleep_cpu();
+            sleep_disable();
+        }
+
+        //
+        // we can resume!!!
+        //
+        cli();
+        power_failed = false;
+        control      = pwrfail_control;
+        sei();
+    }
+#endif
+
 #ifdef DEBUG_I2CAC
     unsigned int now = ticks;
     char buffer[256];
@@ -494,3 +567,72 @@ void loop()
 #endif
 #endif
 }
+
+#if defined(PWRFAIL_PIN)
+uint32_t calculateCRC32(const uint8_t *data, size_t length)
+{
+    uint32_t crc = 0xffffffff;
+    while (length--)
+    {
+        uint8_t c = *data++;
+        for (uint32_t i = 0x80; i > 0; i >>= 1)
+        {
+            bool bit = crc & 0x80000000;
+            if (c & i)
+            {
+                bit = !bit;
+            }
+            crc <<= 1;
+            if (bit)
+            {
+                crc ^= 0x04c11db7;
+            }
+        }
+    }
+    return crc;
+}
+
+
+boolean loadPowerFailData()
+{
+    EEPowerFailData data;
+
+    // Read struct from EEPROM
+    unsigned int i;
+    uint8_t* p = (uint8_t*) &data;
+    for (i = 0; i < sizeof(data); ++i)
+    {
+        p[i] = EEPROM.read(i);
+    }
+
+    uint32_t crcOfData = calculateCRC32(((uint8_t*) &data.data), sizeof(data.data));
+    if (crcOfData != data.crc)
+    {
+        return false;
+    }
+
+    control  = data.data.pfd_control;
+    status   = data.data.pfd_status;
+    position = data.data.pfd_position;
+
+    return true;
+}
+
+void savePowerFailData()
+{
+    EEPowerFailData data;
+    data.data.pfd_control  = pwrfail_control;
+    data.data.pfd_status   = status;
+    data.data.pfd_position = position;
+
+    data.crc = calculateCRC32(((uint8_t*) &data.data), sizeof(data.data));
+
+    unsigned int i;
+    uint8_t* p = (uint8_t*) &data;
+    for (i = 0; i < sizeof(data); ++i)
+    {
+        EEPROM.write(i, p[i]);
+    }
+}
+
+#endif
