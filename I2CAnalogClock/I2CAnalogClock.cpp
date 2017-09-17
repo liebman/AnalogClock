@@ -611,9 +611,14 @@ boolean loadPowerFailData()
         return false;
     }
 
-    control  = data.data.pfd_control;
-    status   = data.data.pfd_status;
-    position = data.data.pfd_position;
+    position    = data.data.pfd_position;
+    control     = data.data.pfd_control;
+    status      = data.data.pfd_status;
+    tp_duration = data.data.pfd_tp_duration;
+    tp_duty     = data.data.pfd_tp_duty;
+    ap_duration = data.data.pfd_ap_duration;
+    ap_duty     = data.data.pfd_ap_duty;
+    ap_delay    = data.data.pfd_ap_delay;
 
     return true;
 }
@@ -621,9 +626,14 @@ boolean loadPowerFailData()
 void savePowerFailData()
 {
     EEPowerFailData data;
-    data.data.pfd_control  = pwrfail_control;
-    data.data.pfd_status   = status;
-    data.data.pfd_position = position;
+    data.data.pfd_position    = position;
+    data.data.pfd_control     = pwrfail_control;
+    data.data.pfd_status      = status;
+    data.data.pfd_tp_duration = tp_duration;
+    data.data.pfd_tp_duty     = tp_duty;
+    data.data.pfd_ap_duration = ap_duration;
+    data.data.pfd_ap_duty     = ap_duty;
+    data.data.pfd_ap_delay    = ap_delay;
 
     data.crc = calculateCRC32(((uint8_t*) &data.data), sizeof(data.data));
 

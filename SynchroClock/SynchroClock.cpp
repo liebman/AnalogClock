@@ -28,10 +28,17 @@
 //
 // These are only used when debugging
 //
-//#define DISABLE_DEEP_SLEEP
-//#define DISABLE_INITIAL_NTP
-//#define DISABLE_INITIAL_SYNC
+#define DISABLE_DEEP_SLEEP
+#define DISABLE_INITIAL_NTP
+#define DISABLE_INITIAL_SYNC
+#define USE_BUILTIN_LED
 //#define HARD_CODE_WIFI
+
+
+#if defined(USE_BUILTIN_LED)
+#undef LED_PIN
+#define LED_PIN BUILTIN_LED
+#endif
 
 #ifdef HARD_CODED_WIFI
 #define HARD_CODED_SSID "Whatever"

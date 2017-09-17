@@ -1,0 +1,42 @@
+Partlist exported from /Users/liebman/src/AnalogClock/eagle/SynchroClock/SynchroClock.sch at 9/17/17 4:43 PM
+
+Part Value              Device                          Package                  Description                                             
+B1   CR1220             CR1220-HOLDER                   HARWIN-CR1220                                                                    
+C1   10uf               C5/2.5                          C5B2.5                   CAPACITOR                                               
+C2   0.1uf              C2.5/2                          C2.5-2                   CAPACITOR                                               
+C3   100uf              CPOL-USE2.5-5                   E2,5-5                   POLARIZED CAPACITOR, American symbol                    
+C4   0.1uf              C2.5/2                          C2.5-2                   CAPACITOR                                               
+C5   0.1uf              C2.5/2                          C2.5-2                   CAPACITOR                                               
+C6   0.1uf              C2.5/2                          C2.5-2                   CAPACITOR                                               
+C7   220uf              CPOL-USE2.5-5                   E2,5-5                   POLARIZED CAPACITOR, American symbol                    
+D1   BAT46              BAT46                           DO35-10                  Schottky Diode                                          
+H1   MOUNT-PAD-ROUND2.8 MOUNT-PAD-ROUND2.8              2,8-PAD                  MOUNTING PAD, round                                     
+H2   MOUNT-PAD-ROUND2.8 MOUNT-PAD-ROUND2.8              2,8-PAD                  MOUNTING PAD, round                                     
+H3   MOUNT-PAD-ROUND2.8 MOUNT-PAD-ROUND2.8              2,8-PAD                  MOUNTING PAD, round                                     
+H4   MOUNT-PAD-ROUND2.8 MOUNT-PAD-ROUND2.8              2,8-PAD                  MOUNTING PAD, round                                     
+IC1  DS3231/SO          DS3231/SO                       SO16W                                                                            
+ISP1 AVRISP-6           AVRISP-6                        AVRISP                   AVR ISP HEADER                                          
+J1   VIN                2_PIN_JST-XH                    2_PIN_JST-XH             Corrected for XH 2 pin                                  
+JP1  PWF                JUMPER-2PTH                     1X02                     Jumper                                                  
+JP2  CLOCK              PINHD-1X2                       1X02                     PIN HEADER                                              
+LED1 RED                LED3MM                          LED3MM                   LED                                                     
+MDL1 ESP12E             ESP8266-12EESP8266-ESP12E       ESP8266-ESP12E           ESP8266-12E with additional I/O and GPIO04/05 corrected 
+R1   10k                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R2   1k                 R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R3   10k                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R4   1k                 R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R5   220                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R6   10k                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R7   1k                 R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R8   100k               R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R9   10k                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R10  4.7k               R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R11  4.7k               R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R12  10k                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R13  10k                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R14  100                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+R15  100                R-US_0204/2V                    0204V                    RESISTOR, American symbol                               
+S1   CONFIG             MOMENTARY-SWITCH-SPST-PTH-6.0MM TACTILE_SWITCH_PTH_6.0MM Momentary Switch (Pushbutton) - SPST                    
+SV1  Serial             FE06-1                          FE06                     FEMALE HEADER                                           
+U1   TC1262             TC1262                          TO220-3V                                                                         
+U2   ATTINY85-P         ATTINY85-P                      PDIP08_300MIL            ATMEL ATtiny 85                                         

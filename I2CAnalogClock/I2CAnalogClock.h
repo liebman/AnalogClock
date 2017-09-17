@@ -125,14 +125,14 @@
 
 typedef struct power_fail_data
 {
+    uint16_t pfd_position;
     uint8_t  pfd_control;
     uint8_t  pfd_status;
-    volatile uint8_t tp_duration;
-    volatile uint8_t tp_duty;
-    volatile uint8_t ap_duration;
-    volatile uint8_t ap_duty;
-    volatile uint8_t ap_delay;
-    uint16_t pfd_position;
+    uint8_t  pfd_tp_duration;
+    uint8_t  pfd_tp_duty;
+    uint8_t  pfd_ap_duration;
+    uint8_t  pfd_ap_duty;
+    uint8_t  pfd_ap_delay;
 } PowerFailData;
 
 typedef struct ee_power_fail_data
