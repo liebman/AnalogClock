@@ -1,4 +1,4 @@
-# AnalogClock 2.X
+# AnalogClock 2.0
 Project to sync analog clocks to a few milliseconds using NTP for time synchronization.
 
 Its a work in progress - more documentation coming soon-ish.
@@ -9,14 +9,22 @@ Its a work in progress - more documentation coming soon-ish.
 
 [NTPTest](NTPTest) contains a framework for testing the NTP class in an accelerated manor on linux or MacOS saving days of waiting for results.
 
-[eagle](eagle) contains the [Eagle](https://www.autodesk.com/products/eagle/overview) design files.
+[eagle](eagle) contains the [Eagle](https://www.autodesk.com/products/eagle/overview) design files and the BOM.
+
+## Features
+* Automatic daylight saving time adjustments
+* Clock position & configuration saved on power fail
+* Low power consumption: approx. 0.25ma in early testing
+* adjustable tick/adjust pulse width/duty cycle/delay should support most one second "tick" clocks.
+* NTP implementation computes drift and uses that to increase accuricy between NTP updates
 
 ## Arduino Board Requirements
-* [I2CAnalogClock](I2CAnalogClock) uses ATTiny85 from [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore) configured as internal 8mhz clock. Note that this uses the reset pin as an output and requires the RSTDISBL fuse bit be cleared after programming for proper operation.
+* [I2CAnalogClock](I2CAnalogClock) uses ATTiny85 from [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore) configured as internal 8mhz clock. Note that this uses the reset pin as an output and requires the RSTDISBL fuse bit be cleared after programming for proper operation of the power fail save of clock position and settings.
+
 * [SynchroClock](SynchroClock) uses the 'NodeMCU 1.0 (ESP-12E Module)' from [ESP8266 core for Arduino](https://github.com/esp8266/Arduino) configured for 80mhz
 
 ## Arduino Library Requirements
-* [WiFiManager](https://github.com/tzapu/WiFiManager) - by default WiFiManager only supports 10 extra fields on the configuration page. This project uses close to 30!  If my [pull request](https://github.com/tzapu/WiFiManager/pull/374) has not been merged then you will need to use my [fork](https://github.com/liebman/WiFiManager).
+* [WiFiManager](https://github.com/tzapu/WiFiManager) - by default WiFiManager only supports 10 extra fields on the configuration page. This project uses close to 30!  If my [pull request](https://github.com/tzapu/WiFiManager/pull/374) has not been merged then you will need to use my [fork](https://github.com/liebman/WiFiManager) or modify it to support 30 parameters.
 
 ## Configuration
    When the clock is initially powered on it creates a wifi captive portal.  It will show up in the list of available wifi networks as SynchroClockXXXXXXX (where the X’s are some number).  Configuration mode can be forced by holding down the reset button until the LED is flashing at a fast rate then releasing it. When you connect to this you are given a menu that lets you set many configuration options:
