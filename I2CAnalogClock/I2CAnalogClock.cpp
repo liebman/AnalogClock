@@ -402,6 +402,20 @@ void powerFail()
 
 void setup()
 {
+#if defined(USE_1MHZ)
+    // Change to 1 MHz by changing clock prescaler to 2
+    cli();
+    CLKPR = (1<<CLKPCE); // Prescaler enable
+    CLKPR = (1<<CLKPS0) | (1<<CLKPS1); // Clock division factor 8 (0011)
+    sei();
+#elif defined(USE_4MHZ)
+    // Change to 4 MHz by changing clock prescaler to 2
+    cli();
+    CLKPR = (1<<CLKPCE); // Prescaler enable
+    CLKPR = (1<<CLKPS0); // Clock division factor 2 (0001)
+    sei();
+#endif
+
 #if defined(SERIAL_BAUD)
     Serial.begin(SERIAL_BAUD);
     Serial.println("");

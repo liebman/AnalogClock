@@ -57,6 +57,7 @@
 #define DEFAULT_AP_DUTY        65   // pulse duty cycle.
 #define DEFAULT_AP_DELAY        9   // delay between adjust pulses in ms.
 
+#define CLOCK_STRETCH_LIMIT    1500 // i2c clock stretch timeout in microseconds
 #define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
 #define CONNECTION_TIMEOUT     300  // wifi portal timeout - we will deep sleep and try again later
 

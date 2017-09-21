@@ -32,7 +32,7 @@
 #define DISABLE_INITIAL_NTP
 #define DISABLE_INITIAL_SYNC
 #define USE_BUILTIN_LED
-//#define HARD_CODE_WIFI
+//#define HARD_CODED_WIFI
 
 
 #if defined(USE_BUILTIN_LED)
@@ -49,7 +49,9 @@
 
 Config           config;                    // configuration persisted in the EEPROM
 DeepSleepData    dsd;                       // data persisted in the RTC memory
+#if defined(LED_PIN)
 FeedbackLED      feedback(LED_PIN);         // used to blink LED to indicate status
+#endif
 ESP8266WebServer HTTP(80);                  // used when debugging/stay awake mode
 NTP              ntp(&(dsd.ntp_runtime), &(config.ntp_persist), &saveConfig);   // handles NTP communication & filtering
 Clock            clk(SYNC_PIN);             // clock ticker, manages position of clock
@@ -440,8 +442,10 @@ void initWiFi()
 {
     dbprintln("starting wifi!");
 
+#if defined(LED_PIN)
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
+#endif
 
     WiFiManager wifi(32);
     wifi.setDebugOutput(false);
@@ -451,11 +455,12 @@ void initWiFi()
     {
         save_config = true;
     });
+#if defined(LED_PIN)
     wifi.setAPCallback([](WiFiManager *)
     {
         feedback.blink(FEEDBACK_LED_FAST);
     });
-
+#endif
     ConfigParam position(wifi, "position", "Clock Position", "", 8, [](const char* result)
     {
         if (strlen(result))
@@ -603,8 +608,9 @@ void initWiFi()
         wifi.autoConnect(ssid.c_str(), NULL);
     }
 #endif
+#if defined(LED_PIN)
     feedback.off();
-
+#endif
     //
     // if we are not connected then deep sleep and try again.
     if (!WiFi.isConnected())
@@ -661,8 +667,9 @@ void setup()
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
+#if defined(LED_PIN)
     feedback.off();
-
+#endif
     //
     // lets read deep sleep data and see if we need to immed go back to sleep.
     //
@@ -670,6 +677,7 @@ void setup()
     readDeepSleepData();
 
     Wire.begin();
+    Wire.setClockStretchLimit(CLOCK_STRETCH_LIMIT);
 
     while (rtc.begin())
     {
@@ -707,7 +715,9 @@ void setup()
     //
     // make sure the device is available!
     //
+#if defined(LED_PIN)
     feedback.blink(0.9);
+#endif
     dbprintln("starting clock interface");
     while (clk.begin())
     {
@@ -720,8 +730,9 @@ void setup()
         delay(10000);
     }
     dbprintln("clock interface started");
+#if defined(LED_PIN)
     feedback.off();
-
+#endif
     // if the reset/config button is pressed then force config
     if (digitalRead(CONFIG_PIN) == 0)
     {

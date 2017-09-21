@@ -22,7 +22,7 @@
 
 #include "Clock.h"
 
-//#define DEBUG
+#define DEBUG
 #include "Logger.h"
 
 Clock::Clock(int _pin)

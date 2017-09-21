@@ -34,9 +34,12 @@
 #define SERIAL_BAUD     115200
 #endif
 
+//#define USE_4MHZ
+//#define USE_1MHZ   // i2c does not work :-(
 //#define START_ENABLED
 //#define SKIP_INITIAL_ADJUST
 //#define TEST_MODE
+
 
 #ifndef TEST_MODE
 #define USE_SLEEP
@@ -96,20 +99,47 @@
 // Timing defaults
 //
 
+
 #if defined(__AVR_ATtinyX5__)
+
+#if defined(USE_1MHZ)
+#undef F_CPU
+#define F_CPU 1000000L
+#elif defined(USE_4MHZ)
+#undef F_CPU
+#define F_CPU 4000000L
+#endif
+
+#if F_CPU == 8000000L
 #define PWM_PRESCALE      4
 #define PWM_PRESCALE_BITS (_BV(CS11) | _BV(CS10))
+#elif F_CPU == 4000000L
+#define PWM_PRESCALE      2
+#define PWM_PRESCALE_BITS (_BV(CS11))
+#elif F_CPU == 1000000L
+#define PWM_PRESCALE      1
+#define PWM_PRESCALE_BITS (_BV(CS10))
+#endif
 #else
 #define PWM_PRESCALE      8
 #define PWM_PRESCALE_BITS (_BV(CS11))
 #endif
+
 #define PWM_TOP           256
 #define ms2PWMCount(x)    (F_CPU / PWM_PRESCALE / PWM_TOP / (1000 / (x)))
-#define duty2pwm(x)       ((x)*256/100)
+#define duty2pwm(x)       ((x)*PWM_TOP/100)
 
 #ifdef __AVR_ATtinyX5__
+#if F_CPU == 8000000L
 #define PRESCALE        4096
 #define PRESCALE_BITS   ((1 << CS13) | (1 << CS12) | (1 <<CS10)) // 4096 prescaler
+#elif F_CPU == 4000000L
+#define PRESCALE        2048
+#define PRESCALE_BITS   ((1 << CS13) | (1 << CS12)) // 2048 prescaler
+#elif F_CPU == 1000000L
+#define PRESCALE        512
+#define PRESCALE_BITS   ((1 << CS13) | (1 << CS11)) // 512 prescaler
+#endif
 #define ms2Timer(x) ((uint8_t)(F_CPU /(PRESCALE * (1/((double)x/1000)))))
 #else
 #define PRESCALE        256
