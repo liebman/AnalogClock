@@ -19,7 +19,7 @@ Its a work in progress - more documentation coming soon-ish.
 * NTP implementation computes drift and uses that to increase accuricy between NTP updates
 
 ## Arduino Board Requirements
-* [I2CAnalogClock](I2CAnalogClock) uses ATTiny85 from [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore) configured as internal 8mhz clock. Note that this uses the reset pin as an output and requires the RSTDISBL fuse bit be cleared after programming for proper operation of the power fail save of clock position and settings.
+* [I2CAnalogClock](I2CAnalogClock) uses ATTiny85 from [ATTinyCore](https://github.com/SpenceKonde/ATTinyCore) configured as internal 1mhz clock, BOD:1.7v (hfuse:0xd6 lfuse:0x62). Note that this uses the reset pin as an output and requires the RSTDISBL fuse bit be cleared (hfuse:0x56) after programming for proper operation of the power fail save of clock position and settings.
 
 * [SynchroClock](SynchroClock) uses the 'NodeMCU 1.0 (ESP-12E Module)' from [ESP8266 core for Arduino](https://github.com/esp8266/Arduino) configured for 80mhz
 

@@ -237,7 +237,7 @@ void startPWM(unsigned int duration, unsigned int duty, void (*func)())
 
     clearTimer();
 
-    TCNT1 = 200; // needed???
+    TCNT1 = 0; // needed???
 
     if (isTick())
     {
@@ -266,7 +266,8 @@ void startPWM(unsigned int duration, unsigned int duty, void (*func)())
     TIMSK1 = _BV(TOIE1);
 #endif
 
-    pwm_duration = ms2PWMCount(duration);;
+    OCR1C = PWM_TOP-1;
+    pwm_duration = ms2PWMCount(duration);
     timer_running = true;
     interrupts();
 }
