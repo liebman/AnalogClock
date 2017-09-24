@@ -77,8 +77,11 @@
 #define CMD_CONTROL     0x03
 #define CMD_STATUS      0x04
 #define CMD_TP_DURATION 0x05
+#define CMD_SAVE_CONFIG 0x06
 #define CMD_AP_DURATION 0x07
+#define CMD_AP_START    0x08
 #define CMD_AP_DELAY    0x09
+#define CMD_PWMTOP      0x0a
 #define CMD_TP_DUTY     0x0b
 #define CMD_AP_DUTY     0x0c
 
@@ -112,22 +115,25 @@
 
 #if F_CPU == 8000000L
 #define PWM_PRESCALE      4
+#define PWM_TOP           250 // 8khz
 #define PWM_PRESCALE_BITS (_BV(CS11) | _BV(CS10))
 #elif F_CPU == 4000000L
 #define PWM_PRESCALE      2
+#define PWM_TOP           250 // 8khz
 #define PWM_PRESCALE_BITS (_BV(CS11))
 #elif F_CPU == 1000000L
 #define PWM_PRESCALE      1
+#define PWM_TOP           125 // 8khz
 #define PWM_PRESCALE_BITS (_BV(CS10))
 #endif
 #else
+#define PWM_TOP           250 // assuming 16mhz CPU its 8khz
 #define PWM_PRESCALE      8
 #define PWM_PRESCALE_BITS (_BV(CS11))
 #endif
 
-#define PWM_TOP           256
-#define ms2PWMCount(x)    (F_CPU / PWM_PRESCALE / PWM_TOP / (1000 / (x)))
-#define duty2pwm(x)       ((x)*PWM_TOP/100)
+#define ms2PWMCount(x)    (F_CPU / PWM_PRESCALE / config.pwm_top / (1000.0 / (double)(x)))
+#define duty2pwm(x)       ((x)*config.pwm_top/100)
 
 #ifdef __AVR_ATtinyX5__
 #if F_CPU == 8000000L
@@ -147,37 +153,56 @@
 #define ms2Timer(x) ((uint16_t)(F_CPU /(PRESCALE * (1/((double)x/1000)))))
 #endif
 
-#define DEFAULT_TP_DURATION_MS 38  // pulse duration in ms.
-#define DEFAULT_TP_DUTY        60  // duty cycle %.
-#define DEFAULT_AP_DURATION_MS 18  // pulse duration during adjust
-#define DEFAULT_AP_DUTY        65  // duty cycle %.
+#define DEFAULT_TP_DURATION_MS 30  // pulse duration in ms.
+#define DEFAULT_TP_DUTY        40  // duty cycle %.
+#define DEFAULT_AP_DURATION_MS 17  // pulse duration during adjust
+#define DEFAULT_AP_DUTY        45  // duty cycle %.
 #define DEFAULT_AP_DELAY_MS    9   // delay between adjust pulses in ms.
+#define DEFAULT_AP_START_MS    38  // initial adjust pulse duration
+
+typedef struct config
+{
+    volatile uint8_t tp_duration;
+    volatile uint8_t tp_duty;
+    volatile uint8_t ap_duration;
+    volatile uint8_t ap_duty;
+    volatile uint8_t ap_delay;          // delay in ms between ticks during adjustment
+    volatile uint8_t ap_start_duration; // duration of the first tick
+    volatile uint8_t pwm_top;
+} Config;
+
+typedef struct ee_config
+{
+    uint32_t crc;
+    uint8_t data[sizeof(Config)];
+} EEConfig;
 
 typedef struct power_fail_data
 {
-    uint16_t pfd_position;
-    uint8_t  pfd_control;
-    uint8_t  pfd_status;
-    uint8_t  pfd_tp_duration;
-    uint8_t  pfd_tp_duty;
-    uint8_t  pfd_ap_duration;
-    uint8_t  pfd_ap_duty;
-    uint8_t  pfd_ap_delay;
+    uint16_t position;
+    uint8_t  control;
+    uint8_t  status;
 } PowerFailData;
 
 typedef struct ee_power_fail_data
 {
-    PowerFailData data;
     uint32_t      crc;
+    PowerFailData data;
 } EEPowerFailData;
+
+#define CONFIG_ADDRESS     0
+#define POWER_FAIL_ADDRESS sizeof(EEConfig)
 
 void startAdjust();
 void adjustClock();
 void advanceClock(uint16_t duration, uint8_t duty);
 void tick();
 
-#if defined(PWRFAIL_PIN)
 uint32_t calculateCRC32(const uint8_t *data, size_t length);
+boolean loadConfig();
+void saveConfig();
+
+#if defined(PWRFAIL_PIN)
 boolean loadPowerFailData();
 void savePowerFailData();
 #endif

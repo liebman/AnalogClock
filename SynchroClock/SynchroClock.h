@@ -51,10 +51,10 @@
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
 #define DEFAULT_SLEEP_DURATION 3600 // default is 1hr
 
-#define DEFAULT_TP_DURATION    32   // pulse duration in ms.
-#define DEFAULT_TP_DUTY        65   // pulse duty cycle.
-#define DEFAULT_AP_DURATION    18   // pulse duration during adjust
-#define DEFAULT_AP_DUTY        65   // pulse duty cycle.
+#define DEFAULT_TP_DURATION    30   // pulse duration in ms.
+#define DEFAULT_TP_DUTY        40   // pulse duty cycle.
+#define DEFAULT_AP_DURATION    17   // pulse duration during adjust
+#define DEFAULT_AP_DUTY        45   // pulse duty cycle.
 #define DEFAULT_AP_DELAY        9   // delay between adjust pulses in ms.
 
 #define CLOCK_STRETCH_LIMIT    1500 // i2c clock stretch timeout in microseconds

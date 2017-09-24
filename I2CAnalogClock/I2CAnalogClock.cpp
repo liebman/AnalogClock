@@ -22,27 +22,24 @@
 
 #include "I2CAnalogClock.h"
 
-volatile uint16_t position; // This is the position that we believe the clock is in.
-volatile uint16_t adjustment;   // This is the adjustment to be made.
-volatile uint8_t tp_duration;
-volatile uint8_t tp_duty;
-volatile uint8_t ap_duration;
-volatile uint8_t ap_duty;
-volatile uint8_t ap_delay;     // delay in ms between ticks during adjustment
+volatile uint16_t     position;         // This is the position that we believe the clock is in.
+volatile uint16_t     adjustment;       // This is the adjustment to be made.
+volatile uint8_t      command;          // This is which "register" to be read/written.
+volatile uint8_t      status;           // status register (has tick bit)
+volatile uint8_t      control;          // This is our control "register".
+volatile unsigned int pwm_duration;     // PWM cycle count down.
+volatile bool         adjust_active;    // adjustment is active.
+volatile bool         save_config;      // set if the config was updated.
 
-volatile uint8_t control;       // This is our control "register".
-volatile uint8_t status;        // status register (has tick bit)
-
-volatile uint8_t command;       // This is which "register" to be read/written.
-
-volatile unsigned int pwm_duration;
-volatile bool         adjust_active;
-volatile unsigned int ticks;
-volatile unsigned int id_count;
+volatile Config       config;           // Configuration
 
 #if defined(PWRFAIL_PIN)
-volatile bool         power_failed;
-volatile uint8_t      pwrfail_control; // saved control register during power fail
+volatile bool         power_failed;     // power has failed, we need to save NOW!
+volatile uint8_t      pwrfail_control;  // saved control register during power fail
+#endif
+
+#ifdef DEBUG_I2CAC
+volatile unsigned int ticks;
 #endif
 
 // i2c receive handler
@@ -51,7 +48,7 @@ void i2creceive(int size)
     command = Wire.read();
     --size;
     // check for a write command
-    if (size > 0)
+    if (size > 0 || command == CMD_SAVE_CONFIG)
     {
         switch (command)
         {
@@ -63,22 +60,31 @@ void i2creceive(int size)
             // adjustment will start on the next tick!
             break;
         case CMD_TP_DURATION:
-            tp_duration = Wire.read();
+            config.tp_duration = Wire.read();
             break;
         case CMD_TP_DUTY:
-            tp_duty = Wire.read();
+            config.tp_duty = Wire.read();
             break;
         case CMD_AP_DURATION:
-            ap_duration = Wire.read();
+            config.ap_duration = Wire.read();
             break;
         case CMD_AP_DUTY:
-            ap_duty = Wire.read();
+            config.ap_duty = Wire.read();
             break;
         case CMD_AP_DELAY:
-            ap_delay = Wire.read();
+            config.ap_delay = Wire.read();
+            break;
+        case CMD_AP_START:
+            config.ap_start_duration = Wire.read();
+            break;
+        case CMD_PWMTOP:
+            config.pwm_top   = Wire.read();
             break;
         case CMD_CONTROL:
             control = Wire.read();
+            break;
+        case CMD_SAVE_CONFIG:
+            save_config = true;
             break;
         }
         command = 0xff;
@@ -93,7 +99,6 @@ void i2crequest()
     {
     case CMD_ID:
         Wire.write(ID_VALUE);
-        ++id_count;
         break;
     case CMD_POSITION:
         value = position;
@@ -106,25 +111,34 @@ void i2crequest()
         Wire.write(value >> 8);
         break;
     case CMD_TP_DURATION:
-        value = tp_duration;
+        value = config.tp_duration;
         Wire.write(value);
         break;
     case CMD_TP_DUTY:
-        value = tp_duty;
+        value = config.tp_duty;
         Wire.write(value);
         break;
     case CMD_AP_DURATION:
-        value = ap_duration;
+        value = config.ap_duration;
         Wire.write(value);
         break;
     case CMD_AP_DUTY:
-        value = ap_duty;
+        value = config.ap_duty;
         Wire.write(value);
         break;
     case CMD_AP_DELAY:
-        value = ap_delay;
+        value = config.ap_delay;
         Wire.write(value);
         break;
+    case CMD_AP_START:
+        value = config.ap_start_duration;
+        Wire.write(value);
+        break;
+    case CMD_PWMTOP:
+        value = config.pwm_top;
+        Wire.write(value);
+        break;
+
     case CMD_CONTROL:
         Wire.write(control);
         break;
@@ -237,26 +251,28 @@ void startPWM(unsigned int duration, unsigned int duty, void (*func)())
 
     clearTimer();
 
-    TCNT1 = 0; // needed???
+    OCR1C = config.pwm_top-1;
 
     if (isTick())
     {
+        OCR1A = duty2pwm(duty);
+        TCNT1 = 0; // needed???
 #if defined(__AVR_ATtinyX5__)
         TCCR1 = _BV(COM1A1) | _BV(PWM1A) | PWM_PRESCALE_BITS;
 #else
         TCCR1A =  _BV(COM1A1) | _BV(WGM10);
 #endif
-        OCR1A = duty2pwm(duty);
     }
     else
     {
+        OCR1B = duty2pwm(duty);
+        TCNT1 = 0; // needed???
 #if defined(__AVR_ATtinyX5__)
         TCCR1 = PWM_PRESCALE_BITS;
         GTCCR = _BV(COM1B1) | _BV(PWM1B);
 #else
         TCCR1A =  _BV(COM1B1) | _BV(WGM10);
 #endif
-        OCR1B = duty2pwm(duty);
     }
 
 #if defined(__AVR_ATtinyX5__)
@@ -266,7 +282,6 @@ void startPWM(unsigned int duration, unsigned int duty, void (*func)())
     TIMSK1 = _BV(TOIE1);
 #endif
 
-    OCR1C = PWM_TOP-1;
     pwm_duration = ms2PWMCount(duration);
     timer_running = true;
     interrupts();
@@ -286,7 +301,7 @@ void endTick()
         adjustment--;
         if (adjustment != 0)
         {
-            startTimer(ap_delay, &adjustClock);
+            startTimer(config.ap_delay, &adjustClock);
         }
         else
         {
@@ -321,11 +336,11 @@ void adjustClock()
     if (adjustment == 1)
     {
         // last adustment uses tick pulse settings
-        advanceClock(tp_duration, tp_duty);
+        advanceClock(config.tp_duration, config.tp_duty);
     }
     else
     {
-        advanceClock(ap_duration, ap_duty);
+        advanceClock(config.ap_duration, config.ap_duty);
     }
 }
 
@@ -345,8 +360,8 @@ void startAdjust()
         adjust_active = true;
 
         //
-        // the first adjustment uses the tick pulse timing
-        advanceClock(tp_duration, tp_duty);
+        // the first adjustment uses the adjust start duration timing with tp duty
+        advanceClock(config.ap_start_duration, config.tp_duty);
     }
 }
 
@@ -355,7 +370,9 @@ void startAdjust()
 //
 void tick()
 {
+#ifdef DEBUG_I2CAC
     ++ticks;
+#endif
 #if defined(LED_PIN)
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 #endif
@@ -368,7 +385,7 @@ void tick()
         }
         else
         {
-            advanceClock(tp_duration, tp_duty);
+            advanceClock(config.tp_duration, config.tp_duty);
         }
     }
     else
@@ -386,7 +403,7 @@ void powerFail()
     power_failed = true;
 
     //
-    // save the control register and clear the enable bit
+    // save & clear the clock enabled bit
     //
     pwrfail_control = control;
     control &= ~BIT_ENABLE;
@@ -404,7 +421,7 @@ void powerFail()
 void setup()
 {
 #if defined(USE_1MHZ)
-    // Change to 1 MHz by changing clock prescaler to 2
+    // Change to 1 MHz by changing clock prescaler to 4
     cli();
     CLKPR = (1<<CLKPCE); // Prescaler enable
     CLKPR = (1<<CLKPS0) | (1<<CLKPS1); // Clock division factor 8 (0011)
@@ -429,46 +446,55 @@ void setup()
 #endif
 
 #ifndef TEST_MODE
-    ADCSRA &= ~(1 << ADEN); // Disable ADC as we don't use it, saves ~230uA
+    //
+    // We don't use ADC features so we disable them to save power
+    //
+    ADCSRA &= ~(1 << ADEN); // Disable ADC as we don't use it
     PRR |= (1 << PRADC);    // Turn off ADC clock
 #endif
 
-    tp_duration   = DEFAULT_TP_DURATION_MS;
-    tp_duty       = DEFAULT_TP_DUTY;
-    ap_duration   = DEFAULT_AP_DURATION_MS;
-    ap_duty       = DEFAULT_AP_DUTY;
-    ap_delay      = DEFAULT_AP_DELAY_MS;
+    config.pwm_top           = PWM_TOP;
+    config.tp_duration       = DEFAULT_TP_DURATION_MS;
+    config.tp_duty           = DEFAULT_TP_DUTY;
+    config.ap_duration       = DEFAULT_AP_DURATION_MS;
+    config.ap_duty           = DEFAULT_AP_DUTY;
+    config.ap_delay          = DEFAULT_AP_DELAY_MS;
+    config.ap_start_duration = DEFAULT_AP_START_MS;
+
+    loadConfig();
+
     adjust_active = false;
-
-#ifdef SKIP_INITIAL_ADJUST
-    position      = 0;
-    adjustment    = 0;
-#else
-    //
-    // we need a single adjust at startup to insure that the clock motor
-    // is synched as a tick/tock.  This first tick will "misfire" if the motor
-    // is out of sync and after that will be in sync.
-    position      = MAX_SECONDS - 1;
-    adjustment    = 1;
-#endif
-
-#if defined(TEST_MODE) || defined(START_ENABLED)
-    control       = BIT_ENABLE;
-#else
-    control       = 0;
-#endif
-
-#ifndef TEST_MODE
-    Wire.begin(I2C_ADDRESS);
-    Wire.onReceive(&i2creceive);
-    Wire.onRequest(&i2crequest);
-#endif
+    save_config   = false;
 
 #if defined(PWRFAIL_PIN)
     //
     // restore clock state if there is power fail data
     //
-    loadPowerFailData();
+    if (!loadPowerFailData())
+    {
+        //
+        // set up defaults if power save load failed
+        //
+#endif
+#if defined(TEST_MODE) || defined(START_ENABLED)
+        control       = BIT_ENABLE;
+#else
+        control       = 0;
+#endif
+
+#ifdef SKIP_INITIAL_ADJUST
+        position      = 0;
+        adjustment    = 0;
+#else
+        //
+        // we need a single adjust at startup to insure that the clock motor
+        // is synched as a tick/tock.  This first tick will "misfire" if the motor
+        // is out of sync and after that will be in sync.
+        position      = MAX_SECONDS - 1;
+        adjustment    = 1;
+#endif
+#if defined(PWRFAIL_PIN)
+    }
 
     //
     // setup the power fail interrupt
@@ -489,6 +515,12 @@ void setup()
 #else
     pinMode(INT_PIN, INPUT);
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(INT_PIN), &tick, FALLING);
+#endif
+
+#ifndef TEST_MODE
+    Wire.begin(I2C_ADDRESS);
+    Wire.onReceive(&i2creceive);
+    Wire.onRequest(&i2crequest);
 #endif
 
 }
@@ -524,6 +556,12 @@ void loop()
     sleep_disable();
 #endif
 
+    if (save_config)
+    {
+        save_config = false;
+        saveConfig();
+    }
+
 #if defined(PWRFAIL_PIN)
     //
     // power failed and any running timers have finished
@@ -550,8 +588,8 @@ void loop()
         // we can resume!!!
         //
         cli();
-        power_failed = false;
-        control      = pwrfail_control;
+        power_failed   = false;
+        control = pwrfail_control;
         sei();
     }
 #endif
@@ -583,7 +621,6 @@ void loop()
 #endif
 }
 
-#if defined(PWRFAIL_PIN)
 uint32_t calculateCRC32(const uint8_t *data, size_t length)
 {
     uint32_t crc = 0xffffffff;
@@ -608,55 +645,78 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length)
 }
 
 
-boolean loadPowerFailData()
+boolean loadConfig()
 {
-    EEPowerFailData data;
-
+    EEConfig cfg;
     // Read struct from EEPROM
     unsigned int i;
-    uint8_t* p = (uint8_t*) &data;
-    for (i = 0; i < sizeof(data); ++i)
+    uint8_t* p = (uint8_t*) &cfg;
+    for (i = 0; i < sizeof(cfg); ++i)
     {
-        p[i] = EEPROM.read(i);
+        p[i] = EEPROM.read(CONFIG_ADDRESS+i);
+    }
+    uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
+    if (crcOfData != cfg.crc)
+    {
+        return false;
+    }
+    memcpy((void*)&config, &cfg.data, sizeof(config));
+    return true;
+}
+
+void saveConfig()
+{
+    EEConfig cfg;
+    memcpy(&cfg.data, (const void*)&config, sizeof(cfg.data));
+    cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
+
+    unsigned int i;
+    uint8_t* p = (uint8_t*) &cfg;
+    for (i = 0; i < sizeof(cfg); ++i)
+    {
+        EEPROM.update(CONFIG_ADDRESS+i, p[i]);
+    }
+}
+
+#if defined(PWRFAIL_PIN)
+boolean loadPowerFailData()
+{
+    EEPowerFailData pfd;
+    // Read struct from EEPROM
+    unsigned int i;
+    uint8_t* p = (uint8_t*) &pfd;
+    for (i = 0; i < sizeof(pfd); ++i)
+    {
+        p[i] = EEPROM.read(POWER_FAIL_ADDRESS+i);
     }
 
-    uint32_t crcOfData = calculateCRC32(((uint8_t*) &data.data), sizeof(data.data));
-    if (crcOfData != data.crc)
+    uint32_t crc = calculateCRC32(((uint8_t*) &pfd.data), sizeof(pfd.data));
+    if (crc != pfd.crc || pfd.data.position >= MAX_SECONDS || (pfd.data.control & ~BIT_ENABLE) || (pfd.data.status & ~STATUS_BIT_TICK))
     {
         return false;
     }
 
-    position    = data.data.pfd_position;
-    control     = data.data.pfd_control;
-    status      = data.data.pfd_status;
-    tp_duration = data.data.pfd_tp_duration;
-    tp_duty     = data.data.pfd_tp_duty;
-    ap_duration = data.data.pfd_ap_duration;
-    ap_duty     = data.data.pfd_ap_duty;
-    ap_delay    = data.data.pfd_ap_delay;
+    position    = pfd.data.position;
+    control     = pfd.data.control;
+    status      = pfd.data.status;
 
     return true;
 }
 
 void savePowerFailData()
 {
-    EEPowerFailData data;
-    data.data.pfd_position    = position;
-    data.data.pfd_control     = pwrfail_control;
-    data.data.pfd_status      = status;
-    data.data.pfd_tp_duration = tp_duration;
-    data.data.pfd_tp_duty     = tp_duty;
-    data.data.pfd_ap_duration = ap_duration;
-    data.data.pfd_ap_duty     = ap_duty;
-    data.data.pfd_ap_delay    = ap_delay;
+    EEPowerFailData pfd;
+    pfd.data.position    = position;
+    pfd.data.control     = pwrfail_control;
+    pfd.data.status      = status;
 
-    data.crc = calculateCRC32(((uint8_t*) &data.data), sizeof(data.data));
+    pfd.crc = calculateCRC32(((uint8_t*) &pfd.data), sizeof(pfd.data));
 
     unsigned int i;
-    uint8_t* p = (uint8_t*) &data;
-    for (i = 0; i < sizeof(data); ++i)
+    uint8_t* p = (uint8_t*) &pfd;
+    for (i = 0; i < sizeof(pfd); ++i)
     {
-        EEPROM.write(i, p[i]);
+        EEPROM.update(POWER_FAIL_ADDRESS+i, p[i]);
     }
 }
 

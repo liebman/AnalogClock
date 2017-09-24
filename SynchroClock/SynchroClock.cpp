@@ -115,6 +115,17 @@ boolean getValidBoolean(String name)
     return result;
 }
 
+uint8_t getValidByte(String name)
+{
+    int i = atoi(HTTP.arg(name).c_str());
+    if (i < 0 || i > 255)
+    {
+        dbprintf("getValidByte: invalid value %d: using 255 instead!\n", i);
+        i = 255;
+    }
+    return (uint8_t) i;
+}
+
 void handleOffset()
 {
     if (HTTP.hasArg("set"))
@@ -312,6 +323,56 @@ void handleAPDelay()
     HTTP.send(200, "text/plain", message);
 }
 
+void handleAPStartDuration()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidDuration("set");
+        dbprintf("setting ap_start:%u\n", value);
+        if (clk.writeAPStartDuration(value))
+        {
+            dbprintln("failed to set AP start duration");
+        }
+    }
+
+    if (clk.readAPStartDuration(&value))
+    {
+        sprintf(message, "failed to read AP start duration\n");
+    }
+    else
+    {
+        sprintf(message, "AP start duration: %u\n", value);
+    }
+
+    HTTP.send(200, "text/plain", message);
+}
+
+void handlePWMTop()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidByte("set");
+        dbprintf("setting pwm_top:%u\n", value);
+        if (clk.writePWMTop(value))
+        {
+            dbprintln("failed to set pwm_top!");
+        }
+    }
+
+    if (clk.readPWMTop(&value))
+    {
+        sprintf(message, "failed to read pwm_top!\n");
+    }
+    else
+    {
+        sprintf(message, "pwm_top: %u\n", value);
+    }
+
+    HTTP.send(200, "text/plain", message);
+}
+
 void handleEnable()
 {
     boolean enable;
@@ -327,6 +388,7 @@ void handleEnable()
 void handleRTC()
 {
     char message[64];
+
     DS3231DateTime dt;
     int err = rtc.readTime(dt);
 
@@ -434,6 +496,7 @@ void handleWire()
 
 void handleSave()
 {
+    clk.saveConfig();
     saveConfig();
     HTTP.send(200, "text/plain", "Saved!\n");
 }
@@ -649,6 +712,7 @@ void initWiFi()
         network_logger_host.applyIfChanged();
         network_logger_port.applyIfChanged();
         clear_ntp_persist.applyIfChanged();
+        clk.saveConfig();
         saveConfig();
     }
 
@@ -902,6 +966,8 @@ void setup()
     HTTP.on("/ntp",         HTTP_GET, handleNTP);
     HTTP.on("/wire",        HTTP_GET, handleWire);
     HTTP.on("/save",        HTTP_GET, handleSave);
+    HTTP.on("/ap_start",    HTTP_GET, handleAPStartDuration);
+    HTTP.on("/pwm_top",     HTTP_GET, handlePWMTop);
     HTTP.begin();
 }
 
@@ -957,6 +1023,7 @@ int setRTCfromOffset(double offset, bool sync)
     DS3231DateTime dt;
 
     clk.waitForEdge(CLOCK_EDGE_FALLING);
+    delay(2); // ATtiny85 at 1mhz has interrupts disabled for a bit after the falling edge
     if (rtc.readTime(dt))
     {
         dbprintln("setRTCfromOffset: failed to read from RTC!");
@@ -993,7 +1060,7 @@ int setRTCfromOffset(double offset, bool sync)
 int getTime(uint32_t *result)
 {
     clk.waitForEdge(CLOCK_EDGE_FALLING);
-
+    delay(2); // ATtiny85 at 1mhz has interrupts disabled for a bit after the falling edge
     DS3231DateTime dt;
     if (rtc.readTime(dt))
     {
@@ -1028,16 +1095,6 @@ int setRTCfromDrift()
 int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddress* result_address)
 {
     dbprintf("using server: %s\n", server);
-
-    // wait for the next falling edge of the 1hz square wave
-    clk.waitForEdge(CLOCK_EDGE_FALLING);
-
-    DS3231DateTime dt;
-    if (rtc.readTime(dt))
-    {
-        dbprintln("setRTCfromNTP: failed to read from RTC!");
-        return ERROR_RTC;
-    }
 
     double offset;
     if (ntp.getOffset(server, &offset, &getTime))

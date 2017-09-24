@@ -35,8 +35,11 @@
 #define CMD_CONTROL     0x03
 #define CMD_STATUS      0x04
 #define CMD_TP_DURATION 0x05
+#define CMD_SAVE_CONFIG 0x06
 #define CMD_AP_DURATION 0x07
+#define CMD_AP_START    0x08
 #define CMD_AP_DELAY    0x09
+#define CMD_PWMTOP      0x0a
 #define CMD_TP_DUTY     0x0b
 #define CMD_AP_DUTY     0x0c
 
@@ -72,8 +75,13 @@ public:
     int writeAPDuty(uint8_t value);
     int readAPDelay(uint8_t* value);
     int writeAPDelay(uint8_t value);
+    int readAPStartDuration(uint8_t* value);
+    int writeAPStartDuration(uint8_t value);
+    int readPWMTop(uint8_t* value);
+    int writePWMTop(uint8_t value);
     bool getEnable();
     void setEnable(bool enable);
+    int saveConfig();
     bool getCommandBit(uint8_t);
     int setCommandBit(bool value, uint8_t bit);
     void waitForEdge(int edge);

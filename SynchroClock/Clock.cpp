@@ -138,6 +138,26 @@ int Clock::writeAPDelay(uint8_t value)
     return write(CMD_AP_DELAY, value);
 }
 
+int Clock::readAPStartDuration(uint8_t* value)
+{
+    return read(CMD_AP_START, value);
+}
+
+int Clock::writeAPStartDuration(uint8_t value)
+{
+    return write(CMD_AP_START, value);
+}
+
+int Clock::readPWMTop(uint8_t* value)
+{
+    return read(CMD_PWMTOP, value);
+}
+
+int Clock::writePWMTop(uint8_t value)
+{
+    return write(CMD_PWMTOP, value);
+}
+
 bool Clock::getEnable()
 {
     return getCommandBit(BIT_ENABLE);
@@ -148,6 +168,27 @@ void Clock::setEnable(bool enable)
     setCommandBit(enable, BIT_ENABLE);
 }
 
+int Clock::saveConfig()
+{
+    Wire.beginTransmission(I2C_ADDRESS);
+
+    if (Wire.write(CMD_SAVE_CONFIG) != 1)
+    {
+        Wire.endTransmission();
+        dbprintln("Clock::read: Wire.write(command) failed!");
+        return -1;
+    }
+
+    int err = Wire.endTransmission();
+
+    if (err)
+    {
+        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
+        return -1;
+    }
+
+    return 0;
+}
 
 bool Clock::getCommandBit(uint8_t bit)
 {
