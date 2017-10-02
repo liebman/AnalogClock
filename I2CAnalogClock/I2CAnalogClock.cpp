@@ -47,8 +47,8 @@ void i2creceive(int size)
 {
     command = Wire.read();
     --size;
-    // check for a write command
-    if (size > 0 || command == CMD_SAVE_CONFIG)
+    // check for a write command (or a command that does not read/write just action)
+    if (size > 0)
     {
         switch (command)
         {
@@ -84,6 +84,7 @@ void i2creceive(int size)
             control = Wire.read();
             break;
         case CMD_SAVE_CONFIG:
+            (void)Wire.read(); // we ignore as its just a placeholder
             save_config = true;
             break;
         }
@@ -335,7 +336,7 @@ void adjustClock()
 {
     if (adjustment == 1)
     {
-        // last adustment uses tick pulse settings
+        // last adjustment uses tick pulse settings
         advanceClock(config.tp_duration, config.tp_duty);
     }
     else
@@ -400,7 +401,7 @@ void tick()
 #if defined(PWRFAIL_PIN)
 void powerFail()
 {
-    power_failed = true;
+    power_failed   = true;
 
     //
     // save & clear the clock enabled bit
@@ -420,20 +421,6 @@ void powerFail()
 
 void setup()
 {
-#if defined(USE_1MHZ)
-    // Change to 1 MHz by changing clock prescaler to 4
-    cli();
-    CLKPR = (1<<CLKPCE); // Prescaler enable
-    CLKPR = (1<<CLKPS0) | (1<<CLKPS1); // Clock division factor 8 (0011)
-    sei();
-#elif defined(USE_4MHZ)
-    // Change to 4 MHz by changing clock prescaler to 2
-    cli();
-    CLKPR = (1<<CLKPCE); // Prescaler enable
-    CLKPR = (1<<CLKPS0); // Clock division factor 2 (0001)
-    sei();
-#endif
-
 #if defined(SERIAL_BAUD)
     Serial.begin(SERIAL_BAUD);
     Serial.println("");
@@ -463,6 +450,7 @@ void setup()
 
     loadConfig();
 
+    adjustment    = 0;
     adjust_active = false;
     save_config   = false;
 
@@ -499,7 +487,7 @@ void setup()
     //
     // setup the power fail interrupt
     //
-    power_failed = false;
+    power_failed  = false;
     pinMode(PWRFAIL_PIN, INPUT);
     attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(PWRFAIL_PIN), &powerFail, FALLING);
 #endif

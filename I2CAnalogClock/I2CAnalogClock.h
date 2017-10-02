@@ -34,8 +34,6 @@
 #define SERIAL_BAUD     115200
 #endif
 
-//#define USE_4MHZ
-//#define USE_1MHZ   // i2c does not work :-(
 //#define START_ENABLED
 //#define SKIP_INITIAL_ADJUST
 //#define TEST_MODE
@@ -104,27 +102,14 @@
 
 
 #if defined(__AVR_ATtinyX5__)
-
-#if defined(USE_1MHZ)
-#undef F_CPU
-#define F_CPU 1000000L
-#elif defined(USE_4MHZ)
-#undef F_CPU
-#define F_CPU 4000000L
-#endif
-
-#if F_CPU == 8000000L
-#define PWM_PRESCALE      4
-#define PWM_TOP           250 // 8khz
-#define PWM_PRESCALE_BITS (_BV(CS11) | _BV(CS10))
-#elif F_CPU == 4000000L
-#define PWM_PRESCALE      2
-#define PWM_TOP           250 // 8khz
-#define PWM_PRESCALE_BITS (_BV(CS11))
-#elif F_CPU == 1000000L
+#if F_CPU == 1000000L
 #define PWM_PRESCALE      1
-#define PWM_TOP           125 // 8khz
+#define PWM_TOP           250 // 4khz
 #define PWM_PRESCALE_BITS (_BV(CS10))
+#elif F_CPU == 8000000L
+#define PWM_PRESCALE      8
+#define PWM_TOP           250 // 4khz
+#define PWM_PRESCALE_BITS (_BV(CS12))
 #endif
 #else
 #define PWM_TOP           250 // assuming 16mhz CPU its 8khz
@@ -158,7 +143,7 @@
 #define DEFAULT_AP_DURATION_MS 17  // pulse duration during adjust
 #define DEFAULT_AP_DUTY        45  // duty cycle %.
 #define DEFAULT_AP_DELAY_MS    9   // delay between adjust pulses in ms.
-#define DEFAULT_AP_START_MS    38  // initial adjust pulse duration
+#define DEFAULT_AP_START_MS    34  // initial adjust pulse duration
 
 typedef struct config
 {
