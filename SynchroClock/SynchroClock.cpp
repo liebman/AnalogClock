@@ -28,12 +28,14 @@
 //
 // These are only used when debugging
 //
-#define DISABLE_DEEP_SLEEP
-#define DISABLE_INITIAL_NTP
-#define DISABLE_INITIAL_SYNC
-#define USE_BUILTIN_LED
+//#define DISABLE_DEEP_SLEEP
+//#define DISABLE_INITIAL_NTP
+//#define DISABLE_INITIAL_SYNC
+//#define USE_BUILTIN_LED
 //#define HARD_CODED_WIFI
 
+#define DEFAULT_LOG_ADDR "192.168.0.42"
+#define DEFAULT_LOG_PORT 1421
 
 #if defined(USE_BUILTIN_LED)
 #undef LED_PIN
@@ -501,6 +503,16 @@ void handleSave()
     HTTP.send(200, "text/plain", "Saved!\n");
 }
 
+void handleErase()
+{
+    for (unsigned int i = 0; i < sizeof(EEConfig); ++i)
+    {
+        EEPROM.write(i, 0);
+    }
+    EEPROM.commit();
+    HTTP.send(200, "text/plain", "Erased!\n");
+}
+
 void initWiFi()
 {
     dbprintln("starting wifi!");
@@ -595,30 +607,42 @@ void initWiFi()
     {
         config.sleep_duration = atoi(result);
     });
-    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", config.tp_duration, 8, [](const char* result)
+    uint8_t value;
+    clk.readTPDuration(&value);
+    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", value, 8, [](const char* result)
     {
-        config.tp_duration = TimeUtils::parseSmallDuration(result);
-        clk.writeTPDuration(config.tp_duration);
+        uint8_t tp_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeTPDuration(tp_duration);
     });
-    ConfigParam tp_duty(wifi, "tp_duty", "Tick Pulse Duty", config.tp_duty, 8, [](const char* result)
+    clk.readTPDuty(&value);
+    ConfigParam tp_duty(wifi, "tp_duty", "Tick Pulse Duty", value, 8, [](const char* result)
     {
-        config.tp_duty = parseDuty(result);
-        clk.writeTPDuty(config.tp_duty);
+        uint8_t tp_duty = parseDuty(result);
+        clk.writeTPDuty(tp_duty);
     });
-    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", config.ap_duration, 4, [](const char* result)
+    clk.readAPStartDuration(&value);
+    ConfigParam ap_start(wifi, "ap_start", "Adjust Start Pulse", value, 4, [](const char* result)
     {
-        config.ap_duration = TimeUtils::parseSmallDuration(result);
-        clk.writeAPDuration(config.ap_duration);
+        uint8_t ap_start = TimeUtils::parseSmallDuration(result);
+        clk.writeAPStartDuration(ap_start);
     });
-    ConfigParam ap_duty(wifi, "ap_duty", "Adjust Pulse Duty", config.ap_duty, 8, [](const char* result)
+    clk.readAPDuration(&value);
+    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", value, 4, [](const char* result)
     {
-        config.ap_duty = parseDuty(result);
-        clk.writeAPDuty(config.ap_duty);
+        uint8_t ap_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDuration(ap_duration);
     });
-    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", config.ap_delay, 4, [](const char* result)
+    clk.readAPDuty(&value);
+    ConfigParam ap_duty(wifi, "ap_duty", "Adjust Pulse Duty", value, 8, [](const char* result)
     {
-        config.ap_delay = TimeUtils::parseSmallDuration(result);
-        clk.writeAPDelay(config.ap_delay);
+        uint8_t ap_duty = parseDuty(result);
+        clk.writeAPDuty(ap_duty);
+    });
+    clk.readAPDelay(&value);
+    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", value, 4, [](const char* result)
+    {
+        uint8_t ap_delay = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDelay(ap_delay);
     });
     ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
     {
@@ -705,6 +729,7 @@ void initWiFi()
         no_sleep.applyIfChanged();
         tp_duration.applyIfChanged();
         tp_duty.applyIfChanged();
+        ap_start.applyIfChanged();
         ap_duration.applyIfChanged();
         ap_duty.applyIfChanged();
         ap_delay.applyIfChanged();
@@ -815,28 +840,22 @@ void setup()
         force_config = true;
     }
 
-    uint8_t value;
-    config.tp_duration = clk.readTPDuration(&value) ? DEFAULT_TP_DURATION : value;
-    config.tp_duty     = clk.readTPDuty(&value)     ? DEFAULT_TP_DUTY     : value;
-    config.ap_duration = clk.readAPDuration(&value) ? DEFAULT_AP_DURATION : value;
-    config.ap_duty     = clk.readAPDuty(&value)     ? DEFAULT_AP_DUTY     : value;
-    config.ap_delay    = clk.readAPDelay(&value)    ? DEFAULT_AP_DELAY    : value;
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
 
     // Default to disabled (all tz_offsets = 0)
-    config.tc[0].occurrence = 1;
-    config.tc[0].day_of_week = 0;
-    config.tc[0].month = 1;
-    config.tc[0].hour = 0;
-    config.tc[0].tz_offset = 0;
-    config.tc[1].occurrence = 1;
-    config.tc[1].day_of_week = 0;
-    config.tc[1].month = 1;
-    config.tc[1].hour = 0;
-    config.tc[1].tz_offset = 0;
+    config.tc[0].occurrence  = DEFAULT_TC0_OCCUR;
+    config.tc[0].day_of_week = DEFAULT_TC0_DOW;
+    config.tc[0].month       = DEFAULT_TC0_MONTH;
+    config.tc[0].hour        = DEFAULT_TC0_HOUR;
+    config.tc[0].tz_offset   = DEFAULT_TC0_OFFSET;
+    config.tc[1].occurrence  = DEFAULT_TC1_OCCUR;
+    config.tc[1].day_of_week = DEFAULT_TC1_DOW;
+    config.tc[1].month       = DEFAULT_TC1_MONTH;
+    config.tc[1].hour        = DEFAULT_TC1_HOUR;
+    config.tc[1].tz_offset   = DEFAULT_TC1_OFFSET;
 
-    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay,
+    dbprintf("defaults: tz:%d ntp:%s logging: %s:%d\n", config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dbprintf("EEConfig size: %u\n", sizeof(EEConfig));
@@ -849,7 +868,15 @@ void setup()
         force_config = true;
     }
 
-    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay,
+#if defined(DEFAULT_LOG_ADDR) && defined(DEFAULT_LOG_PORT)
+    if (strnlen(config.network_logger_host, 64) == 0)
+    {
+        strncpy(config.network_logger_host, DEFAULT_LOG_ADDR, 64);
+        config.network_logger_port = DEFAULT_LOG_PORT;
+    }
+#endif
+
+    dbprintf("config: tz:%d ntp:%s logging: %s:%d\n", config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dt.applyOffset(config.tz_offset);
@@ -889,29 +916,12 @@ void setup()
     bool enabled = clk.getEnable();
     dbprintf("clock enable is:%u\n", enabled);
 
-    //
-    // if the clock is enabled then we want to keep clk settings
-    //
-    if (enabled)
-    {
-        clk.readTPDuration(&config.tp_duration);
-        clk.readTPDuty(&config.tp_duty);
-        clk.readAPDuration(&config.ap_duration);
-        clk.readAPDuty(&config.ap_duty);
-        clk.readAPDelay(&config.ap_delay);
-    }
-    else
-    {
-        // clock parameters could have changed, set them
-        clk.writeTPDuration(config.tp_duration);
-        clk.writeTPDuty(config.tp_duty);
-        clk.writeAPDuration(config.ap_duration);
-        clk.writeAPDuty(config.ap_duty);
-        clk.writeAPDelay(config.ap_delay);
 #if !defined(DISABLE_DEEP_SLEEP)
+    if (!enabled)
+    {
         force_config = true; // force the config portal to set the position if the clock is not running
-#endif
     }
+#endif
 
     initWiFi();
 
@@ -966,6 +976,7 @@ void setup()
     HTTP.on("/ntp",         HTTP_GET, handleNTP);
     HTTP.on("/wire",        HTTP_GET, handleWire);
     HTTP.on("/save",        HTTP_GET, handleSave);
+    HTTP.on("/erase",       HTTP_GET, handleErase);
     HTTP.on("/ap_start",    HTTP_GET, handleAPStartDuration);
     HTTP.on("/pwm_top",     HTTP_GET, handlePWMTop);
     HTTP.begin();

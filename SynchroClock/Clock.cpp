@@ -170,24 +170,7 @@ void Clock::setEnable(bool enable)
 
 int Clock::saveConfig()
 {
-    Wire.beginTransmission(I2C_ADDRESS);
-
-    if (Wire.write(CMD_SAVE_CONFIG) != 1)
-    {
-        Wire.endTransmission();
-        dbprintln("Clock::read: Wire.write(command) failed!");
-        return -1;
-    }
-
-    int err = Wire.endTransmission();
-
-    if (err)
-    {
-        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
-        return -1;
-    }
-
-    return 0;
+    return write(CMD_SAVE_CONFIG, (uint8_t)0);
 }
 
 bool Clock::getCommandBit(uint8_t bit)
