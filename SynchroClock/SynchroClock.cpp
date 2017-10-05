@@ -34,8 +34,8 @@
 //#define USE_BUILTIN_LED
 //#define HARD_CODED_WIFI
 
-#define DEFAULT_LOG_ADDR "192.168.0.42"
-#define DEFAULT_LOG_PORT 1421
+//#define DEFAULT_LOG_ADDR "192.168.0.42"
+//#define DEFAULT_LOG_PORT 1421
 
 #if defined(USE_BUILTIN_LED)
 #undef LED_PIN
@@ -536,7 +536,16 @@ void initWiFi()
         feedback.blink(FEEDBACK_LED_FAST);
     });
 #endif
-    ConfigParam position(wifi, "position", "Clock Position", "", 8, [](const char* result)
+    uint16_t pos;
+    char pos_str[16];
+    clk.readPosition(&pos);
+    int hours = pos / 3600;
+    int minutes = (pos - (hours * 3600)) / 60;
+    int seconds = pos - (hours * 3600) - (minutes * 60);
+    memset(pos_str, 0, sizeof(pos_str));
+    snprintf(pos_str, 15, "%02d:%02d:%02d", hours, minutes, seconds);
+
+    ConfigParam position(wifi, "position", "Clock Position", pos_str, 10, [](const char* result)
     {
         if (strlen(result))
         {
@@ -548,6 +557,7 @@ void initWiFi()
             }
         }
     });
+
     ConfigParam ntp_server(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result)
     {
         strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
@@ -819,9 +829,7 @@ void setup()
         delay(10000);
     }
     dbprintln("clock interface started");
-#if defined(LED_PIN)
-    feedback.off();
-#endif
+
     // if the reset/config button is pressed then force config
     if (digitalRead(CONFIG_PIN) == 0)
     {
@@ -836,9 +844,48 @@ void setup()
             writeDeepSleepData();
             ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
         }
-        dbprintln("reset button pressed, forcing config!");
-        force_config = true;
+
+#if defined(LED_PIN)
+        feedback.on();
+#endif
+        dbprintln("waiting for config release");
+        while (digitalRead(CONFIG_PIN) == 0)
+        {
+            // wait for it to be let up.
+            delay(10);
+        }
+
+
+        //
+        // now a short delay, if the button is pressed again after that then we use stay
+        // awake mode and start a web server.
+        //
+        dbprintln("short delay to see if its pressed again.");
+        delay(2000);
+
+#if defined(LED_PIN)
+        feedback.off();
+#endif
+
+        if (digitalRead(CONFIG_PIN) == 0)
+        {
+            dbprintln("Its pressed, use stay awake!");
+            stay_awake = true;
+        }
+        else
+        {
+            dbprintln("reset button pressed, forcing config!");
+            force_config = true;
+            //
+            //  If we force config because of the config button then we stop the clock.
+            //
+            clk.setEnable(false);
+        }
     }
+
+
+    bool enabled = clk.getEnable();
+    dbprintf("clock enable is:%u\n", enabled);
 
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
@@ -862,8 +909,13 @@ void setup()
 
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
-    // if the saved config was not good then force config.
-    if (!loadConfig())
+
+    //
+    // if the saved config was not good and the clock is not running
+    // then force config.  If the clock is running then we trust that
+    // it has the correct position.
+    //
+    if (!loadConfig() && !enabled)
     {
         force_config = true;
     }
@@ -912,9 +964,6 @@ void setup()
         }
         sleepFor(dsd.sleep_delay_left);
     }
-
-    bool enabled = clk.getEnable();
-    dbprintf("clock enable is:%u\n", enabled);
 
 #if !defined(DISABLE_DEEP_SLEEP)
     if (!enabled)
