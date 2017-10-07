@@ -147,7 +147,7 @@
 <wire x1="84.76" y1="0" x2="84.76" y2="45.71" width="0" layer="20"/>
 <wire x1="84.76" y1="45.71" x2="0" y2="45.71" width="0" layer="20"/>
 <wire x1="0" y1="45.71" x2="0" y2="0" width="0" layer="20"/>
-<text x="75.946" y="40.894" size="1.778" layer="22" rot="MR0">SynchroClock 2.1</text>
+<text x="75.946" y="40.894" size="1.778" layer="22" rot="MR0">SynchroClock 2.1a</text>
 </plain>
 <libraries>
 <library name="capacitor-wima" urn="urn:adsk.eagle:library:116">
