@@ -27,16 +27,18 @@
 #include <ESP8266WiFi.h>
 
 #define USE_TCP
+#define USE_NETWORK
 
+#ifdef USE_NETWORK
 #ifdef USE_TCP
 #include <WiFiClient.h>
 #else
 #include <WiFiUDP.h>
 #endif
+#endif
 
 #define LOGGER_DEFAULT_BAUD 115200L
 #define LOGGER_BUFFER_SIZE  256
-
 
 class Logger {
 public:
@@ -50,10 +52,12 @@ public:
 	void flush();
 
 private:
+#ifdef USE_NETWORK
 #ifdef USE_TCP
 	WiFiClient _client;
 #else
     WiFiUDP     _udp;
+#endif
 #endif
     const char* _host;
     uint16_t    _port;

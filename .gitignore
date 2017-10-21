@@ -13,3 +13,7 @@ SynchroClock/SynchroClock.ino
 *.bak
 *-bak
 RemoteSystemsTempFiles
+eagle/SynchroClock/SynchroClock.pro
+eagle/SynchroClock/SynchroClock.b#*
+eagle/SynchroClock/SynchroClock.l#*
+eagle/SynchroClock/SynchroClock.s#*

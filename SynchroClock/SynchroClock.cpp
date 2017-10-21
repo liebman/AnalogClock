@@ -31,7 +31,16 @@
 //#define DISABLE_DEEP_SLEEP
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
-//#define HARD_CODE_WIFI
+//#define USE_BUILTIN_LED
+//#define HARD_CODED_WIFI
+
+//#define DEFAULT_LOG_ADDR "192.168.0.42"
+//#define DEFAULT_LOG_PORT 1421
+
+#if defined(USE_BUILTIN_LED)
+#undef LED_PIN
+#define LED_PIN BUILTIN_LED
+#endif
 
 #ifdef HARD_CODED_WIFI
 #define HARD_CODED_SSID "Whatever"
@@ -42,7 +51,9 @@
 
 Config           config;                    // configuration persisted in the EEPROM
 DeepSleepData    dsd;                       // data persisted in the RTC memory
+#if defined(LED_PIN)
 FeedbackLED      feedback(LED_PIN);         // used to blink LED to indicate status
+#endif
 ESP8266WebServer HTTP(80);                  // used when debugging/stay awake mode
 NTP              ntp(&(dsd.ntp_runtime), &(config.ntp_persist), &saveConfig);   // handles NTP communication & filtering
 Clock            clk(SYNC_PIN);             // clock ticker, manages position of clock
@@ -61,6 +72,17 @@ boolean parseBoolean(const char* value)
         return true;
     }
     return false;
+}
+
+uint8_t parseDuty(const char* value)
+{
+    int i = atoi(value);
+    if (i < 1 || i > 100)
+    {
+        dbprintf("parseDuty: invalid value %s: using 50 instead!\n", value);
+        i = 50;
+    }
+    return (uint8_t) i;
 }
 
 int getValidOffset(String name)
@@ -83,10 +105,27 @@ uint8_t getValidDuration(String name)
     return result;
 }
 
+uint8_t getValidDuty(String name)
+{
+    uint8_t result = parseDuty(HTTP.arg(name).c_str());
+    return result;
+}
+
 boolean getValidBoolean(String name)
 {
     boolean result = parseBoolean(HTTP.arg(name).c_str());
     return result;
+}
+
+uint8_t getValidByte(String name)
+{
+    int i = atoi(HTTP.arg(name).c_str());
+    if (i < 0 || i > 255)
+    {
+        dbprintf("getValidByte: invalid value %d: using 255 instead!\n", i);
+        i = 255;
+    }
+    return (uint8_t) i;
 }
 
 void handleOffset()
@@ -95,7 +134,6 @@ void handleOffset()
     {
         config.tz_offset = getValidOffset("set");
         dbprintf("seconds offset:%d\n", config.tz_offset);
-        saveConfig();
     }
 
     HTTP.send(200, "text/plain", String(config.tz_offset) + "\n");
@@ -104,7 +142,6 @@ void handleOffset()
 void handleAdjustment()
 {
     uint16_t adj;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         if (HTTP.arg("set").equalsIgnoreCase("auto"))
@@ -132,15 +169,12 @@ void handleAdjustment()
         sprintf(message, "adjustment: %d\n", adj);
     }
 
-    clk.setStayActive(false);
-
     HTTP.send(200, "text/plain", message);
 }
 
 void handlePosition()
 {
     uint16_t pos;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
@@ -163,15 +197,12 @@ void handlePosition()
         sprintf(message, "position: %d (%02d:%02d:%02d)\n", pos, hours, minutes, seconds);
     }
 
-    clk.setStayActive(false);
-
     HTTP.send(200, "text/Plain", message);
 }
 
 void handleTPDuration()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -190,7 +221,31 @@ void handleTPDuration()
     {
         sprintf(message, "TP duration: %u\n", value);
     }
-    clk.setStayActive(false);
+
+    HTTP.send(200, "text/plain", message);
+}
+
+void handleTPDuty()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidDuty("set");
+        dbprintf("setting tp_duty:%u\n", value);
+        if (clk.writeTPDuty(value))
+        {
+            dbprintln("failed to set TP duty!");
+        }
+    }
+
+    if (clk.readTPDuty(&value))
+    {
+        sprintf(message, "failed to read TP duty\n");
+    }
+    else
+    {
+        sprintf(message, "TP duty: %u\n", value);
+    }
 
     HTTP.send(200, "text/plain", message);
 }
@@ -198,7 +253,6 @@ void handleTPDuration()
 void handleAPDuration()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -217,7 +271,31 @@ void handleAPDuration()
     {
         sprintf(message, "AP duration: %u\n", value);
     }
-    clk.setStayActive(false);
+
+    HTTP.send(200, "text/plain", message);
+}
+
+void handleAPDuty()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidDuty("set");
+        dbprintf("setting ap_duty:%u\n", value);
+        if (clk.writeAPDuty(value))
+        {
+            dbprintln("failed to set AP duty!");
+        }
+    }
+
+    if (clk.readAPDuty(&value))
+    {
+        sprintf(message, "failed to read AP duty\n");
+    }
+    else
+    {
+        sprintf(message, "AP duty: %u\n", value);
+    }
 
     HTTP.send(200, "text/plain", message);
 }
@@ -225,7 +303,6 @@ void handleAPDuration()
 void handleAPDelay()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
@@ -244,63 +321,82 @@ void handleAPDelay()
     {
         sprintf(message, "AP delay: %u\n", value);
     }
-    clk.setStayActive(false);
 
     HTTP.send(200, "text/plain", message);
 }
 
-void handleSleepDelay()
+void handleAPStartDuration()
 {
     uint8_t value;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprintf("setting sleep_delay:%u\n", value);
-        if (clk.writeSleepDelay(value))
+        dbprintf("setting ap_start:%u\n", value);
+        if (clk.writeAPStartDuration(value))
         {
-            dbprintln("failed to set sleep delay");
+            dbprintln("failed to set AP start duration");
         }
     }
 
-    if (clk.readSleepDelay(&value))
+    if (clk.readAPStartDuration(&value))
     {
-        sprintf(message, "failed to read sleep delay\n");
+        sprintf(message, "failed to read AP start duration\n");
     }
     else
     {
-        sprintf(message, "sleep delay: %u\n", value);
+        sprintf(message, "AP start duration: %u\n", value);
     }
-    clk.setStayActive(false);
 
-    HTTP.send(200, "text/plain", String(value) + "\n");
+    HTTP.send(200, "text/plain", message);
+}
+
+void handlePWMTop()
+{
+    uint8_t value;
+    if (HTTP.hasArg("set"))
+    {
+        value = getValidByte("set");
+        dbprintf("setting pwm_top:%u\n", value);
+        if (clk.writePWMTop(value))
+        {
+            dbprintln("failed to set pwm_top!");
+        }
+    }
+
+    if (clk.readPWMTop(&value))
+    {
+        sprintf(message, "failed to read pwm_top!\n");
+    }
+    else
+    {
+        sprintf(message, "pwm_top: %u\n", value);
+    }
+
+    HTTP.send(200, "text/plain", message);
 }
 
 void handleEnable()
 {
     boolean enable;
-    clk.setStayActive(true);
     if (HTTP.hasArg("set"))
     {
         enable = getValidBoolean("set");
         clk.setEnable(enable);
     }
     enable = clk.getEnable();
-    clk.setStayActive(false);
     HTTP.send(200, "text/Plain", String(enable) + "\n");
 }
 
 void handleRTC()
 {
     char message[64];
+
     DS3231DateTime dt;
     int err = rtc.readTime(dt);
 
     if (!err)
     {
         dbprintf("handleRTC: RTC : %s (UTC)\n", dt.string());
-
-        clk.setStayActive(true);
 
         if (HTTP.hasArg("offset"))
         {
@@ -315,7 +411,6 @@ void handleRTC()
 
         uint16_t value = dt.getPosition(config.tz_offset);
 
-        clk.setStayActive(false);
         int hours = value / 3600;
         int minutes = (value - (hours * 3600)) / 60;
         int seconds = value - (hours * 3600) - (minutes * 60);
@@ -347,8 +442,6 @@ void handleNTP()
         sync = getValidBoolean("sync");
     }
 
-    clk.setStayActive(true);
-
     double offset;
     IPAddress address;
     char message[64];
@@ -369,8 +462,6 @@ void handleNTP()
 
         snprintf(message, 64, "OFFSET: %0.6lf (%s)\n", offset, address.toString().c_str());
     }
-
-    clk.setStayActive(false);
 
     dbprintf(message);
     HTTP.send(code, "text/Plain", message);
@@ -405,14 +496,33 @@ void handleWire()
     HTTP.send(200, "text/Plain", message);
 }
 
+void handleSave()
+{
+    clk.saveConfig();
+    saveConfig();
+    HTTP.send(200, "text/plain", "Saved!\n");
+}
+
+void handleErase()
+{
+    for (unsigned int i = 0; i < sizeof(EEConfig); ++i)
+    {
+        EEPROM.write(i, 0);
+    }
+    EEPROM.commit();
+    HTTP.send(200, "text/plain", "Erased!\n");
+}
+
 void initWiFi()
 {
     dbprintln("starting wifi!");
 
+#if defined(LED_PIN)
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
+#endif
 
-    WiFiManager wifi(30);
+    WiFiManager wifi(32);
     wifi.setDebugOutput(false);
     wifi.setConnectTimeout(CONNECTION_TIMEOUT);
 
@@ -420,17 +530,22 @@ void initWiFi()
     {
         save_config = true;
     });
+#if defined(LED_PIN)
     wifi.setAPCallback([](WiFiManager *)
     {
         feedback.blink(FEEDBACK_LED_FAST);
     });
+#endif
+    uint16_t pos;
+    char pos_str[16];
+    clk.readPosition(&pos);
+    int hours = pos / 3600;
+    int minutes = (pos - (hours * 3600)) / 60;
+    int seconds = pos - (hours * 3600) - (minutes * 60);
+    memset(pos_str, 0, sizeof(pos_str));
+    snprintf(pos_str, 15, "%02d:%02d:%02d", hours, minutes, seconds);
 
-    ConfigParam offset(wifi, "offset", "Time Zone", config.tz_offset, 8, [](const char* result)
-    {
-        config.tz_offset = TimeUtils::parseOffset(result);
-        dbprintf("setting tz_offset to %d\n", config.tz_offset);
-    });
-    ConfigParam position(wifi, "position", "Clock Position", "", 8, [](const char* result)
+    ConfigParam position(wifi, "position", "Clock Position", pos_str, 10, [](const char* result)
     {
         if (strlen(result))
         {
@@ -442,6 +557,7 @@ void initWiFi()
             }
         }
     });
+
     ConfigParam ntp_server(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result)
     {
         strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
@@ -469,7 +585,7 @@ void initWiFi()
         config.tc[0].tz_offset = TimeUtils::parseOffset(result);
     });
 
-    ConfigParam tc2_label(wifi, "<p>2ns Time Change</p>");
+    ConfigParam tc2_label(wifi, "<p>2nd Time Change</p>");
     ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 2, [](const char* result)
     {
         config.tc[1].occurrence = TimeUtils::parseOccurrence(result);
@@ -501,25 +617,42 @@ void initWiFi()
     {
         config.sleep_duration = atoi(result);
     });
-    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", config.tp_duration, 8, [](const char* result)
+    uint8_t value;
+    clk.readTPDuration(&value);
+    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", value, 8, [](const char* result)
     {
-        config.tp_duration = TimeUtils::parseSmallDuration(result);
-        clk.writeTPDuration(config.tp_duration);
+        uint8_t tp_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeTPDuration(tp_duration);
     });
-    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", config.ap_duration, 4, [](const char* result)
+    clk.readTPDuty(&value);
+    ConfigParam tp_duty(wifi, "tp_duty", "Tick Pulse Duty", value, 8, [](const char* result)
     {
-        config.ap_duration = TimeUtils::parseSmallDuration(result);
-        clk.writeAPDuration(config.ap_duration);
+        uint8_t tp_duty = parseDuty(result);
+        clk.writeTPDuty(tp_duty);
     });
-    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", config.ap_delay, 4, [](const char* result)
+    clk.readAPStartDuration(&value);
+    ConfigParam ap_start(wifi, "ap_start", "Adjust Start Pulse", value, 4, [](const char* result)
     {
-        config.ap_delay = TimeUtils::parseSmallDuration(result);
-        clk.writeAPDelay(config.ap_delay);
+        uint8_t ap_start = TimeUtils::parseSmallDuration(result);
+        clk.writeAPStartDuration(ap_start);
     });
-    ConfigParam sleep_delay(wifi, "sleep_delay", "Sleep Delay", config.sleep_delay, 5, [](const char* result)
+    clk.readAPDuration(&value);
+    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", value, 4, [](const char* result)
     {
-        config.sleep_delay = TimeUtils::parseSmallDuration(result);
-        clk.writeSleepDelay(config.sleep_delay);
+        uint8_t ap_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDuration(ap_duration);
+    });
+    clk.readAPDuty(&value);
+    ConfigParam ap_duty(wifi, "ap_duty", "Adjust Pulse Duty", value, 8, [](const char* result)
+    {
+        uint8_t ap_duty = parseDuty(result);
+        clk.writeAPDuty(ap_duty);
+    });
+    clk.readAPDelay(&value);
+    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", value, 4, [](const char* result)
+    {
+        uint8_t ap_delay = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDelay(ap_delay);
     });
     ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
     {
@@ -540,10 +673,10 @@ void initWiFi()
     });
     String ssid = "SynchroClock" + String(ESP.getChipId());
     dbflush();
-#ifdef HARD_CODE_WIFI
+#if defined(HARD_CODE_WIFI)
     config.network_logger_host[0] = 0;
     save_config = true;
-#ifdef HARD_CODED_POSITION
+#if defined(HARD_CODED_POSITION)
     if (!clk.getEnable())
     {
         uint16_t position = TimeUtils::parsePosition(HARD_CODED_POSITION);
@@ -572,8 +705,9 @@ void initWiFi()
         wifi.autoConnect(ssid.c_str(), NULL);
     }
 #endif
+#if defined(LED_PIN)
     feedback.off();
-
+#endif
     //
     // if we are not connected then deep sleep and try again.
     if (!WiFi.isConnected())
@@ -590,7 +724,6 @@ void initWiFi()
     //
     if (save_config)
     {
-        offset.applyIfChanged();
         position.applyIfChanged();
         ntp_server.applyIfChanged();
         tc1_occurence.applyIfChanged();
@@ -605,13 +738,16 @@ void initWiFi()
         tc2_offset.applyIfChanged();
         no_sleep.applyIfChanged();
         tp_duration.applyIfChanged();
+        tp_duty.applyIfChanged();
+        ap_start.applyIfChanged();
         ap_duration.applyIfChanged();
+        ap_duty.applyIfChanged();
         ap_delay.applyIfChanged();
-        sleep_delay.applyIfChanged();
         sleep_duration.applyIfChanged();
         network_logger_host.applyIfChanged();
         network_logger_port.applyIfChanged();
         clear_ntp_persist.applyIfChanged();
+        clk.saveConfig();
         saveConfig();
     }
 
@@ -627,14 +763,12 @@ void setup()
     dbbegin(115200);
     dbprintln("");
     dbprintln("Startup!");
-#if 0
-    uint32_t sleep_duration = MAX_SLEEP_DURATION;
-    RFMode mode = RF_DEFAULT;
-#endif
-    pinMode(SYNC_PIN, INPUT);
-    pinMode(FACTORY_RESET_PIN, INPUT);
-    feedback.off();
 
+    pinMode(SYNC_PIN, INPUT);
+    pinMode(CONFIG_PIN, INPUT);
+#if defined(LED_PIN)
+    feedback.off();
+#endif
     //
     // lets read deep sleep data and see if we need to immed go back to sleep.
     //
@@ -642,6 +776,7 @@ void setup()
     readDeepSleepData();
 
     Wire.begin();
+    Wire.setClockStretchLimit(CLOCK_STRETCH_LIMIT);
 
     while (rtc.begin())
     {
@@ -679,7 +814,9 @@ void setup()
     //
     // make sure the device is available!
     //
+#if defined(LED_PIN)
     feedback.blink(0.9);
+#endif
     dbprintln("starting clock interface");
     while (clk.begin())
     {
@@ -692,12 +829,9 @@ void setup()
         delay(10000);
     }
     dbprintln("clock interface started");
-    feedback.off();
-
-    clk.setStayActive(true);
 
     // if the reset/config button is pressed then force config
-    if (digitalRead(FACTORY_RESET_PIN) == 0)
+    if (digitalRead(CONFIG_PIN) == 0)
     {
         //
         // If we wake with the reset button pressed and sleep_delay_left then the radio is off
@@ -705,55 +839,100 @@ void setup()
         //
         if (dsd.sleep_delay_left != 0)
         {
-            clk.setStayActive(false);
             dbprintln("reset button pressed with radio off, short sleep to enable!");
             dsd.sleep_delay_left = 0;
             writeDeepSleepData();
             ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
         }
-        dbprintln("reset button pressed, forcing config!");
-        force_config = true;
+
+#if defined(LED_PIN)
+        feedback.on();
+#endif
+        dbprintln("waiting for config release");
+        while (digitalRead(CONFIG_PIN) == 0)
+        {
+            // wait for it to be let up.
+            delay(10);
+        }
+
+
+        //
+        // now a short delay, if the button is pressed again after that then we use stay
+        // awake mode and start a web server.
+        //
+        dbprintln("short delay to see if its pressed again.");
+        delay(2000);
+
+#if defined(LED_PIN)
+        feedback.off();
+#endif
+
+        if (digitalRead(CONFIG_PIN) == 0)
+        {
+            dbprintln("Its pressed, use stay awake!");
+            stay_awake = true;
+        }
+        else
+        {
+            dbprintln("reset button pressed, forcing config!");
+            force_config = true;
+            //
+            //  If we force config because of the config button then we stop the clock.
+            //
+            clk.setEnable(false);
+        }
     }
 
-    uint8_t value;
-    config.tp_duration = clk.readTPDuration(&value) ? DEFAULT_TP_DURATION : value;
-    config.ap_duration = clk.readAPDuration(&value) ? DEFAULT_AP_DURATION : value;
-    config.ap_delay = clk.readAPDelay(&value) ? DEFAULT_AP_DELAY : value;
-    config.sleep_delay = clk.readSleepDelay(&value) ? DEFAULT_SLEEP_DELAY : value;
+
+    bool enabled = clk.getEnable();
+    dbprintf("clock enable is:%u\n", enabled);
+
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
 
     // Default to disabled (all tz_offsets = 0)
-    config.tc[0].occurrence = 1;
-    config.tc[0].day_of_week = 0;
-    config.tc[0].month = 1;
-    config.tc[0].hour = 0;
-    config.tc[0].tz_offset = 0;
-    config.tc[1].occurrence = 1;
-    config.tc[1].day_of_week = 0;
-    config.tc[1].month = 1;
-    config.tc[1].hour = 0;
-    config.tc[1].tz_offset = 0;
+    config.tc[0].occurrence  = DEFAULT_TC0_OCCUR;
+    config.tc[0].day_of_week = DEFAULT_TC0_DOW;
+    config.tc[0].month       = DEFAULT_TC0_MONTH;
+    config.tc[0].hour        = DEFAULT_TC0_HOUR;
+    config.tc[0].tz_offset   = DEFAULT_TC0_OFFSET;
+    config.tc[1].occurrence  = DEFAULT_TC1_OCCUR;
+    config.tc[1].day_of_week = DEFAULT_TC1_DOW;
+    config.tc[1].month       = DEFAULT_TC1_MONTH;
+    config.tc[1].hour        = DEFAULT_TC1_HOUR;
+    config.tc[1].tz_offset   = DEFAULT_TC1_OFFSET;
 
-    dbprintf("defaults: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay,
+    dbprintf("defaults: tz:%d ntp:%s logging: %s:%d\n", config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dbprintf("EEConfig size: %u\n", sizeof(EEConfig));
 
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
-    // if the saved config was not good then force config.
-    if (!loadConfig())
+
+    //
+    // if the saved config was not good and the clock is not running
+    // then force config.  If the clock is running then we trust that
+    // it has the correct position.
+    //
+    if (!loadConfig() && !enabled)
     {
         force_config = true;
     }
 
-    dbprintf("config: tz:%d tp:%u,%u ap:%u ntp:%s logging: %s:%d\n", config.tz_offset, config.tp_duration, config.ap_duration, config.ap_delay,
+#if defined(DEFAULT_LOG_ADDR) && defined(DEFAULT_LOG_PORT)
+    if (strnlen(config.network_logger_host, 64) == 0)
+    {
+        strncpy(config.network_logger_host, DEFAULT_LOG_ADDR, 64);
+        config.network_logger_port = DEFAULT_LOG_PORT;
+    }
+#endif
+
+    dbprintf("config: tz:%d ntp:%s logging: %s:%d\n", config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dt.applyOffset(config.tz_offset);
-    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc,
-    TIME_CHANGE_COUNT);
+    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
 
     bool clock_needs_sync = false;
     // if the time zone changed then save the new value and set the the clock
@@ -765,7 +944,7 @@ void setup()
         clock_needs_sync = true;
     }
 
-#ifdef USE_DRIFT
+#if defined(USE_DRIFT)
     //
     // apply drift to RTC
     //
@@ -783,23 +962,10 @@ void setup()
         {
             setCLKfromRTC();
         }
-        clk.setStayActive(false);
         sleepFor(dsd.sleep_delay_left);
     }
 
-    //
-    // clock parameters could have changed, set them
-    clk.writeTPDuration(config.tp_duration);
-    clk.writeAPDuration(config.ap_duration);
-    clk.writeAPDelay(config.ap_delay);
-
-    boolean enabled = clk.getEnable();
-    dbprintf("clock enable is:%u\n", enabled);
-
-    //
-    // if the clock is not running advance it to sync tick/tock
-    //
-#ifndef DISABLE_DEEP_SLEEP
+#if !defined(DISABLE_DEEP_SLEEP)
     if (!enabled)
     {
         force_config = true; // force the config portal to set the position if the clock is not running
@@ -822,25 +988,23 @@ void setup()
         dbprintln("clock is enabled, skipping init of RTC");
     }
 
-#ifndef DISABLE_INITIAL_NTP
+#if !defined(DISABLE_INITIAL_NTP)
     dbprintln("syncing RTC from NTP!");
     setRTCfromNTP(config.ntp_server, true, NULL, NULL);
 #endif
 
-#ifndef DISABLE_INITIAL_SYNC
+#if !defined(DISABLE_INITIAL_SYNC)
     dbprintln("syncing clock to RTC!");
     setCLKfromRTC();
 #endif
 
-    clk.setStayActive(false);
-
-#ifdef DISABLE_DEEP_SLEEP
+#if defined(DISABLE_DEEP_SLEEP)
     stay_awake = true;
 #endif
 
     if (!stay_awake)
     {
-#if 1
+#if defined(USE_NTP_POLL_ESTIMATE)
         sleepFor(ntp.getPollInterval());
 #else
         sleepFor(config.sleep_duration);
@@ -848,19 +1012,23 @@ void setup()
     }
 
     dbprintln("starting HTTP");
-    HTTP.on("/offset", HTTP_GET, handleOffset);
-    HTTP.on("/adjust", HTTP_GET, handleAdjustment);
-    HTTP.on("/position", HTTP_GET, handlePosition);
+    HTTP.on("/offset",      HTTP_GET, handleOffset);
+    HTTP.on("/adjust",      HTTP_GET, handleAdjustment);
+    HTTP.on("/position",    HTTP_GET, handlePosition);
     HTTP.on("/tp_duration", HTTP_GET, handleTPDuration);
+    HTTP.on("/tp_duty",     HTTP_GET, handleTPDuty);
     HTTP.on("/ap_duration", HTTP_GET, handleAPDuration);
-    HTTP.on("/ap_delay", HTTP_GET, handleAPDelay);
-    HTTP.on("/sleep_delay", HTTP_GET, handleSleepDelay);
-    HTTP.on("/enable", HTTP_GET, handleEnable);
-    HTTP.on("/rtc", HTTP_GET, handleRTC);
-    HTTP.on("/ntp", HTTP_GET, handleNTP);
-    HTTP.on("/wire", HTTP_GET, handleWire);
+    HTTP.on("/ap_duty",     HTTP_GET, handleAPDuty);
+    HTTP.on("/ap_delay",    HTTP_GET, handleAPDelay);
+    HTTP.on("/enable",      HTTP_GET, handleEnable);
+    HTTP.on("/rtc",         HTTP_GET, handleRTC);
+    HTTP.on("/ntp",         HTTP_GET, handleNTP);
+    HTTP.on("/wire",        HTTP_GET, handleWire);
+    HTTP.on("/save",        HTTP_GET, handleSave);
+    HTTP.on("/erase",       HTTP_GET, handleErase);
+    HTTP.on("/ap_start",    HTTP_GET, handleAPStartDuration);
+    HTTP.on("/pwm_top",     HTTP_GET, handlePWMTop);
     HTTP.begin();
-
 }
 
 void sleepFor(uint32_t sleep_duration)
@@ -915,6 +1083,7 @@ int setRTCfromOffset(double offset, bool sync)
     DS3231DateTime dt;
 
     clk.waitForEdge(CLOCK_EDGE_FALLING);
+    delay(2); // ATtiny85 at 1mhz has interrupts disabled for a bit after the falling edge
     if (rtc.readTime(dt))
     {
         dbprintln("setRTCfromOffset: failed to read from RTC!");
@@ -951,7 +1120,7 @@ int setRTCfromOffset(double offset, bool sync)
 int getTime(uint32_t *result)
 {
     clk.waitForEdge(CLOCK_EDGE_FALLING);
-
+    delay(2); // ATtiny85 at 1mhz has interrupts disabled for a bit after the falling edge
     DS3231DateTime dt;
     if (rtc.readTime(dt))
     {
@@ -986,16 +1155,6 @@ int setRTCfromDrift()
 int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddress* result_address)
 {
     dbprintf("using server: %s\n", server);
-
-    // wait for the next falling edge of the 1hz square wave
-    clk.waitForEdge(CLOCK_EDGE_FALLING);
-
-    DS3231DateTime dt;
-    if (rtc.readTime(dt))
-    {
-        dbprintln("setRTCfromNTP: failed to read from RTC!");
-        return ERROR_RTC;
-    }
 
     double offset;
     if (ntp.getOffset(server, &offset, &getTime))
@@ -1035,7 +1194,7 @@ int setCLKfromRTC()
         return -1;
     }
 
-#ifdef USE_STOP_THE_CLOCK
+#if defined(USE_STOP_THE_CLOCK)
     int delta;
     uint16_t clock_pos;
     uint16_t rtc_pos;

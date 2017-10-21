@@ -23,7 +23,7 @@ public:
     int close();
 private:
     int     _local_port;
-    WiFiUdp _udp;
+    WiFiUDP _udp;
 };
 
 #endif /* UDPWRAPPER_H_ */

@@ -25,9 +25,6 @@
 #define DEBUG
 #include "Logger.h"
 
-//#define DISABLE_ACTIVE
-//#define DISABLE_EDGE
-
 Clock::Clock(int _pin)
 {
     pin = _pin;
@@ -48,7 +45,6 @@ int Clock::begin()
 
 bool Clock::isClockPresent()
 {
-    waitForActive();
     uint8_t id;
     if (read(CMD_ID, &id))
     {
@@ -102,6 +98,16 @@ int Clock::writeTPDuration(uint8_t value)
     return write(CMD_TP_DURATION, value);
 }
 
+int Clock::readTPDuty(uint8_t *value)
+{
+    return read(CMD_TP_DUTY, value);
+}
+
+int Clock::writeTPDuty(uint8_t value)
+{
+    return write(CMD_TP_DUTY, value);
+}
+
 int Clock::readAPDuration(uint8_t* value)
 {
     return read(CMD_AP_DURATION, value);
@@ -110,6 +116,16 @@ int Clock::readAPDuration(uint8_t* value)
 int Clock::writeAPDuration(uint8_t value)
 {
     return write(CMD_AP_DURATION, value);
+}
+
+int Clock::readAPDuty(uint8_t *value)
+{
+    return read(CMD_AP_DUTY, value);
+}
+
+int Clock::writeAPDuty(uint8_t value)
+{
+    return write(CMD_AP_DUTY, value);
 }
 
 int Clock::readAPDelay(uint8_t* value)
@@ -122,14 +138,24 @@ int Clock::writeAPDelay(uint8_t value)
     return write(CMD_AP_DELAY, value);
 }
 
-int Clock::readSleepDelay(uint8_t* value)
+int Clock::readAPStartDuration(uint8_t* value)
 {
-    return read(CMD_SLEEP_DELAY, value);
+    return read(CMD_AP_START, value);
 }
 
-int Clock::writeSleepDelay(uint8_t value)
+int Clock::writeAPStartDuration(uint8_t value)
 {
-    return write(CMD_SLEEP_DELAY, value);
+    return write(CMD_AP_START, value);
+}
+
+int Clock::readPWMTop(uint8_t* value)
+{
+    return read(CMD_PWMTOP, value);
+}
+
+int Clock::writePWMTop(uint8_t value)
+{
+    return write(CMD_PWMTOP, value);
 }
 
 bool Clock::getEnable()
@@ -142,41 +168,10 @@ void Clock::setEnable(bool enable)
     setCommandBit(enable, BIT_ENABLE);
 }
 
-bool Clock::getStayActive()
+int Clock::saveConfig()
 {
-    return getCommandBit(BIT_STAY_ACTIVE);
+    return write(CMD_SAVE_CONFIG, (uint8_t)0);
 }
-
-void Clock::setStayActive(bool active)
-{
-#ifndef DISABLE_ACTIVE
-	boolean done = false;
-
-	dbprintf("Clock::setStayActive(%s)\n", active ? "true" : "false");
-
-	while (!done)
-	{
-	    waitForActive();
-		if (setCommandBit(active, BIT_STAY_ACTIVE))
-		{
-			if (WireUtils.clearBus())
-			{
-				dbprintf("i2c recovery failed!\n");
-				delay(10000);
-			}
-		}
-		else
-		{
-			done = true;
-		}
-	}
-#if 0
-    waitForActive();
-    setCommandBit(active, BIT_STAY_ACTIVE);
-#endif
-#endif
-}
-
 
 bool Clock::getCommandBit(uint8_t bit)
 {
@@ -350,17 +345,8 @@ int Clock::write(uint8_t command, uint16_t value)
     return 0;
 }
 
-void Clock::waitForActive()
-{
-#ifndef DISABLE_ACTIVE
-    waitForEdge(CLOCK_EDGE_FALLING);
-    delay(25); // give the chip time to wake up!
-#endif
-}
-
 void Clock::waitForEdge(int edge)
 {
-#ifndef DISABLE_EDGE
     while (digitalRead(pin) == edge)
     {
         delay(1);
@@ -369,7 +355,4 @@ void Clock::waitForEdge(int edge)
     {
         delay(1);
     }
-#else
-    dbprintln("Clock::waitForEdge DISABLED!!!!");
-#endif
 }
