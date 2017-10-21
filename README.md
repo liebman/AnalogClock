@@ -1,4 +1,4 @@
-# AnalogClock 2.0
+# AnalogClock 2.X
 Project to sync analog clocks to a few milliseconds using NTP for time synchronization.
 
 Its a work in progress - more documentation coming soon-ish.
@@ -30,7 +30,7 @@ Its a work in progress - more documentation coming soon-ish.
    When the clock is initially powered on it creates a wifi captive portal.  It will show up in the list of available wifi networks as SynchroClockXXXXXXX (where the X’s are some number).  Configuration mode can be forced by holding down the reset button until the LED is flashing at a fast rate then releasing it. When you connect to this you are given a menu that lets you set many configuration options:
 * Wifi Network (SSID)
 * Wifi Network password
-* Clock Position - enter the current time shown on the clock as HH:MM:SS - this can be left blank if the clock is already running.
+* Clock Position - enter the current time shown on the clock as HH:MM:SS.
 * NTP Server to sync with
 * 1st time change as 5 fields (US/Pacific would be: 2 0 3 2 -25200 meaning the second Sunday in March at 2am we change to UTC-7 hours)
     * occurrence - 2 would be the second occurrence of the day of week specified, -1 would be the last one.
