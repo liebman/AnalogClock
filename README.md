@@ -15,7 +15,7 @@ Its a work in progress - more documentation coming soon-ish.
 * Automatic daylight saving time adjustments
 * Clock position & configuration saved on power fail
 * Low power consumption: approx. 0.25ma in early testing
-* adjustable tick/adjust pulse width/duty cycle/delay should support most one second "tick" clocks.
+* adjustable tick/adjust pulse width/duty cycle/delay should support most one second "tick" (non-sweep) clocks.
 * NTP implementation computes drift and uses that to increase accuricy between NTP updates
 
 ## Arduino Board Requirements
@@ -44,6 +44,7 @@ Advanced options:
 * Stay Awake - when set true the ESP8266 will not use deep sleep and will run a small web servers allowing various operations to be performed with an http interface.
 * Tick Pulse - this is the duration in milliseconds of the “tick”.
 * Tick Duty Cycle - the percentage of time that the tick is on using PWM
+* Adjust Start Pulse - this uis the duration in milliseconds of the initial pulse of an adjustment
 * Adjust Pulse - this is the duration in milliseconds of the “tick” used to advance the clock rapidly.
 * Adjust Duty Cycle - the percentage of time that the tick is on using PWM
 * Adjust Delay - this is the delay in milliseconds between “ticks” when advancing the clock rapidly.
