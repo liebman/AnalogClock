@@ -758,6 +758,36 @@ void initWiFi()
     dbprintf("Connected! IP address is: %u.%u.%u.%u\n", ip[0], ip[1], ip[2], ip[3]);
 }
 
+
+//
+// update the timezone offset based on the current date/time
+// return true if offset was updated
+//
+bool updateTZOffset()
+{
+    DS3231DateTime dt;
+    if (rtc.readTime(dt))
+    {
+        dbprintln("updateTZOffset: FAILED to read RTC");
+        return false;
+    }
+
+    dt.applyOffset(config.tz_offset);
+
+    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
+
+    // if the time zone changed then save the new value and return true
+    if (config.tz_offset != new_offset)
+    {
+        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
+        config.tz_offset = new_offset;
+        saveConfig();
+        return true;
+    }
+
+    return false;
+}
+
 void setup()
 {
     dbbegin(115200);
@@ -789,21 +819,6 @@ void setup()
         }
         delay(1000);
     }
-
-    DS3231DateTime dt;
-    while (rtc.readTime(dt))
-    {
-        dbprintln("read RTC failed! Attempting recovery...");
-        //
-        //
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dbprintln("lets try that again...");
-        }
-        delay(10000);
-    }
-    dbprintf("intial RTC: %s\n", dt.string());
 
     //
     // initialize config to defaults then load.
@@ -931,18 +946,7 @@ void setup()
     dbprintf("config: tz:%d ntp:%s logging: %s:%d\n", config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
-    dt.applyOffset(config.tz_offset);
-    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
-
-    bool clock_needs_sync = false;
-    // if the time zone changed then save the new value and set the the clock
-    if (config.tz_offset != new_offset)
-    {
-        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
-        config.tz_offset = new_offset;
-        saveConfig();
-        clock_needs_sync = true;
-    }
+    bool clock_needs_sync = updateTZOffset();
 
 #if defined(USE_DRIFT)
     //
@@ -1083,7 +1087,7 @@ int setRTCfromOffset(double offset, bool sync)
     DS3231DateTime dt;
 
     clk.waitForEdge(CLOCK_EDGE_FALLING);
-    delay(2); // ATtiny85 at 1mhz has interrupts disabled for a bit after the falling edge
+
     if (rtc.readTime(dt))
     {
         dbprintln("setRTCfromOffset: failed to read from RTC!");
@@ -1108,6 +1112,12 @@ int setRTCfromOffset(double offset, bool sync)
             return ERROR_RTC;
         }
     }
+
+    //
+    // Update the TZ offset in case the timezone offset has changed based on new time.
+    //
+    delay(1); // DS3231 seems to need a short delay after write before we read the time back
+    updateTZOffset();
 
     dbprintf("setRTCfromOffset: old_time: %d new_time: %d\n", old_time, new_time);
     dbprintf("setRTCfromOffset: RTC: %s\n", dt.string());
