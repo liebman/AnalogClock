@@ -1090,8 +1090,13 @@ int setRTCfromOffset(double offset, bool sync)
 
     if (rtc.readTime(dt))
     {
-        dbprintln("setRTCfromOffset: failed to read from RTC!");
-        return ERROR_RTC;
+        dbprintln("setRTCfromOffset: failed to read from RTC, attempting corrective action...");
+        WireUtils.clearBus();
+        if (rtc.readTime(dt))
+        {
+            dbprintln("setRTCfromOffset: failed to read from RTC!");
+            return ERROR_RTC;
+        }
     }
 
     // wait for where the next second should start
