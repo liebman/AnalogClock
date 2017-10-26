@@ -513,6 +513,34 @@ void handleErase()
     HTTP.send(200, "text/plain", "Erased!\n");
 }
 
+
+//
+// update the timezone offset based on the current date/time
+// return true if offset was updated
+//
+bool updateTZOffset()
+{
+    DS3231DateTime dt;
+    if (rtc.readTime(dt))
+    {
+        dbprintln("updateTZOffset: FAILED to read RTC");
+        return false;
+    }
+
+    int new_offset = TimeUtils::computeUTCOffset(dt.getUnixTime(), config.tz_offset, config.tc, TIME_CHANGE_COUNT);
+
+    // if the time zone changed then save the new value and return true
+    if (config.tz_offset != new_offset)
+    {
+        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
+        config.tz_offset = new_offset;
+        saveConfig();
+        return true;
+    }
+
+    return false;
+}
+
 void initWiFi()
 {
     dbprintln("starting wifi!");
@@ -749,6 +777,7 @@ void initWiFi()
         clear_ntp_persist.applyIfChanged();
         clk.saveConfig();
         saveConfig();
+        updateTZOffset();
     }
 
     // Configure network logging if enabled
@@ -758,35 +787,6 @@ void initWiFi()
     dbprintf("Connected! IP address is: %u.%u.%u.%u\n", ip[0], ip[1], ip[2], ip[3]);
 }
 
-
-//
-// update the timezone offset based on the current date/time
-// return true if offset was updated
-//
-bool updateTZOffset()
-{
-    DS3231DateTime dt;
-    if (rtc.readTime(dt))
-    {
-        dbprintln("updateTZOffset: FAILED to read RTC");
-        return false;
-    }
-
-    dt.applyOffset(config.tz_offset);
-
-    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
-
-    // if the time zone changed then save the new value and return true
-    if (config.tz_offset != new_offset)
-    {
-        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
-        config.tz_offset = new_offset;
-        saveConfig();
-        return true;
-    }
-
-    return false;
-}
 
 void setup()
 {
