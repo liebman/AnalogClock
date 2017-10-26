@@ -22,7 +22,7 @@
 
 #include "TimeUtils.h"
 
-#define DEBUG
+//#define DEBUG
 #include "Logger.h"
 
 uint8_t TimeUtils::parseSmallDuration(const char* value)
@@ -361,6 +361,8 @@ uint8_t TimeUtils::findDOW(uint16_t y, uint8_t m, uint8_t d)
 --------------------------------------------------------------------------*/
 uint8_t TimeUtils::findNthDate(uint16_t year, uint8_t month, uint8_t dow, uint8_t nthWeek)
 {
+    dbprintf("findNthDate: year:%u month:%u, dow:%u nthWeek:%d\n", year, month, dow, nthWeek);
+
     uint8_t targetDate = 1;
     uint8_t firstDOW = findDOW(year,month,targetDate);
     while (firstDOW != dow) {
@@ -397,6 +399,8 @@ uint8_t TimeUtils::daysInMonth(uint16_t year, uint8_t month)
 
 uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, int8_t week)
 {
+    dbprintf("findDateForWeek: year:%u month:%u, dow:%u week:%d\n", year, month, dow, week);
+
     uint8_t weeks[5];
     uint8_t max_day = daysInMonth(year, month);
     int last = 0;
@@ -413,7 +417,10 @@ uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, in
     //
     for(last = 0; last <= 5; ++last)
     {
-        weeks[last] = findNthDate(year, month, dow, last);
+        weeks[last] = findNthDate(year, month, dow, last+1);
+
+        dbprintf("findDateForWeek: last:%d date:%u\n", last, weeks[last]);
+
         if (weeks[last] > max_day)
         {
             break;
@@ -445,32 +452,31 @@ int TimeUtils::computeUTCOffset(time_t now, int tz_offset, TimeChange* tc, int t
     //
     for(int i = 0; i < tc_count; ++i)
     {
-        dbprintf("TimeUtils::computeUTCOffset: index:%d offset:%d month:%u dow:%u occurrence:%d hour:%u\n",
+        dbprintf("TimeUtils::computeUTCOffset: index:%d offset:%d month:%u dow:%u occurrence:%d hour:%u day_offset:%d\n",
                 i,
                 tc[i].tz_offset,
                 tc[i].month,
                 tc[i].day_of_week,
                 tc[i].occurrence,
-                tc[i].hour);
+                tc[i].hour,
+                tc[i].day_offset);
 
         tm.tm_sec    = 0;
-#if 1
-        tm.tm_min    = 30;
-        tm.tm_hour   = 10;
-#else
         tm.tm_min    = 0;
         tm.tm_hour   = tc[i].hour;
-#endif
         tm.tm_mday   = TimeUtils::findDateForWeek(year+1900, tc[i].month, tc[i].day_of_week, tc[i].occurrence);
         tm.tm_mon    = tc[i].month-1;
         tm.tm_year   = year;
 
-        dbprintf("computeUTCOffset: tm: %04d/%02d/%02d %02d:%02d:%02d\n", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        dbprintf("computeUTCOffset: tm: %04d/%02d/%02d %02d:%02d:%02d + %d days\n", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tc[i].day_offset);
 
-        //
-        // convert to seconds UTC
-        //
-        time_t tc_time = mktime(&tm) - tz_offset;
+        // convert to seconds
+        time_t tc_time = mktime(&tm);
+        // convert to UTC
+        tc_time -= tz_offset;
+        dbprintf("computeUTCOffset: tc_time: %ld (UTC)\n", tc_time);
+        // add in days offset
+        tc_time += tc[i].day_offset*86400;
 
         dbprintf("computeUTCOffset: now: %ld tc_time: %ld\n", now, tc_time);
 

@@ -31,6 +31,7 @@ typedef struct
     int8_t  occurrence;    // 2 is second occurrence of the given day, -1 is last
     uint8_t day_of_week;   // 0 = Sunday
     uint8_t hour;
+    int8_t  day_offset;    // +/- days (for Friday before last Sunday type)
 } TimeChange;
 
 class TimeUtils
