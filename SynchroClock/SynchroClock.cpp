@@ -550,8 +550,8 @@ void initWiFi()
     feedback.blink(FEEDBACK_LED_SLOW);
 #endif
 
-    WiFiManager wifi(32);
-    wifi.setDebugOutput(false);
+    WiFiManager wifi;
+    //wifi.setDebugOutput(false);
     wifi.setConnectTimeout(CONNECTION_TIMEOUT);
 
     wifi.setSaveConfigCallback([]()
