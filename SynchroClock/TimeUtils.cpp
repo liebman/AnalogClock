@@ -428,11 +428,6 @@ int TimeUtils::computeUTCOffset(time_t now, int tz_offset, TimeChange* tc, int t
     struct tm tm;
 
     //
-    // adjust now for current local time zone offset
-    //
-    now += tz_offset;
-
-    //
     // get the current year
     //
     gmtime_r(&now, &tm);
@@ -459,15 +454,23 @@ int TimeUtils::computeUTCOffset(time_t now, int tz_offset, TimeChange* tc, int t
                 tc[i].hour);
 
         tm.tm_sec    = 0;
+#if 1
+        tm.tm_min    = 30;
+        tm.tm_hour   = 10;
+#else
         tm.tm_min    = 0;
         tm.tm_hour   = tc[i].hour;
+#endif
         tm.tm_mday   = TimeUtils::findDateForWeek(year+1900, tc[i].month, tc[i].day_of_week, tc[i].occurrence);
         tm.tm_mon    = tc[i].month-1;
         tm.tm_year   = year;
 
         dbprintf("computeUTCOffset: tm: %04d/%02d/%02d %02d:%02d:%02d\n", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 
-        time_t tc_time = mktime(&tm);
+        //
+        // convert to seconds UTC
+        //
+        time_t tc_time = mktime(&tm) - tz_offset;
 
         dbprintf("computeUTCOffset: now: %ld tc_time: %ld\n", now, tc_time);
 
