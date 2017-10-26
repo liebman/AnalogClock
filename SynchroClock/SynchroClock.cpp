@@ -513,6 +513,34 @@ void handleErase()
     HTTP.send(200, "text/plain", "Erased!\n");
 }
 
+
+//
+// update the timezone offset based on the current date/time
+// return true if offset was updated
+//
+bool updateTZOffset()
+{
+    DS3231DateTime dt;
+    if (rtc.readTime(dt))
+    {
+        dbprintln("updateTZOffset: FAILED to read RTC");
+        return false;
+    }
+
+    int new_offset = TimeUtils::computeUTCOffset(dt.getUnixTime(), config.tz_offset, config.tc, TIME_CHANGE_COUNT);
+
+    // if the time zone changed then save the new value and return true
+    if (config.tz_offset != new_offset)
+    {
+        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
+        config.tz_offset = new_offset;
+        saveConfig();
+        return true;
+    }
+
+    return false;
+}
+
 void initWiFi()
 {
     dbprintln("starting wifi!");
@@ -572,6 +600,10 @@ void initWiFi()
     {
         config.tc[0].day_of_week = TimeUtils::parseDayOfWeek(result);
     });
+    ConfigParam tc1_day_offset(wifi, "tc1_day_offset", "day offset", config.tc[0].day_offset, 3, [](const char* result)
+    {
+        config.tc[0].day_offset = TimeUtils::parseOccurrence(result);
+    });
     ConfigParam tc1_month(wifi, "tc1_month", "Month (Jan=1)", config.tc[0].month, 3, [](const char* result)
     {
         config.tc[0].month = TimeUtils::parseMonth(result);
@@ -593,6 +625,10 @@ void initWiFi()
     ConfigParam tc2_day_of_week(wifi, "tc2_day_of_week", "Day of Week (Sun=0)", config.tc[1].day_of_week, 2, [](const char* result)
     {
         config.tc[1].day_of_week = TimeUtils::parseDayOfWeek(result);
+    });
+    ConfigParam tc2_day_offset(wifi, "tc2_day_offset", "day offset", config.tc[1].day_offset, 3, [](const char* result)
+    {
+        config.tc[1].day_offset = TimeUtils::parseOccurrence(result);
     });
     ConfigParam tc2_month(wifi, "tc2_month", "Month (Jan=1)", config.tc[1].month, 3, [](const char* result)
     {
@@ -728,11 +764,13 @@ void initWiFi()
         ntp_server.applyIfChanged();
         tc1_occurence.applyIfChanged();
         tc1_day_of_week.applyIfChanged();
+        tc1_day_offset.applyIfChanged();
         tc1_month.applyIfChanged();
         tc1_hour.applyIfChanged();
         tc1_offset.applyIfChanged();
         tc2_occurence.applyIfChanged();
         tc2_day_of_week.applyIfChanged();
+        tc2_day_offset.applyIfChanged();
         tc2_month.applyIfChanged();
         tc2_hour.applyIfChanged();
         tc2_offset.applyIfChanged();
@@ -749,6 +787,7 @@ void initWiFi()
         clear_ntp_persist.applyIfChanged();
         clk.saveConfig();
         saveConfig();
+        updateTZOffset();
     }
 
     // Configure network logging if enabled
@@ -758,35 +797,6 @@ void initWiFi()
     dbprintf("Connected! IP address is: %u.%u.%u.%u\n", ip[0], ip[1], ip[2], ip[3]);
 }
 
-
-//
-// update the timezone offset based on the current date/time
-// return true if offset was updated
-//
-bool updateTZOffset()
-{
-    DS3231DateTime dt;
-    if (rtc.readTime(dt))
-    {
-        dbprintln("updateTZOffset: FAILED to read RTC");
-        return false;
-    }
-
-    dt.applyOffset(config.tz_offset);
-
-    int new_offset = TimeUtils::computeUTCOffset(dt.getYear(), dt.getMonth(), dt.getDate(), dt.getHour(), config.tc, TIME_CHANGE_COUNT);
-
-    // if the time zone changed then save the new value and return true
-    if (config.tz_offset != new_offset)
-    {
-        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
-        config.tz_offset = new_offset;
-        saveConfig();
-        return true;
-    }
-
-    return false;
-}
 
 void setup()
 {
@@ -908,11 +918,13 @@ void setup()
     // Default to disabled (all tz_offsets = 0)
     config.tc[0].occurrence  = DEFAULT_TC0_OCCUR;
     config.tc[0].day_of_week = DEFAULT_TC0_DOW;
+    config.tc[0].day_offset  = DEFAULT_TC0_DOFF;
     config.tc[0].month       = DEFAULT_TC0_MONTH;
     config.tc[0].hour        = DEFAULT_TC0_HOUR;
     config.tc[0].tz_offset   = DEFAULT_TC0_OFFSET;
     config.tc[1].occurrence  = DEFAULT_TC1_OCCUR;
     config.tc[1].day_of_week = DEFAULT_TC1_DOW;
+    config.tc[1].day_offset  = DEFAULT_TC1_DOFF;
     config.tc[1].month       = DEFAULT_TC1_MONTH;
     config.tc[1].hour        = DEFAULT_TC1_HOUR;
     config.tc[1].tz_offset   = DEFAULT_TC1_OFFSET;

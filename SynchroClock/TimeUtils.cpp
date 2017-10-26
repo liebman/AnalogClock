@@ -361,6 +361,8 @@ uint8_t TimeUtils::findDOW(uint16_t y, uint8_t m, uint8_t d)
 --------------------------------------------------------------------------*/
 uint8_t TimeUtils::findNthDate(uint16_t year, uint8_t month, uint8_t dow, uint8_t nthWeek)
 {
+    dbprintf("findNthDate: year:%u month:%u, dow:%u nthWeek:%d\n", year, month, dow, nthWeek);
+
     uint8_t targetDate = 1;
     uint8_t firstDOW = findDOW(year,month,targetDate);
     while (firstDOW != dow) {
@@ -397,6 +399,8 @@ uint8_t TimeUtils::daysInMonth(uint16_t year, uint8_t month)
 
 uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, int8_t week)
 {
+    dbprintf("findDateForWeek: year:%u month:%u, dow:%u week:%d\n", year, month, dow, week);
+
     uint8_t weeks[5];
     uint8_t max_day = daysInMonth(year, month);
     int last = 0;
@@ -413,7 +417,10 @@ uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, in
     //
     for(last = 0; last <= 5; ++last)
     {
-        weeks[last] = findNthDate(year, month, dow, last);
+        weeks[last] = findNthDate(year, month, dow, last+1);
+
+        dbprintf("findDateForWeek: last:%d date:%u\n", last, weeks[last]);
+
         if (weeks[last] > max_day)
         {
             break;
@@ -423,80 +430,61 @@ uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, in
     return weeks[last+week];
 }
 
-int TimeUtils::computeUTCOffset(uint16_t year, uint8_t month, uint8_t mday, uint8_t hour, TimeChange* tc, int tc_count)
+int TimeUtils::computeUTCOffset(time_t now, int tz_offset, TimeChange* tc, int tc_count)
 {
-    //
-    // we default to the last offset which handles
-    // dates before the first offset and after the start of the year.
-    //
-    int  offset = tc[tc_count-1].tz_offset;
+    struct tm tm;
 
-    for (int i = 0; i < tc_count;++i)
+    //
+    // get the current year
+    //
+    gmtime_r(&now, &tm);
+    int year = tm.tm_year;
+
+    //
+    // pre-set the offset to the last timechange of the year
+    //
+    int offset = tc[tc_count-1].tz_offset;
+
+    //
+    // loop thru each time change entry, converting it to the time in seconds for the
+    // current year.  If now is greater/equal to the time change the use the new offset.
+    // We return the last offset that is greater/equal now.
+    //
+    for(int i = 0; i < tc_count; ++i)
     {
-        dbprintf("TimeUtils::computeUTCOffset: index:%d offset:%d month:%u dow:%u occurrence:%u hour:%u\n",
+        dbprintf("TimeUtils::computeUTCOffset: index:%d offset:%d month:%u dow:%u occurrence:%d hour:%u day_offset:%d\n",
                 i,
                 tc[i].tz_offset,
                 tc[i].month,
                 tc[i].day_of_week,
                 tc[i].occurrence,
-                tc[i].hour);
+                tc[i].hour,
+                tc[i].day_offset);
 
-        dbprintf("TimeUtils::computeUTCOffset: month is %u\n", month);
+        tm.tm_sec    = 0;
+        tm.tm_min    = 0;
+        tm.tm_hour   = tc[i].hour;
+        tm.tm_mday   = TimeUtils::findDateForWeek(year+1900, tc[i].month, tc[i].day_of_week, tc[i].occurrence);
+        tm.tm_mon    = tc[i].month-1;
+        tm.tm_year   = year;
 
-        // if we are past this month then we can use this offset.
-        if (month > tc[i].month)
+        dbprintf("computeUTCOffset: tm: %04d/%02d/%02d %02d:%02d:%02d + %d days\n", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tc[i].day_offset);
+
+        // convert to seconds
+        time_t tc_time = mktime(&tm);
+        // convert to UTC
+        tc_time -= tz_offset;
+        dbprintf("computeUTCOffset: tc_time: %ld (UTC)\n", tc_time);
+        // add in days offset
+        tc_time += tc[i].day_offset*86400;
+
+        dbprintf("computeUTCOffset: now: %ld tc_time: %ld\n", now, tc_time);
+
+        if (now >= tc_time)
         {
             offset = tc[i].tz_offset;
-            dbprintf("TimeUtils::computeUTCOffset: after month, offset: %d\n", offset);
-            continue;
+            dbprintf("computeUTCOffset: now > tc_time, offset: %d\n", offset);
         }
-
-        // if this is not then month yet then we can't use it.
-        if (month != tc[i].month)
-        {
-            dbprintln("TimeUtils::computeUTCOffset: month does not match, skipping entry");
-            continue;
-        }
-
-        // compute what date the occurrence of day_of_week is.
-        uint8_t date = findDateForWeek(year, tc[i].month, tc[i].day_of_week, tc[i].occurrence);
-        dbprintf("TimeUtils::computeUTCOffset: %u is the one we are looking for!\n", date);
-        dbprintf("TimeUtils::computeUTCOffset: date is %u\n", mday);
-
-        // if we are past this date we can use the offset
-        if (mday > date)
-        {
-            offset = tc[i].tz_offset;
-            dbprintf("TimeUtils::computeUTCOffset: after date, offset: %d\n", offset);
-            continue;
-        }
-
-        // if this is not then date yet then we can't use it.
-        if (mday != date)
-        {
-            dbprintln("TimeUtils::computeUTCOffset: date does not match, skipping entry");
-            continue;
-        }
-
-        dbprintf("TimeUtils::computeUTCOffset: hour is %u\n", hour);
-
-        // if we are past this month then we can use this offset.
-        if (hour > tc[i].hour)
-        {
-            offset = tc[i].tz_offset;
-            dbprintf("TimeUtils::computeUTCOffset: after hour, offset: %d\n", offset);
-            continue;
-        }
-
-        // if this is not then month yet then we can't use it.
-        if (hour != tc[i].hour)
-        {
-            dbprintln("TimeUtils::computeUTCOffset: hour does not match, skipping entry");
-            continue;
-        }
-
-        dbprintf("TimeUtils::computeUTCOffset: its all a match, offset: %d\n", offset);
-        offset = tc[i].tz_offset;
     }
 
     return offset;

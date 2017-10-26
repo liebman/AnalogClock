@@ -61,22 +61,26 @@
 #if defined(USE_US_PACIFIC_TIMECHANGE)
 #define DEFAULT_TC0_OCCUR  2
 #define DEFAULT_TC0_DOW    0
+#define DEFAULT_TC0_DOFF   0
 #define DEFAULT_TC0_MONTH  3
 #define DEFAULT_TC0_HOUR   2
 #define DEFAULT_TC0_OFFSET -25200
 #define DEFAULT_TC1_OCCUR  1
 #define DEFAULT_TC1_DOW    0
+#define DEFAULT_TC1_DOFF   0
 #define DEFAULT_TC1_MONTH  11
 #define DEFAULT_TC1_HOUR   2
 #define DEFAULT_TC1_OFFSET -28800
 #else // default no offset/no time changes
 #define DEFAULT_TC0_OCCUR  1
 #define DEFAULT_TC0_DOW    0
+#define DEFAULT_TC0_DOFF   0
 #define DEFAULT_TC0_MONTH  0
 #define DEFAULT_TC0_HOUR   0
 #define DEFAULT_TC0_OFFSET 0
 #define DEFAULT_TC1_OCCUR  1
 #define DEFAULT_TC1_DOW    0
+#define DEFAULT_TC1_DOFF   0
 #define DEFAULT_TC1_MONTH  0
 #define DEFAULT_TC1_HOUR   0
 #define DEFAULT_TC1_OFFSET 0
