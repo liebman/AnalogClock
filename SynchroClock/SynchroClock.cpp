@@ -551,7 +551,7 @@ void initWiFi()
 #endif
 
     WiFiManager wifi;
-    //wifi.setDebugOutput(false);
+    wifi.setDebugOutput(false);
     wifi.setConnectTimeout(CONNECTION_TIMEOUT);
 
     wifi.setSaveConfigCallback([]()
