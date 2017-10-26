@@ -564,7 +564,7 @@ void initWiFi()
     });
 
     ConfigParam tc1_label(wifi, "<p>1st Time Change</p>");
-    ConfigParam tc1_occurence(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 2, [](const char* result)
+    ConfigParam tc1_occurence(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 3, [](const char* result)
     {
         config.tc[0].occurrence = TimeUtils::parseOccurrence(result);
     });
@@ -586,7 +586,7 @@ void initWiFi()
     });
 
     ConfigParam tc2_label(wifi, "<p>2nd Time Change</p>");
-    ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 2, [](const char* result)
+    ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 3, [](const char* result)
     {
         config.tc[1].occurrence = TimeUtils::parseOccurrence(result);
     });
