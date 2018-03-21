@@ -41,12 +41,21 @@
 #define USE_STOP_THE_CLOCK          // if defined then stop the clock for small negative adjustments
 #define STOP_THE_CLOCK_MAX     60   // maximum difference where we will use stop the clock
 #define STOP_THE_CLOCK_EXTRA   2    // extra seconds to leave the clock stopped
+
+//
+// un-comment one to use as the "default" time changes.  It can still be updated
+// in the configuration portal
+//
 #define USE_US_PACIFIC_TIMECHANGE   // use US/Pacific timezone by default
+//#define USE_US_EASTERN_TIMECHANGE  // use US/Eastern timezone by default
+//#define USE_BANGKOK_TIMECHANGE     // Bangkok
+//#define USE_UK_TIMECHANGE          // UK
+//#define USE_ISRAEL_TIMECHANGE      // Israel
 
 // pin definitions
-#define LED_PIN                D7   // (GPIO13) LED on pin, active low
-#define SYNC_PIN               D5   // (GPIO14) pin tied to 1hz square wave from RTC
-#define CONFIG_PIN             D6   // (GPIO12) button tied to pin
+#define LED_PIN                13   // (GPIO13) LED on pin, active low
+#define SYNC_PIN               14   // (GPIO14) pin tied to 1hz square wave from RTC
+#define CONFIG_PIN             12   // (GPIO12) button tied to pin
 
 #define DEFAULT_TZ_OFFSET      0    // default timzezone offset in seconds
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
@@ -71,6 +80,58 @@
 #define DEFAULT_TC1_MONTH  11
 #define DEFAULT_TC1_HOUR   2
 #define DEFAULT_TC1_OFFSET -28800
+#elif defined(USE_US_EASTERN_TIMECHANGE)
+#define DEFAULT_TC0_OCCUR  2
+#define DEFAULT_TC0_DOW    0
+#define DEFAULT_TC0_DOFF   0
+#define DEFAULT_TC0_MONTH  3
+#define DEFAULT_TC0_HOUR   2
+#define DEFAULT_TC0_OFFSET -14400
+#define DEFAULT_TC1_OCCUR  1
+#define DEFAULT_TC1_DOW    0
+#define DEFAULT_TC1_DOFF   0
+#define DEFAULT_TC1_MONTH  11
+#define DEFAULT_TC1_HOUR   2
+#define DEFAULT_TC1_OFFSET -18000
+#elif defined(USE_BANGKOK_TIMECHANGE)
+#define DEFAULT_TC0_OCCUR  1
+#define DEFAULT_TC0_DOW    0
+#define DEFAULT_TC0_DOFF   0
+#define DEFAULT_TC0_MONTH  0
+#define DEFAULT_TC0_HOUR   0
+#define DEFAULT_TC0_OFFSET 25200
+#define DEFAULT_TC1_OCCUR  1
+#define DEFAULT_TC1_DOW    0
+#define DEFAULT_TC1_DOFF   0
+#define DEFAULT_TC1_MONTH  0
+#define DEFAULT_TC1_HOUR   0
+#define DEFAULT_TC1_OFFSET 25200
+#elif defined(USE_UK_TIMECHANGE)
+#define DEFAULT_TC0_OCCUR  -1
+#define DEFAULT_TC0_DOW    0
+#define DEFAULT_TC0_DOFF   0
+#define DEFAULT_TC0_MONTH  3
+#define DEFAULT_TC0_HOUR   1
+#define DEFAULT_TC0_OFFSET 3600
+#define DEFAULT_TC1_OCCUR  -1
+#define DEFAULT_TC1_DOW    0
+#define DEFAULT_TC1_DOFF   0
+#define DEFAULT_TC1_MONTH  10
+#define DEFAULT_TC1_HOUR   2
+#define DEFAULT_TC1_OFFSET 0
+#elif defined(USE_ISRAEL_TIMECHANGE)
+#define DEFAULT_TC0_OCCUR  -1
+#define DEFAULT_TC0_DOW    0
+#define DEFAULT_TC0_DOFF   -2
+#define DEFAULT_TC0_MONTH  3
+#define DEFAULT_TC0_HOUR   2
+#define DEFAULT_TC0_OFFSET 10800
+#define DEFAULT_TC1_OCCUR  -1
+#define DEFAULT_TC1_DOW    0
+#define DEFAULT_TC1_DOFF   0
+#define DEFAULT_TC1_MONTH  10
+#define DEFAULT_TC1_HOUR   2
+#define DEFAULT_TC1_OFFSET 7200
 #else // default no offset/no time changes
 #define DEFAULT_TC0_OCCUR  1
 #define DEFAULT_TC0_DOW    0
