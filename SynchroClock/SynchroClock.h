@@ -35,6 +35,9 @@
 #include "WireUtils.h"
 #include "TimeUtils.h"
 #include "ConfigParam.h"
+#include "Logger.h"
+#include "DLogPrintWriter.h"
+#include "DLogTCPWriter.h"
 
 #define USE_DRIFT                   // apply drift
 #define USE_NTP_POLL_ESTIMATE       // use ntp estimated drift for sleep duration calculation

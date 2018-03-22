@@ -22,8 +22,7 @@
 
 #include "Clock.h"
 
-#define DEBUG
-#include "Logger.h"
+static PROGMEM const char TAG[] = "Clock";
 
 Clock::Clock(int _pin)
 {
@@ -62,7 +61,7 @@ int Clock::writeAdjustment(uint16_t value)
 {
 	if (value >= CLOCK_MAX)
 	{
-		dbprintf("Clock::writeAdjustment: invalid value: %u", value);
+		dlog.error(FPSTR(TAG), F("::isClockPresent: invalid value: %u"), value);
 		return -1;
 	}
 	return write(CMD_ADJUSTMENT, value);
@@ -77,7 +76,7 @@ int Clock::readPosition(uint16_t *value)
 	}
 	if (*value >= CLOCK_MAX)
 	{
-		dbprintf("Clock::readPosition: INVALID VALUE RETURNED: %u\n", *value);
+		dlog.error(FPSTR(TAG), F("::readPosition: INVALID VALUE RETURNED: %u"), *value);
 		return -1;
 	}
 	return 0;
@@ -180,13 +179,13 @@ bool Clock::getCommandBit(uint8_t bit)
     int err = Wire.endTransmission(true);
     if (err != 0)
     {
-        dbprintf("Clock::getCommandBit endTransmission returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::getCommandBit endTransmission returned: %d"), err);
     }
 
     int size = Wire.requestFrom((uint8_t) I2C_ADDRESS, (uint8_t) 1);
     if (size != 1)
     {
-        dbprintf("Clock::getCommandBit requestFrom did not return 1, size:%u\n", size);
+        dlog.error(FPSTR(TAG), F("::getCommandBit requestFrom did not return 1, size:%u"), size);
     }
     uint8_t value = Wire.read();
     return ((value & bit) == bit);
@@ -199,7 +198,7 @@ int Clock::setCommandBit(bool onoff, uint8_t bit)
     int err = Wire.endTransmission();
     if (err != 0)
     {
-        dbprintf("Clock::setCommandBit endTransmission returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::setCommandBit endTransmission returned: %d"), err);
         return -1;
     }
 
@@ -208,8 +207,8 @@ int Clock::setCommandBit(bool onoff, uint8_t bit)
 
     if (count != 1)
     {
-    	dbprintln("Clock::setCommandBit: Wire.requestFrom failed!");
-    	return -1;
+        dlog.error(FPSTR(TAG), F("::setCommandBit: Wire.requestFrom failed!"));
+        return -1;
     }
 
     if (onoff)
@@ -229,13 +228,13 @@ int Clock::setCommandBit(bool onoff, uint8_t bit)
     if (count != 2)
     {
         Wire.endTransmission();
-    	dbprintln("Clock::setCommandBit: Wire.write command & value failed!");
-    	return -1;
+        dlog.error(FPSTR(TAG), F("::setCommandBit: Wire.write command & value failed!"));
+        return -1;
     }
     err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("Clock::setCommandBit: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::setCommandBit: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
 
@@ -248,13 +247,13 @@ int Clock::read(uint8_t command, uint8_t *value)
     if (Wire.write(command) != 1)
     {
         Wire.endTransmission();
-        dbprintln("Clock::read: Wire.write(command) failed!");
+        dlog.error(FPSTR(TAG), F("::read: Wire.write(command) failed!"));
         return -1;
     }
     int err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::read: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
     size_t count;
@@ -262,7 +261,7 @@ int Clock::read(uint8_t command, uint8_t *value)
     *value = Wire.read();
     if (count != 1)
     {
-        dbprintf("Clock::read: Wire.requestFrom() returns %u, expected 1\n", count);
+        dlog.error(FPSTR(TAG), F("::read: Wire.requestFrom() returns %u, expected 1"), count);
         return -1;
     }
     return 0;
@@ -274,20 +273,20 @@ int Clock::write(uint8_t command, uint8_t value)
     if (Wire.write(command) != 1)
     {
         Wire.endTransmission();
-        dbprintf("Clock::write: Wire.write(command=%d) failed!", command);
+        dlog.error(FPSTR(TAG), F("::write: Wire.write(command=%d) failed!"), command);
         return -1;
     }
     size_t count;
     count = Wire.write(value);
     if (count != 1)
     {
-        dbprintf("Clock::write: Wire.write() returns %u, expected 1\n", count);
+        dlog.error(FPSTR(TAG), F("::write: Wire.write() returns %u, expected 1"), count);
         return -1;
     }
     int err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::read: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
     return 0;
@@ -299,13 +298,13 @@ int Clock::read(uint8_t command, uint16_t *value)
     if (Wire.write(command) != 1)
     {
         Wire.endTransmission();
-        dbprintln("Clock::read: Wire.write(I2C_ADDRESS) failed!");
+        dlog.error(FPSTR(TAG), F("::read: Wire.write(I2C_ADDRESS) failed!"));
         return -1;
     }
     int err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::read: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
     size_t count;
@@ -313,7 +312,7 @@ int Clock::read(uint8_t command, uint16_t *value)
     *value = (Wire.read() & 0xff) | (Wire.read() & 0xff) << 8;
     if (count != 2)
     {
-        dbprintf("Clock::read: Wire.requestFrom() returns %u, expected 2\n", count);
+        dlog.error(FPSTR(TAG), F("::read: Wire.requestFrom() returns %u, expected 2"), count);
         return -1;
     }
     return 0;
@@ -325,7 +324,7 @@ int Clock::write(uint8_t command, uint16_t value)
     if (Wire.write(command) != 1)
     {
         Wire.endTransmission();
-        dbprintf("Clock::write: Wire.write(command=%d) failed!", command);
+        dlog.error(FPSTR(TAG), F("::write: Wire.write(command=%d) failed!"), command);
         return -1;
     }
     size_t count = 0;
@@ -333,13 +332,13 @@ int Clock::write(uint8_t command, uint16_t value)
     count += Wire.write(value >> 8);
     if (count != 2)
     {
-        dbprintf("Clock::write: Wire.write() returns %u, expected 2\n", count);
+        dlog.error(FPSTR(TAG), F("::write: Wire.write() returns %u, expected 2"), count);
         return -1;
     }
     int err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("Clock::read: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::read: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
     return 0;

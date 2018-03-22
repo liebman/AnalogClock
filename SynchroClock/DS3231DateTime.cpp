@@ -22,13 +22,10 @@
 
 #include "DS3231DateTime.h"
 
+static PROGMEM const char TAG[] = "DS3231DateTime";
 
-//#define DEBUG
-#include "Logger.h"
-
-#if defined(DEBUG)
 #define dbvalue(prefix) { \
-    dbprintf("%s position:%u (%04u-%02u-%02u %02u:%02u:%02u) weekday:%u century:%d unix:%lu\n", \
+    dlog.debug(FPSTR(TAG), F("%s position:%u (%04u-%02u-%02u %02u:%02u:%02u) weekday:%u century:%d unix:%lu"), \
             prefix, \
             getPosition(), \
             year+1900+100, \
@@ -40,9 +37,6 @@
             day, \
             century, \
             getUnixTime());}
-#else
-#define dbvalue(prefix)
-#endif
 
 
 DS3231DateTime::DS3231DateTime()
@@ -63,37 +57,37 @@ boolean DS3231DateTime::isValid()
 
     if (seconds > 59)
     {
-        dbprintf("invalid seconds %d\n", seconds);
+        dlog.error(FPSTR(TAG), F("::isValid: invalid seconds %d"), seconds);
         return false;
     }
 
     if (minutes > 59)
     {
-        dbprintf("invalid minutes %d\n", minutes);
+        dlog.error(FPSTR(TAG), F("::isValid: invalid minutes %d"), minutes);
         return false;
     }
 
     if (hours > 23)
     {
-        dbprintf("invalid hours %d\n", hours);
+        dlog.error(FPSTR(TAG), F("::isValid: invalid hours %d"), hours);
         return false;
     }
 
     if (date > 31)
     {
-        dbprintf("invalid hours %d\n", hours);
+        dlog.error(FPSTR(TAG), F("::isValid: invalid hours %d"), hours);
         return false;
     }
 
     if ((month > 12) || (month < 1))
     {
-        dbprintf("invalid month %d\n", month);
+        dlog.error(FPSTR(TAG), F("::isValid: invalid month %d"), month);
         return false;
     }
 
     if (year > 99)
     {
-        dbprintf("invalid year %d\n", year);
+        dlog.error(FPSTR(TAG), F("::isValid: invalid year %d"), year);
         return false;
     }
 
@@ -105,7 +99,7 @@ void DS3231DateTime::setUnixTime(unsigned long time)
     struct tm tm;
     TimeUtils::gmtime_r((time_t*)&time, &tm);
 
-    dbprintf("DS3231DateTime::setUnixTime month: %d\n", tm.tm_mon);
+    dlog.debug(FPSTR(TAG), F("::setUnixTime month: %d"), tm.tm_mon);
 
     seconds = tm.tm_sec;
     minutes = tm.tm_min;
@@ -131,7 +125,7 @@ unsigned long DS3231DateTime::getUnixTime()
     tm.tm_wday  = 0;
     tm.tm_yday  = 0;
     unsigned long unix = TimeUtils::mktime(&tm);
-    dbprintf("returning unix time: %lu\n", unix);
+    dlog.debug(FPSTR(TAG), F("::getUnixTime: returning unix time: %lu"), unix);
     return unix;
 }
 
@@ -155,18 +149,18 @@ uint16_t DS3231DateTime::getPosition()
 uint16_t DS3231DateTime::getPosition(int offset)
 {
     int signed_position = getPosition();
-    dbprintf("position before offset: %d\n", signed_position);
+    dlog.debug(FPSTR(TAG), F("::getPosition: position before offset: %d"), signed_position);
     signed_position += offset;
-    dbprintf("position after offset: %d\n", signed_position);
+    dlog.debug(FPSTR(TAG), F("::getPosition: position after offset: %d"), signed_position);
     if (signed_position < 0)
     {
         signed_position += MAX_POSITION;
-        dbprintf("position corrected+: %d\n", signed_position);
+        dlog.debug(FPSTR(TAG), F("::getPosition: position corrected+: %d"), signed_position);
     }
     else if (signed_position >= MAX_POSITION)
     {
         signed_position -= MAX_POSITION;
-        dbprintf("position corrected-: %d\n", signed_position);
+        dlog.debug(FPSTR(TAG), F("::getPosition: position corrected-: %d"), signed_position);
     }
     uint16_t position = (uint16_t) signed_position;
     return position;

@@ -22,8 +22,7 @@
 
 #include "DS3231.h"
 
-//#define DEBUG
-#include "Logger.h"
+static PROGMEM const char TAG[] = "DS3231";
 
 DS3231::DS3231()
 {
@@ -31,7 +30,7 @@ DS3231::DS3231()
 
 int DS3231::begin()
 {
-    dbprintln("DS3231::begin()");
+    dlog.debug(FPSTR(TAG), F("::begin()"));
 
     delay(2500); // DS3231 may need this on powerup.
 
@@ -39,7 +38,7 @@ int DS3231::begin()
     int err = write(DS3231_CONTROL_REG, ctrl); //CONTROL Register Address
     if (err)
     {
-        dbprintf("DS3231(): write(DS3231_CONTROL_REG) failed: %d\n", err);
+        dlog.error(FPSTR(TAG), F("DS3231(): write(DS3231_CONTROL_REG) failed: %d"), err);
         return -1;
     }
 
@@ -49,7 +48,7 @@ int DS3231::begin()
     uint8_t hr;
     if (read(DS3231_HOUR_REG, &hr))
     {
-        dbprintf("DS3231::begin(): read(DS3231_HOUR_REG) failed!\n");
+        dlog.error(FPSTR(TAG), F("::begin(): read(DS3231_HOUR_REG) failed!"));
         return -1;
     }
 
@@ -60,7 +59,7 @@ int DS3231::begin()
 
         if(write(DS3231_HOUR_REG, hr))
         {
-            dbprintf("DS3231::begin(): write(DS3231_HOUR_REG, 0x%02x) failed!\n", hr);
+            dlog.error(FPSTR(TAG), F("::begin(): write(DS3231_HOUR_REG, 0x%02x) failed!"), hr);
             return -1;
         }
     }
@@ -84,7 +83,7 @@ int DS3231::readTime(DS3231DateTime& dt)
 	uint8_t count = setupRead(DS3231_SEC_REG, 7);
 	if (count != 7)
 	{
-		dbprintf("DS3231::readTime: setupRead failed! count:%u = 7\n", count);
+		dlog.error(FPSTR(TAG), F("::readTime: setupRead failed! count:%u != 7"), count);
 		Wire.clearWriteError();
 		Wire.flush();
 		return -1;
@@ -98,7 +97,7 @@ int DS3231::readTime(DS3231DateTime& dt)
 	uint8_t month   = Wire.read();
 	uint8_t year    = Wire.read();
 
-	dbprintf("DS3231::readTime  raw month: 0x%02x\n", month);
+	dlog.trace(FPSTR(TAG), F("::readTime  raw month: 0x%02x"), month);
 
     dt.seconds  = fromBCD(seconds);
     dt.minutes  = fromBCD(minutes);
@@ -111,13 +110,13 @@ int DS3231::readTime(DS3231DateTime& dt)
 
     if (!dt.isValid())
     {
-        dbprintf("DS3231::readTime: result not valid!!!\n");
+        dlog.error(FPSTR(TAG), F("::readTime: result not valid!!!"));
         Wire.clearWriteError();
         Wire.flush();
         return -1;
     }
 
-    dbprintf("DS3231::readTime %04u-%02u-%02u %02u:%02u:%02u day:%u century:%u\n",
+    dlog.debug(FPSTR(TAG), F("::readTime %04u-%02u-%02u %02u:%02u:%02u day:%u century:%u"),
              dt.year,
              dt.month,
              dt.date,
@@ -131,7 +130,7 @@ int DS3231::readTime(DS3231DateTime& dt)
 
 int DS3231::writeTime(DS3231DateTime &dt)
 {
-    dbprintf("DS3231::writeTime %04u-%02u-%02u %02u:%02u:%02u day:%u century:%u\n",
+    dlog.debug(FPSTR(TAG), F("::writeTime %04u-%02u-%02u %02u:%02u:%02u day:%u century:%u"),
              dt.year,
              dt.month,
              dt.date,
@@ -145,7 +144,7 @@ int DS3231::writeTime(DS3231DateTime &dt)
     if (Wire.write(DS3231_SEC_REG) != 1)
     {
         Wire.endTransmission();
-        dbprintln("DS3231::writeTime: Wire.write(reg=DS3231_SEC_REG) failed!");
+        dlog.error(FPSTR(TAG), F("::writeTime: Wire.write(reg=DS3231_SEC_REG) failed!"));
         return -1;
     }
 
@@ -159,13 +158,13 @@ int DS3231::writeTime(DS3231DateTime &dt)
     count += Wire.write(toBCD(dt.year));
     if (count != 7)
     {
-        dbprintf("DS3231::writeTime: Wire.write() all fields, expected 7 got %u\n", count);
+        dlog.error(FPSTR(TAG), F("::writeTime: Wire.write() all fields, expected 7 got %u"), count);
         return -1;
     }
     int err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("DS3231::writeTime: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::writeTime: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
     return(0);
@@ -177,14 +176,14 @@ int DS3231::setupRead(uint8_t reg, uint8_t size)
     if (Wire.write(reg) != 1)
     {
         Wire.endTransmission();
-        dbprintln("DS3231::setupRead: Wire.write(DS3231_CONTROL_REG) failed!");
+        dlog.error(FPSTR(TAG), F("::setupRead: Wire.write(DS3231_CONTROL_REG) failed!"));
         return -1;
     }
     int err = Wire.endTransmission();
 
     if (err)
     {
-        dbprintf("DS3231::setupRead: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::setupRead: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
 
@@ -198,7 +197,7 @@ int DS3231::read(uint8_t reg, uint8_t *value)
     *value = Wire.read();
     if (count != 1)
     {
-        dbprintf("DS3231::read: Wire.requestFrom() returns %u, expected 1\n", count);
+        dlog.error(FPSTR(TAG), F("::read: Wire.requestFrom() returns %u, expected 1"), count);
         return -1;
     }
     return 0;
@@ -211,20 +210,20 @@ int DS3231::write(uint8_t reg, uint8_t value)
     if (Wire.write(reg) != 1)
     {
         Wire.endTransmission();
-        dbprintf("DS3231::write: Wire.write(reg=%d, value=%d) failed!\n", reg, value);
+        dlog.error(FPSTR(TAG), F("::write: Wire.write(reg=%d, value=%d) failed!"), reg, value);
         return -1;
     }
     size_t count;
     count = Wire.write(value);
     if (count != 1)
     {
-        dbprintf("DS3231::write: Wire.write(value=%u) returns %u\n", value, count);
+        dlog.error(FPSTR(TAG), F("::write: Wire.write(value=%u) returns %u"), value, count);
         return -1;
     }
     int err = Wire.endTransmission();
     if (err)
     {
-        dbprintf("DS3231::write: Wire.endTransmission() returned: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::write: Wire.endTransmission() returned: %d"), err);
         return -1;
     }
     return(0);

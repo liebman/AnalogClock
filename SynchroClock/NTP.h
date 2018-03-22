@@ -12,6 +12,7 @@
 #include "Ping.h"
 #include "Timer.h"
 #include "UDPWrapper.h"
+#include "Logger.h"
 
 #define NTP_PORT 123
 

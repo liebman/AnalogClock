@@ -14,33 +14,26 @@
 #include <lwip/def.h> // htonl() & ntohl()
 #endif
 
-#define DEBUG
-//#define NTP_DEBUG_PACKET
-#include "Logger.h"
+static PROGMEM const char TAG[] = "NTP";
 
-
-#ifdef NTP_DEBUG_PACKET
-void dumpNTPPacket(NTPPacket* ntp)
+void dumpNTPPacket(NTPPacket* ntp, const char* label)
 {
-    dbprintf("size:       %u\n", sizeof(*ntp));
-    dbprintf("firstbyte:  0x%02x\n", *(uint8_t*)ntp);
-    dbprintf("li:         %u\n", getLI(ntp->flags));
-    dbprintf("version:    %u\n", getVERS(ntp->flags));
-    dbprintf("mode:       %u\n", getMODE(ntp->flags));
-    dbprintf("stratum:    %u\n", ntp->stratum);
-    dbprintf("poll:       %u\n", ntp->poll);
-    dbprintf("precision:  %d\n", ntp->precision);
-    dbprintf("delay:      %u\n", ntp->delay);
-    dbprintf("dispersion: %u\n", ntp->dispersion);
-    dbprintf("ref_id:     %02x:%02x:%02x:%02x\n", ntp->ref_id[0], ntp->ref_id[1], ntp->ref_id[2], ntp->ref_id[3]);
-    dbprintf("ref_time:   %08x:%08x\n", ntp->ref_time.seconds, ntp->ref_time.fraction);
-    dbprintf("orig_time:  %08x:%08x\n", ntp->orig_time.seconds, ntp->orig_time.fraction);
-    dbprintf("recv_time:  %08x:%08x\n", ntp->recv_time.seconds, ntp->recv_time.fraction);
-    dbprintf("xmit_time:  %08x:%08x\n", ntp->xmit_time.seconds, ntp->xmit_time.fraction);
+    dlog.trace(FPSTR(TAG), F("::%s: size:       %u"), label, sizeof(*ntp));
+    dlog.trace(FPSTR(TAG), F("::%s: firstbyte:  0x%02x"), label, *(uint8_t*)ntp);
+    dlog.trace(FPSTR(TAG), F("::%s: li:         %u"), label, getLI(ntp->flags));
+    dlog.trace(FPSTR(TAG), F("::%s: version:    %u"), label, getVERS(ntp->flags));
+    dlog.trace(FPSTR(TAG), F("::%s: mode:       %u"), label, getMODE(ntp->flags));
+    dlog.trace(FPSTR(TAG), F("::%s: stratum:    %u"), label, ntp->stratum);
+    dlog.trace(FPSTR(TAG), F("::%s: poll:       %u"), label, ntp->poll);
+    dlog.trace(FPSTR(TAG), F("::%s: precision:  %d"), label, ntp->precision);
+    dlog.trace(FPSTR(TAG), F("::%s: delay:      %u"), label, ntp->delay);
+    dlog.trace(FPSTR(TAG), F("::%s: dispersion: %u"), label, ntp->dispersion);
+    dlog.trace(FPSTR(TAG), F("::%s: ref_id:     %02x:%02x:%02x:%02x"), label, ntp->ref_id[0], ntp->ref_id[1], ntp->ref_id[2], ntp->ref_id[3]);
+    dlog.trace(FPSTR(TAG), F("::%s: ref_time:   %08x:%08x"), label, ntp->ref_time.seconds, ntp->ref_time.fraction);
+    dlog.trace(FPSTR(TAG), F("::%s: orig_time:  %08x:%08x"), label, ntp->orig_time.seconds, ntp->orig_time.fraction);
+    dlog.trace(FPSTR(TAG), F("::%s: recv_time:  %08x:%08x"), label, ntp->recv_time.seconds, ntp->recv_time.fraction);
+    dlog.trace(FPSTR(TAG), F("::%s: xmit_time:  %08x:%08x"), label, ntp->xmit_time.seconds, ntp->xmit_time.fraction);
 }
-#else
-#define dumpNTPPacket(x)
-#endif
 
 NTP::NTP(NTPRunTime *runtime, NTPPersist *persist, void (*savePersist)(), int factor)
 {
@@ -49,20 +42,20 @@ NTP::NTP(NTPRunTime *runtime, NTPPersist *persist, void (*savePersist)(), int fa
     _savePersist = savePersist;
     _port        = NTP_PORT;
     _factor      = factor;
-    dbprintf("****** sizeof(NTPRunTime): %d\n", sizeof(NTPRunTime));
+    dlog.debug(FPSTR(TAG), F("****** sizeof(NTPRunTime): %d"), sizeof(NTPRunTime));
 }
 
 void NTP::begin(int port)
 {
     _port   = port;
     _udp.begin(port);
-    dbprintf("NTP::begin: nsamples: %d nadjustments: %d, drift: %f\n", _runtime->nsamples, _persist->nadjustments, _persist->drift);
+    dlog.info(FPSTR(TAG), F("::begin: nsamples: %d nadjustments: %d, drift: %f"), _runtime->nsamples, _persist->nadjustments, _persist->drift);
     if (_runtime->nsamples == 0 && _runtime->drifted == 0.0)
     {
         // if we have no samples and drifted is 0 then we probably had a power cycle so invalidate the
         // most recent adjustment timestamp.
         _persist->adjustments[0].timestamp = 0;
-        dbprintln("power cycle detected! marking last adjustment as invalid for drift!");
+        dlog.info(FPSTR(TAG), F("::begin: power cycle detected! marking last adjustment as invalid for drift!"));
     }
 }
 
@@ -85,7 +78,7 @@ uint32_t NTP::getPollInterval()
 {
     double seconds = 3600/_factor;
 
-    dbprintf("NTP::getPollInterval: drift_estimate: %0.16f poll_interval: %0.16f\n", _runtime->drift_estimate, _runtime->poll_interval);
+    dlog.info(FPSTR(TAG), F("::getPollInterval: drift_estimate: %0.16f poll_interval: %0.16f"), _runtime->drift_estimate, _runtime->poll_interval);
 
     //if (_runtime->poll_interval > 0.0)
     if (_runtime->drift_estimate != 0.0)
@@ -101,16 +94,16 @@ uint32_t NTP::getPollInterval()
         {
             seconds = fabs(_runtime->samples[0].offset) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
         }
-        dbprintf("NTP::getPollInterval: seconds: %f\n", seconds);
+        dlog.debug(FPSTR(TAG), F("::getPollInterval: seconds: %f"), seconds);
 
         if (seconds > (NTP_MAX_INTERVAL/_factor))
         {
-            dbprintf("NTP::getPollInterval: maxing interval out at %f days!\n", (double)NTP_MAX_INTERVAL/86400.0);
+            dlog.debug(FPSTR(TAG), F("::getPollInterval: maxing interval out at %f days!"), (double)NTP_MAX_INTERVAL/86400.0);
             seconds = NTP_MAX_INTERVAL/_factor;
         }
         else if (seconds < (900/_factor))
         {
-            dbprintln("NTP::getPollInterval: min interval is 15 min!!");
+            dlog.debug(FPSTR(TAG), F("::getPollInterval: min interval is 15 min!!"));
             seconds = 900/_factor;
         }
     }
@@ -120,7 +113,7 @@ uint32_t NTP::getPollInterval()
         //
         // if we don't have all the samples yet, use a very short interval
         //
-        dbprintln("NTP::getPollInterval: samples not full, 15 minutes!");
+        dlog.debug(FPSTR(TAG), F("::getPollInterval: samples not full, 15 minutes!"));
         seconds = 900 / _factor; // 15 minutes
     }
     else if ((_runtime->reach & 0x07) == 0)
@@ -128,7 +121,7 @@ uint32_t NTP::getPollInterval()
         //
         // if the last three polls failed use a very short interval
         //
-        dbprintln("NTP::getPollInterval: last three polls failed, using 15 minutes!");
+        dlog.warning(FPSTR(TAG), F("::getPollInterval: last three polls failed, using 15 minutes!"));
         seconds =  900 / _factor;
     }
     else if ((_runtime->reach & 0x01) == 0)
@@ -136,7 +129,7 @@ uint32_t NTP::getPollInterval()
         //
         // if the last poll failed then use a shorter interval
         //
-        dbprintln("NTP::getPollInterval: last poll failed, using 1 hour!");
+        dlog.warning(FPSTR(TAG), F("::getPollInterval: last poll failed, using 1 hour!"));
         seconds =  3600 / _factor;
     }
 
@@ -147,41 +140,41 @@ int NTP::getOffsetUsingDrift(double *offset_result, int (*getTime)(uint32_t *res
 {
     if (_persist->drift == 0.0)
     {
-        dbprintln("NTP::getOffsetUsingDrift: not enough data to compute/use drift!");
+        dlog.debug(FPSTR(TAG), F("::getOffsetUsingDrift: not enough data to compute/use drift!"));
         return -1;
     }
 
     uint32_t now;
     if (getTime(&now))
     {
-        dbprintln("NTP::getOffsetUsingDrift: failed to getTime() failed!");
+        dlog.error(FPSTR(TAG), F("::getOffsetUsingDrift: failed to getTime() failed!"));
         return -1;
     }
 
     if (_runtime->drift_timestamp == 0)
     {
-        dbprintln("NTP::getOffsetUsingDrift: first time, setting initial timestamp!");
+        dlog.debug(FPSTR(TAG), F("::getOffsetUsingDrift: first time, setting initial timestamp!"));
         _runtime->drift_timestamp = now;
         return -1;
     }
 
     if (_runtime->drift_timestamp >= now)
     {
-        dbprintln("NTP::getOffsetUsingDrift: timewarped! resetting timestamp!");
+        dlog.warning(FPSTR(TAG), F("::getOffsetUsingDrift: timewarped! resetting timestamp!"));
         _runtime->drift_timestamp = now;
         return -1;
     }
 
     uint32_t interval = now - _runtime->drift_timestamp;
     double   offset   = (double)interval * _persist->drift / 1000000.0;
-    dbprintf("NTP::getOffsetUsingDrift: interval: %u drift: %f offset: %f\n", interval, _persist->drift, offset);
+    dlog.info(FPSTR(TAG), F("::getOffsetUsingDrift: interval: %u drift: %f offset: %f"), interval, _persist->drift, offset);
 
     //
     // don't use this offset if it does not meet the threshold
     //
     if (fabs(offset) < NTP_OFFSET_THRESHOLD)
     {
-        dbprintln("NTP::getOffsetUsingDrift: offset not big enough for adjust!");
+        dlog.info(FPSTR(TAG), F("::getOffsetUsingDrift: offset not big enough for adjust!"));
         return -1;
     }
 
@@ -204,10 +197,10 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     //
     if (_runtime->ip == 0 || strncmp(server, _runtime->server, NTP_SERVER_LENGTH) != 0 || _runtime->reach == 0)
     {
-        //dbprintln("NTP::getOffset: updating server and address!");
+        dlog.trace(FPSTR(TAG), F("::getOffset: updating server and address!"));
         if (!WiFi.hostByName(server, address))
         {
-            dbprintf("NTP::getOffset: DNS lookup on %s failed!\n", server);
+            dlog.error(FPSTR(TAG), F("::getOffset: DNS lookup on %s failed!"), server);
             return -1;
         }
 
@@ -215,7 +208,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
         strncpy(_runtime->server, server, NTP_SERVER_LENGTH-1);
         _runtime->ip = address;
 
-        dbprintf("NTP::getOffset: NEW server: %s address: %s\n", server, address.toString().c_str());
+        dlog.info(FPSTR(TAG), F("::getOffset: NEW server: %s address: %s"), server, address.toString().c_str());
 
         // we forget the existing data when we change NTP servers
         _runtime->nsamples = 0;
@@ -229,8 +222,6 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     Ping ping;
     ping.ping(address);
 
-    dbflush();
-
     Timer timer;
     NTPTime now;
     NTPPacket ntp;
@@ -242,7 +233,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     uint32_t start;
     if (getTime(&start))
     {
-        dbprintln("NTP::getOffset: failed to getTime() failed!");
+        dlog.error(FPSTR(TAG), F("::getOffset: failed to getTime() failed!"));
         return -1;
     }
 
@@ -256,7 +247,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
 
     ntp.orig_time = now;
 
-    dumpNTPPacket(&ntp);
+    dumpNTPPacket(&ntp, "getOffset");
 
 
     _udp.open(address, _port);
@@ -267,13 +258,13 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     int size = _udp.recv(&ntp, sizeof(ntp), 1000);
     uint32_t duration = timer.stop();
 
-    dbprintf("NTP::getOffset: used server: %s address: %s\n", _runtime->server, address.toString().c_str());
-    dbprintf("NTP::getOffset: packet size: %d\n", size);
-    dbprintf("NTP::getOffset: duration %ums\n", duration);
+    dlog.info(FPSTR(TAG), F("::getOffset: used server: %s address: %s"), _runtime->server, address.toString().c_str());
+    dlog.info(FPSTR(TAG), F("::getOffset: packet size: %d"), size);
+    dlog.info(FPSTR(TAG), F("::getOffset: duration %ums"), duration);
 
     if (size != 48)
     {
-        dbprintln("NTP::getOffset: bad packet!");
+        dlog.error(FPSTR(TAG), F("::getOffset: bad packet!"));
         return -1;
     }
 
@@ -287,7 +278,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     ntp.xmit_time.fraction = ntohl(ntp.xmit_time.fraction);
     ntp.orig_time = now;
 
-    dumpNTPPacket(&ntp);
+    dumpNTPPacket(&ntp, "getOffset");
 
     //
     // assumes start at second start and less than 1 second duration
@@ -297,7 +288,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     int err = packet(&ntp, now);
     if (err)
     {
-        dbprintf("NTP::getOffset: packet returns: %d\n", err);
+        dlog.error(FPSTR(TAG), F("::getOffset: packet returns: %d"), err);
         return err;
     }
 
@@ -313,16 +304,16 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
 
 int NTP::packet(NTPPacket* ntp, NTPTime now)
 {
-    dbprintf("NTP::packet: nsamples: %d nadjustments: %d\n", _runtime->nsamples, _persist->nadjustments);
+    dlog.info(FPSTR(TAG), F("::packet: nsamples: %d nadjustments: %d"), _runtime->nsamples, _persist->nadjustments);
     if (ntp->stratum == 0)
     {
-        dbprintln("NTP::packet: bad stratum!");
+        dlog.error(FPSTR(TAG), F("::packet: bad stratum!"));
         return -1;
     }
 
     if (getLI(ntp->flags) == LI_NOSYNC)
     {
-        dbprintln("NTP::packet: leap indicator indicates NOSYNC!");
+        dlog.warning(FPSTR(TAG), F("::packet: leap indicator indicates NOSYNC!"));
         return -1; /* unsynchronized */
     }
 
@@ -344,7 +335,7 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
     double offset     = LFP2D(((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2);
     double delay      = LFP2D( (int64_t)(T4 - T1) - (int64_t)(T3 - T2));
 
-    dbprintf("NTP::packet: offset: %0.6lf delay: %0.6lf\n", offset, delay);
+    dlog.info(FPSTR(TAG), F("::packet: offset: %0.6lf delay: %0.6lf"), offset, delay);
 
     int i;
     for (i = _runtime->nsamples - 1; i >= 0; --i)
@@ -354,14 +345,14 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
             continue;
         }
         _runtime->samples[i + 1] = _runtime->samples[i];
-        dbprintf("NTP::packet: samples[%d]: %lf delay:%lf timestamp:%u\n",
+        dlog.info(FPSTR(TAG), F("::packet: samples[%d]: %lf delay:%lf timestamp:%u"),
                 i + 1, _runtime->samples[i+1].offset, _runtime->samples[i+1].delay, _runtime->samples[i+1].timestamp);
     }
 
     _runtime->samples[0].timestamp  = now.seconds;
     _runtime->samples[0].offset     = offset;
     _runtime->samples[0].delay      = delay;
-    dbprintf("NTP::packet: samples[%d]: %lf delay:%lf timestamp:%u\n",
+    dlog.info(FPSTR(TAG), F("::packet: samples[%d]: %lf delay:%lf timestamp:%u"),
             0, _runtime->samples[0].offset, _runtime->samples[0].delay, _runtime->samples[0].timestamp);
 
     if (_runtime->nsamples < NTP_SAMPLE_COUNT)
@@ -383,13 +374,13 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
         delay_std = delay_std + pow(_runtime->samples[i].delay - mean, 2);
     }
     delay_std = SQRT(delay_std / _runtime->nsamples);
-    dbprintf("NTP::packet: delay STD DEV: %lf, mean: %lf\n", delay_std, mean);
+    dlog.info(FPSTR(TAG), F("::packet: delay STD DEV: %lf, mean: %lf"), delay_std, mean);
 
     //
     // don't use this offset if its off of the mean by moth than one std deviation
     if ((fabs(_runtime->samples[0].delay) - mean) > delay_std)
     {
-        dbprintln("NTP::packet: sample delay too big!");
+        dlog.info(FPSTR(TAG), F("::packet: sample delay too big!"));
         return -1;
     }
 
@@ -408,7 +399,7 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
     //
     if (fabs(offset) < NTP_OFFSET_THRESHOLD)
     {
-        dbprintln("NTP::packet: offset not big enough for adjust!");
+        dlog.info(FPSTR(TAG), F("::packet: offset not big enough for adjust!"));
         return -1;
     }
 
@@ -437,7 +428,7 @@ void NTP::clock()
                 continue;
             }
             _persist->adjustments[i + 1] = _persist->adjustments[i];
-            dbprintf("NTP::clock: adjustments[%d]: %lf timestamp:%u\n",
+            dlog.info(FPSTR(TAG), F("::clock: adjustments[%d]: %lf timestamp:%u"),
                     i + 1, _persist->adjustments[i+1].adjustment, _persist->adjustments[i+1].timestamp);
         }
 
@@ -445,7 +436,7 @@ void NTP::clock()
         _persist->adjustments[0].timestamp  = _runtime->samples[0].timestamp;
         _persist->adjustments[0].adjustment = _runtime->samples[0].offset + _runtime->drifted;
         _runtime->drifted = 0.0;
-        dbprintf("NTP::clock: adjustments[%d]: %lf timestamp:%u\n",
+        dlog.info(FPSTR(TAG), F("::clock: adjustments[%d]: %lf timestamp:%u"),
                 0, _persist->adjustments[0].adjustment, _persist->adjustments[0].timestamp);
 
         if (_persist->nadjustments < NTP_ADJUSTMENT_COUNT)
@@ -459,9 +450,9 @@ void NTP::clock()
         if (_persist->nadjustments >= 4)
         {
             computeDrift(&_persist->drift);
-            dbprintf("NTP::clock: drift: %f\n", _persist->drift);
+            dlog.info(FPSTR(TAG), F("::clock: drift: %f"), _persist->drift);
         }
-        dbprintln("NTP::clock: saving 'persist' data!");
+        dlog.debug(FPSTR(TAG), F("::clock: saving 'persist' data!"));
         _savePersist();
     }
 }
@@ -481,14 +472,15 @@ int NTP::computeDrift(double* drift_result)
             // valid sample!
             seconds += _persist->adjustments[i].timestamp - _persist->adjustments[i+1].timestamp;
             a += _persist->adjustments[i].adjustment;
-            dbprintf("NTP::computeDrift: using adjustment %d and %d delta: %d adj:%f\n", i, i+1, _persist->adjustments[i].timestamp - _persist->adjustments[i+1].timestamp, _persist->adjustments[i].adjustment);
+            dlog.debug(FPSTR(TAG), F("::computeDrift: using adjustment %d and %d delta: %d adj:%f"), i, i+1, _persist->adjustments[i].timestamp - _persist->adjustments[i+1].timestamp, _persist->adjustments[i].adjustment);
         }
     }
     a = a / (double)seconds;
     double drift = a * 1000000;
-    dbprintf("NTP::computeDrift: seconds: %d a: %f drift: %f\n", seconds, a, drift);
+    dlog.debug(FPSTR(TAG), F("::computeDrift: seconds: %d a: %f drift: %f"), seconds, a, drift);
 
-    dbprintf("computeDrift: drift: %f PPM\n", drift);
+    dlog.info(FPSTR(TAG), F("::computeDrift: drift: %f PPM"), drift);
+
     if (drift_result != NULL)
     {
         *drift_result = drift;
@@ -514,7 +506,7 @@ void NTP::updateDriftEstimate()
     {
         double x = (double)(_runtime->samples[i].timestamp - timebase);
         double y = _runtime->samples[i].offset;
-        dbprintf("NTP::computeDriftEstimate: x:%-0.8f y:%-0.8f\n", x, y);
+        dlog.debug(FPSTR(TAG), F("::computeDriftEstimate: x:%-0.8f y:%-0.8f"), x, y);
         sx  += x;
         sy  += y;
         sxy += x*y;
@@ -522,22 +514,22 @@ void NTP::updateDriftEstimate()
         ++n;
     }
 
-    dbprintf("NTP::computeDriftEstimate: found %d samples\n", n);
+    dlog.debug(FPSTR(TAG), F("::computeDriftEstimate: found %d samples"), n);
 
     if (n < 4)
     {
-        dbprintln("NTP::computeDriftEstimate: not enough points!");
+        dlog.debug(FPSTR(TAG), F("::computeDriftEstimate: not enough points!"));
     }
     else
     {
         double slope = ( sx*sy - n*sxy ) / ( sx*sx - n*sxx );
-        dbprintf("NTP::computeDriftEstimate: slope: %0.16f\n", slope);
+        dlog.debug(FPSTR(TAG), F("::computeDriftEstimate: slope: %0.16f"), slope);
 
         _runtime->drift_estimate = slope * 1000000;
 
         _runtime->poll_interval = NTP_OFFSET_THRESHOLD / (fabs(_runtime->drift_estimate) / 1000000.0);
-        dbprintf("NTP::updateDriftEstimate: poll interval: %f\n", _runtime->poll_interval);
+        dlog.info(FPSTR(TAG), F("::updateDriftEstimate: poll interval: %f"), _runtime->poll_interval);
     }
 
-    dbprintf("NTP::computeDriftEstimate: ESTIMATED DRIFT: %0.16f\n", _runtime->drift_estimate);
+    dlog.info(FPSTR(TAG), F("::computeDriftEstimate: ESTIMATED DRIFT: %0.16f"), _runtime->drift_estimate);
 }

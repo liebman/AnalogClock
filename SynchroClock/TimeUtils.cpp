@@ -22,15 +22,14 @@
 
 #include "TimeUtils.h"
 
-//#define DEBUG
-#include "Logger.h"
+static PROGMEM const char TAG[] = "TimeUtils";
 
 uint8_t TimeUtils::parseSmallDuration(const char* value)
 {
     int i = atoi(value);
     if (i < 0 || i > 255)
     {
-        dbprintf("TimeUtils::parseSmallDuration: invalid value %s: using 32 instead!\n", value);
+        dlog.warning(FPSTR(TAG), F("::parseSmallDuration: invalid value %s: using 32 instead!"), value);
         i = 32;
     }
     return (uint8_t) i;
@@ -41,7 +40,7 @@ uint8_t TimeUtils::parseOccurrence(const char* occurrence_string)
     int i = atoi(occurrence_string);
     if (i < -5 || i == 0 || i > 5)
     {
-        dbprintf("TimeUtils::parseOccurrence: invalid value %s: using 1 instead!\n", occurrence_string);
+        dlog.warning(FPSTR(TAG), F("::parseOccurrence: invalid value %s: using 1 instead!"), occurrence_string);
         i = 1;
     }
     return (uint8_t) i;
@@ -52,7 +51,7 @@ uint8_t TimeUtils::parseDayOfWeek(const char* dow_string)
     int i = atoi(dow_string);
     if (i < 0 || i > 6)
     {
-        dbprintf("TimeUtils::parseDayOfWeek: invalid value %s: using 0 (Sunday) instead!\n", dow_string);
+        dlog.warning(FPSTR(TAG), F("::parseDayOfWeek: invalid value %s: using 0 (Sunday) instead!"), dow_string);
         i = 1;
     }
     return (uint8_t) i;
@@ -63,7 +62,7 @@ uint8_t TimeUtils::parseMonth(const char* month_string)
     int i = atoi(month_string);
     if (i < 0 || i > 12)
     {
-        dbprintf("TimeUtils::parseMonth: invalid value '%s': using 3 (Mar) instead!\n", month_string);
+        dlog.warning(FPSTR(TAG), F("::parseMonth: invalid value '%s': using 3 (Mar) instead!"), month_string);
         i = 1;
     }
     return (uint8_t) i;
@@ -74,7 +73,7 @@ uint8_t TimeUtils::parseHour(const char* hour_string)
     int i = atoi(hour_string);
     if (i < 0 || i > 23)
     {
-        dbprintf("TimeUtils::parseMonth: invalid value '%s': using 2 instead!\n", hour_string);
+        dlog.warning(FPSTR(TAG), F("::parseMonth: invalid value '%s': using 2 instead!"), hour_string);
         i = 1;
     }
     return (uint8_t) i;
@@ -361,7 +360,7 @@ uint8_t TimeUtils::findDOW(uint16_t y, uint8_t m, uint8_t d)
 --------------------------------------------------------------------------*/
 uint8_t TimeUtils::findNthDate(uint16_t year, uint8_t month, uint8_t dow, uint8_t nthWeek)
 {
-    dbprintf("findNthDate: year:%u month:%u, dow:%u nthWeek:%d\n", year, month, dow, nthWeek);
+    dlog.debug(FPSTR(TAG), F("::findNthDate: year:%u month:%u, dow:%u nthWeek:%d"), year, month, dow, nthWeek);
 
     uint8_t targetDate = 1;
     uint8_t firstDOW = findDOW(year,month,targetDate);
@@ -399,7 +398,7 @@ uint8_t TimeUtils::daysInMonth(uint16_t year, uint8_t month)
 
 uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, int8_t week)
 {
-    dbprintf("findDateForWeek: year:%u month:%u, dow:%u week:%d\n", year, month, dow, week);
+    dlog.debug(FPSTR(TAG), F("::findDateForWeek: year:%u month:%u, dow:%u week:%d"), year, month, dow, week);
 
     uint8_t weeks[5];
     uint8_t max_day = daysInMonth(year, month);
@@ -419,7 +418,7 @@ uint8_t TimeUtils::findDateForWeek(uint16_t year, uint8_t month, uint8_t dow, in
     {
         weeks[last] = findNthDate(year, month, dow, last+1);
 
-        dbprintf("findDateForWeek: last:%d date:%u\n", last, weeks[last]);
+        dlog.debug(FPSTR(TAG), F("::findDateForWeek: last:%d date:%u"), last, weeks[last]);
 
         if (weeks[last] > max_day)
         {
@@ -452,7 +451,7 @@ int TimeUtils::computeUTCOffset(time_t now, int tz_offset, TimeChange* tc, int t
     //
     for(int i = 0; i < tc_count; ++i)
     {
-        dbprintf("TimeUtils::computeUTCOffset: index:%d offset:%d month:%u dow:%u occurrence:%d hour:%u day_offset:%d\n",
+        dlog.debug(FPSTR(TAG), F("::computeUTCOffset: index:%d offset:%d month:%u dow:%u occurrence:%d hour:%u day_offset:%d"),
                 i,
                 tc[i].tz_offset,
                 tc[i].month,
@@ -468,22 +467,22 @@ int TimeUtils::computeUTCOffset(time_t now, int tz_offset, TimeChange* tc, int t
         tm.tm_mon    = tc[i].month-1;
         tm.tm_year   = year;
 
-        dbprintf("computeUTCOffset: tm: %04d/%02d/%02d %02d:%02d:%02d + %d days\n", tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tc[i].day_offset);
+        dlog.debug(FPSTR(TAG), F("::computeUTCOffset: tm: %04d/%02d/%02d %02d:%02d:%02d + %d days"), tm.tm_year+1900, tm.tm_mon+1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec, tc[i].day_offset);
 
         // convert to seconds
         time_t tc_time = mktime(&tm);
         // convert to UTC
         tc_time -= tz_offset;
-        dbprintf("computeUTCOffset: tc_time: %ld (UTC)\n", tc_time);
+        dlog.debug(FPSTR(TAG), F("::computeUTCOffset: tc_time: %ld (UTC)"), tc_time);
         // add in days offset
         tc_time += tc[i].day_offset*86400;
 
-        dbprintf("computeUTCOffset: now: %ld tc_time: %ld\n", now, tc_time);
+        dlog.debug(FPSTR(TAG), F("::computeUTCOffset: now: %ld tc_time: %ld"), now, tc_time);
 
         if (now >= tc_time)
         {
             offset = tc[i].tz_offset;
-            dbprintf("computeUTCOffset: now > tc_time, offset: %d\n", offset);
+            dlog.debug(FPSTR(TAG), F("::computeUTCOffset: now > tc_time, offset: %d"), offset);
         }
     }
 

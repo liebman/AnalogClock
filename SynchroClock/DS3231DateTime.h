@@ -24,6 +24,7 @@
 #define DS3231DATETIME_H_
 #include <Arduino.h>
 #include "TimeUtils.h"
+#include "Logger.h"
 
 #define MAX_POSITION      43200 // seconds in 12 hours
 

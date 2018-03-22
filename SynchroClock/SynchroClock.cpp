@@ -22,8 +22,6 @@
 
 #include "SynchroClock.h"
 
-#define DEBUG
-#include "Logger.h"
 
 //
 // These are only used when debugging
@@ -49,6 +47,7 @@
 //#define HARD_CODED_POSITION "00:00:00"
 #endif
 
+DLog&             dlog = DLog::getLog();
 Config           config;                    // configuration persisted in the EEPROM
 DeepSleepData    dsd;                       // data persisted in the RTC memory
 #if defined(LED_PIN)
@@ -79,7 +78,7 @@ uint8_t parseDuty(const char* value)
     int i = atoi(value);
     if (i < 1 || i > 100)
     {
-        dbprintf("parseDuty: invalid value %s: using 50 instead!\n", value);
+        dlog.error(F("parseDuty"), F("invalid value %s: using 50 instead!\n"), value);
         i = 50;
     }
     return (uint8_t) i;
@@ -122,7 +121,7 @@ uint8_t getValidByte(String name)
     int i = atoi(HTTP.arg(name).c_str());
     if (i < 0 || i > 255)
     {
-        dbprintf("getValidByte: invalid value %d: using 255 instead!\n", i);
+        dlog.error(F("getValidByte"), F("invalid value %d: using 255 instead!\n"), i);
         i = 255;
     }
     return (uint8_t) i;
@@ -133,7 +132,7 @@ void handleOffset()
     if (HTTP.hasArg("set"))
     {
         config.tz_offset = getValidOffset("set");
-        dbprintf("seconds offset:%d\n", config.tz_offset);
+        dlog.info(F("handleOffset"), F("seconds offset:%d\n"), config.tz_offset);
     }
 
     HTTP.send(200, "text/plain", String(config.tz_offset) + "\n");
@@ -141,21 +140,22 @@ void handleOffset()
 
 void handleAdjustment()
 {
+    static PROGMEM const char TAG[] = "handleAdjustment";
     uint16_t adj;
     if (HTTP.hasArg("set"))
     {
         if (HTTP.arg("set").equalsIgnoreCase("auto"))
         {
-            dbprintln("Auto Adjust!");
+            dlog.info(FPSTR(TAG), F("Auto Adjust!"));
             setCLKfromRTC();
         }
         else
         {
             adj = getValidPosition("set");
-            dbprintf("setting adjustment:%u\n", adj);
+            dlog.info(FPSTR(TAG), F("setting adjustment:%u"), adj);
             if (clk.writeAdjustment(adj))
             {
-                dbprintln("failed to set adjustment!");
+                dlog.error(FPSTR(TAG), "failed to set adjustment!");
             }
         }
     }
@@ -174,14 +174,16 @@ void handleAdjustment()
 
 void handlePosition()
 {
+    static PROGMEM const char TAG[] = "handlePosition";
+
     uint16_t pos;
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
-        dbprintf("setting position:%u\n", pos);
+        dlog.info(FPSTR(TAG), "setting position:%u\n", pos);
         if (clk.writePosition(pos))
         {
-            dbprintln("failed to set position!");
+            dlog.error(FPSTR(TAG), "failed to set position!");
         }
     }
 
@@ -202,14 +204,16 @@ void handlePosition()
 
 void handleTPDuration()
 {
+    static PROGMEM const char TAG[] = "handleTPDuration";
+
     uint8_t value;
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprintf("setting tp_duration:%u\n", value);
+        dlog.info(FPSTR(TAG), "setting tp_duration:%u\n", value);
         if (clk.writeTPDuration(value))
         {
-            dbprintln("failed to set TP duration!");
+            dlog.error(FPSTR(TAG), "failed to set TP duration!");
         }
     }
 
@@ -227,14 +231,15 @@ void handleTPDuration()
 
 void handleTPDuty()
 {
+    static PROGMEM const char TAG[] = "handleTPDuty";
     uint8_t value;
     if (HTTP.hasArg("set"))
     {
         value = getValidDuty("set");
-        dbprintf("setting tp_duty:%u\n", value);
+        dlog.info(FPSTR(TAG), F("setting tp_duty:%u"), value);
         if (clk.writeTPDuty(value))
         {
-            dbprintln("failed to set TP duty!");
+            dlog.error(FPSTR(TAG), F("failed to set TP duty!"));
         }
     }
 
@@ -252,14 +257,15 @@ void handleTPDuty()
 
 void handleAPDuration()
 {
+    static PROGMEM const char TAG[] = "handleAPDuration";
     uint8_t value;
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprintf("setting ap_duration:%u\n", value);
+        dlog.info(FPSTR(TAG), F("setting ap_duration:%u"), value);
         if (clk.writeAPDuration(value))
         {
-            dbprintln("failed to set AP duration");
+            dlog.error(FPSTR(TAG), F("failed to set AP duration"));
         }
     }
 
@@ -277,14 +283,15 @@ void handleAPDuration()
 
 void handleAPDuty()
 {
+    static PROGMEM const char TAG[] = "handleAPDuty";
     uint8_t value;
     if (HTTP.hasArg("set"))
     {
         value = getValidDuty("set");
-        dbprintf("setting ap_duty:%u\n", value);
+        dlog.info(FPSTR(TAG), F("setting ap_duty:%u"), value);
         if (clk.writeAPDuty(value))
         {
-            dbprintln("failed to set AP duty!");
+            dlog.error(FPSTR(TAG), F("failed to set AP duty!"));
         }
     }
 
@@ -302,14 +309,15 @@ void handleAPDuty()
 
 void handleAPDelay()
 {
+    static PROGMEM const char TAG[] = "handleAPDelay";
     uint8_t value;
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprintf("setting ap_delay:%u\n", value);
+        dlog.info(FPSTR(TAG), F("setting ap_delay:%u"), value);
         if (clk.writeAPDelay(value))
         {
-            dbprintln("failed to set AP delay");
+            dlog.error(FPSTR(TAG), F("failed to set AP delay"));
         }
     }
 
@@ -327,14 +335,15 @@ void handleAPDelay()
 
 void handleAPStartDuration()
 {
+    static PROGMEM const char TAG[] = "handleAPStartDuration";
     uint8_t value;
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dbprintf("setting ap_start:%u\n", value);
+        dlog.info(FPSTR(TAG), F("setting ap_start:%u"), value);
         if (clk.writeAPStartDuration(value))
         {
-            dbprintln("failed to set AP start duration");
+            dlog.error(FPSTR(TAG), F("failed to set AP start duration"));
         }
     }
 
@@ -352,14 +361,15 @@ void handleAPStartDuration()
 
 void handlePWMTop()
 {
+    static PROGMEM const char TAG[] = "handlePWMTop";
     uint8_t value;
     if (HTTP.hasArg("set"))
     {
         value = getValidByte("set");
-        dbprintf("setting pwm_top:%u\n", value);
+        dlog.info(FPSTR(TAG), F("setting pwm_top:%u"), value);
         if (clk.writePWMTop(value))
         {
-            dbprintln("failed to set pwm_top!");
+            dlog.error(FPSTR(TAG), F("failed to set pwm_top!"));
         }
     }
 
@@ -389,6 +399,7 @@ void handleEnable()
 
 void handleRTC()
 {
+    static PROGMEM const char TAG[] = "handleRTC";
     char message[64];
 
     DS3231DateTime dt;
@@ -396,12 +407,12 @@ void handleRTC()
 
     if (!err)
     {
-        dbprintf("handleRTC: RTC : %s (UTC)\n", dt.string());
+        dlog.info(FPSTR(TAG), F("handleRTC: RTC : %s (UTC)"), dt.string());
 
         if (HTTP.hasArg("offset"))
         {
             double offset = strtod(HTTP.arg("offset").c_str(), NULL);
-            dbprintf("handleRTC: offset: %lf\n", offset);
+            dlog.info(FPSTR(TAG), F("handleRTC: offset: %lf"), offset);
             setRTCfromOffset(offset, true);
         }
         else if (HTTP.hasArg("sync") && getValidBoolean("sync"))
@@ -426,13 +437,14 @@ void handleRTC()
 
 void handleNTP()
 {
+    static PROGMEM const char TAG[] = "handleNTP";
     char server[64];
     strcpy(server, config.ntp_server);
     boolean sync = false;
 
     if (HTTP.hasArg("server"))
     {
-        dbprintf("SERVER: %s\n", HTTP.arg("server").c_str());
+        dlog.info(FPSTR(TAG), F("SERVER: %s"), HTTP.arg("server").c_str());
         strncpy(server, HTTP.arg("server").c_str(), 63);
         server[63] = 0;
     }
@@ -455,7 +467,7 @@ void handleNTP()
     {
         if (sync)
         {
-            dbprintln("Syncing clock to RTC!");
+            dlog.info(FPSTR(TAG), F("Syncing clock to RTC!"));
             setCLKfromRTC();
         }
         code = 200;
@@ -463,7 +475,7 @@ void handleNTP()
         snprintf(message, 64, "OFFSET: %0.6lf (%s)\n", offset, address.toString().c_str());
     }
 
-    dbprintf(message);
+    dlog.info(FPSTR(TAG), F("%s"), message);
     HTTP.send(code, "text/Plain", message);
     return;
 }
@@ -520,10 +532,12 @@ void handleErase()
 //
 bool updateTZOffset()
 {
+    static PROGMEM const char TAG[] = "updateTZOffset";
+
     DS3231DateTime dt;
     if (rtc.readTime(dt))
     {
-        dbprintln("updateTZOffset: FAILED to read RTC");
+        dlog.error(FPSTR(TAG), F("updateTZOffset: FAILED to read RTC"));
         return false;
     }
 
@@ -532,7 +546,7 @@ bool updateTZOffset()
     // if the time zone changed then save the new value and return true
     if (config.tz_offset != new_offset)
     {
-        dbprintf("time zone offset changed from %d to %d\n", config.tz_offset, new_offset);
+        dlog.info(FPSTR(TAG), F("time zone offset changed from %d to %d\n"), config.tz_offset, new_offset);
         config.tz_offset = new_offset;
         saveConfig();
         return true;
@@ -543,7 +557,9 @@ bool updateTZOffset()
 
 void initWiFi()
 {
-    dbprintln("starting wifi!");
+    static PROGMEM const char TAG[] = "initWiFi";
+    dlog.info(FPSTR(TAG), F("starting WiFi!"));
+    dlog.setLevel(F("initWiFi"), DLOG_LEVEL_DEBUG);
 
 #if defined(LED_PIN)
     // setup wifi, blink let slow while connecting and fast if portal activated.
@@ -578,10 +594,10 @@ void initWiFi()
         if (strlen(result))
         {
             uint16_t position = TimeUtils::parsePosition(result);
-            dbprintf("setting position to %d\n", position);
+            dlog.info(FPSTR(TAG), F("setting position to %d"), position);
             if (clk.writePosition(position))
             {
-                dbprintln("failed to set initial position!");
+                dlog.error(FPSTR(TAG), F("failed to set initial position!"));
             }
         }
     });
@@ -647,7 +663,7 @@ void initWiFi()
     ConfigParam no_sleep(wifi, "stay_awake", "Stay Awake 'true'", "", 8, [](const char* result)
     {
         stay_awake = parseBoolean(result);
-        dbprintf("no_sleep: result:'%s' -> stay_awake:%d\n", result, stay_awake);
+        dlog.info(FPSTR(TAG), F("no_sleep: result:'%s' -> stay_awake:%d"), result, stay_awake);
     });
     ConfigParam sleep_duration(wifi, "sleep_duration", "Sleep", config.sleep_duration, 8, [](const char* result)
     {
@@ -701,14 +717,14 @@ void initWiFi()
     ConfigParam clear_ntp_persist(wifi, "clear_ntp_persist", "Clear NTP Persist 'true'", "", 8, [](const char* result)
     {
         boolean clearit = parseBoolean(result);
-        dbprintf("clear_ntp_persist: result:'%s' -> clear_ntp_persist:%d\n", result, clearit);
+        dlog.info(FPSTR(TAG), F("clear_ntp_persist: result:'%s' -> clear_ntp_persist:%d"), result, clearit);
         if (clearit)
         {
             memset(&config.ntp_persist, 0, sizeof(config.ntp_persist));
         }
     });
     String ssid = "SynchroClock" + String(ESP.getChipId());
-    dbflush();
+
 #if defined(HARD_CODE_WIFI)
     config.network_logger_host[0] = 0;
     save_config = true;
@@ -716,10 +732,10 @@ void initWiFi()
     if (!clk.getEnable())
     {
         uint16_t position = TimeUtils::parsePosition(HARD_CODED_POSITION);
-        dbprintf("setting position to %d\n", position);
+        dlog.info(FPSTR(TAG), F("setting position to %d"), position);
         if (clk.writePosition(position))
         {
-            dbprintln("failed to set initial position!");
+            dlog.info(FPSTR(TAG), F("failed to set initial position!"));
         }
     }
 #endif
@@ -748,10 +764,9 @@ void initWiFi()
     // if we are not connected then deep sleep and try again.
     if (!WiFi.isConnected())
     {
-        dbprintln("failed to connect to wifi!");
-        dbprintf("Deep Sleep Time: %d\n", MAX_SLEEP_DURATION);
-        dbflush();
-        dbend();
+        dlog.error(FPSTR(TAG), F("failed to connect to wifi!"));
+        dlog.info(FPSTR(TAG), F("Deep Sleep Time: %d"), MAX_SLEEP_DURATION);
+        dlog.end();
         ESP.deepSleep(MAX_SLEEP_DURATION, RF_DEFAULT);
     }
 
@@ -790,22 +805,49 @@ void initWiFi()
         updateTZOffset();
     }
 
+    dlog.debug(FPSTR(TAG), F("TCP logging settings: '%s:%d'"), config.network_logger_host, config.network_logger_port);
+
     // Configure network logging if enabled
-    dbnetlog(config.network_logger_host, config.network_logger_port);
+    if (strlen(config.network_logger_host) && config.network_logger_port)
+    {
+        dlog.info(FPSTR(TAG), F("starting TCP logging to '%s:%d'"), config.network_logger_host, config.network_logger_port);
+        dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port));
+    }
 
     IPAddress ip = WiFi.localIP();
-    dbprintf("Connected! IP address is: %u.%u.%u.%u\n", ip[0], ip[1], ip[2], ip[3]);
+    dlog.info(FPSTR(TAG), F("Connected! IP address is: %u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
 }
 
+void dlogPrefix(DLogBuffer& buffer, DLogLevel level)
+{
+    (void)level; // not used
+    struct timeval tv;
+    struct tm tm;
+    gettimeofday(&tv, nullptr);
+    gmtime_r(&tv.tv_sec, &tm);
+
+    buffer.printf(F("%04d/%02d/%02d %02d:%02d:%02d.%06ld "),
+            tm.tm_year+1900,
+            tm.tm_mon+1,
+            tm.tm_mday,
+            tm.tm_hour,
+            tm.tm_min,
+            tm.tm_sec,
+            tv.tv_usec);
+}
 
 void setup()
 {
-    dbbegin(115200);
-    dbprintln("");
-    dbprintln("Startup!");
+    static PROGMEM const char TAG[] = "setup";
+
+    Serial.begin(115200);
+    dlog.begin(new DLogPrintWriter(Serial));
+    dlog.setPreFunc(&dlogPrefix);
+    dlog.info(FPSTR(TAG), F("Startup!"));
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
+
 #if defined(LED_PIN)
     feedback.off();
 #endif
@@ -820,15 +862,32 @@ void setup()
 
     while (rtc.begin())
     {
-        dbprintln("RTC begin failed! Attempting recovery...");
+        dlog.error(FPSTR(TAG), F("RTC begin failed! Attempting recovery..."));
 
         while (WireUtils.clearBus())
         {
             delay(10000);
-            dbprintln("lets try that again...");
+            dlog.info(FPSTR(TAG), F("lets try that again..."));
         }
         delay(1000);
     }
+
+    DS3231DateTime dt;
+    while (rtc.readTime(dt))
+    {
+        dlog.error(FPSTR(TAG), F("RTC readTime failed! Attempting recovery..."));
+
+        while (WireUtils.clearBus())
+        {
+            delay(10000);
+            dlog.info(FPSTR(TAG), F("lets try that again..."));
+        }
+        delay(1000);
+    }
+    struct timeval tv;
+    tv.tv_sec  = dt.getUnixTime();
+    tv.tv_usec = 0;
+    settimeofday(&tv, nullptr);
 
     //
     // initialize config to defaults then load.
@@ -842,18 +901,18 @@ void setup()
 #if defined(LED_PIN)
     feedback.blink(0.9);
 #endif
-    dbprintln("starting clock interface");
+    dlog.info(FPSTR(TAG), F("starting clock interface"));
     while (clk.begin())
     {
-        dbprintln("can't talk with Clock Controller!");
+        dlog.error(FPSTR(TAG), F("can't talk with Clock Controller!"));
         while (WireUtils.clearBus())
         {
             delay(10000);
-            dbprintln("lets try that again...");
+            dlog.info(FPSTR(TAG), F("lets try that again..."));
         }
         delay(10000);
     }
-    dbprintln("clock interface started");
+    dlog.info(FPSTR(TAG), F("clock interface started"));
 
     // if the reset/config button is pressed then force config
     if (digitalRead(CONFIG_PIN) == 0)
@@ -864,7 +923,7 @@ void setup()
         //
         if (dsd.sleep_delay_left != 0)
         {
-            dbprintln("reset button pressed with radio off, short sleep to enable!");
+            dlog.info(FPSTR(TAG), F("reset button pressed with radio off, short sleep to enable!"));
             dsd.sleep_delay_left = 0;
             writeDeepSleepData();
             ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
@@ -873,7 +932,7 @@ void setup()
 #if defined(LED_PIN)
         feedback.on();
 #endif
-        dbprintln("waiting for config release");
+        dlog.info(FPSTR(TAG), F("waiting for config release"));
         while (digitalRead(CONFIG_PIN) == 0)
         {
             // wait for it to be let up.
@@ -885,7 +944,7 @@ void setup()
         // now a short delay, if the button is pressed again after that then we use stay
         // awake mode and start a web server.
         //
-        dbprintln("short delay to see if its pressed again.");
+        dlog.info(FPSTR(TAG), F("short delay to see if its pressed again."));
         delay(2000);
 
 #if defined(LED_PIN)
@@ -894,12 +953,12 @@ void setup()
 
         if (digitalRead(CONFIG_PIN) == 0)
         {
-            dbprintln("Its pressed, use stay awake!");
+            dlog.info(FPSTR(TAG), F("Its pressed, use stay awake!"));
             stay_awake = true;
         }
         else
         {
-            dbprintln("reset button pressed, forcing config!");
+            dlog.info(FPSTR(TAG), F("reset button pressed, forcing config!"));
             force_config = true;
             //
             //  If we force config because of the config button then we stop the clock.
@@ -910,7 +969,7 @@ void setup()
 
 
     bool enabled = clk.getEnable();
-    dbprintf("clock enable is:%u\n", enabled);
+    dlog.info(FPSTR(TAG), F("clock enable is:%u"), enabled);
 
     strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
@@ -929,10 +988,10 @@ void setup()
     config.tc[1].hour        = DEFAULT_TC1_HOUR;
     config.tc[1].tz_offset   = DEFAULT_TC1_OFFSET;
 
-    dbprintf("defaults: tz:%d ntp:%s logging: %s:%d\n", config.tz_offset,
+    dlog.debug(FPSTR(TAG), F("defaults: tz:%d ntp:%s logging: %s:%d"), config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
-    dbprintf("EEConfig size: %u\n", sizeof(EEConfig));
+    dlog.debug(FPSTR(TAG), F("EEConfig size: %u"), sizeof(EEConfig));
 
     EEPROM.begin(sizeof(EEConfig));
     delay(100);
@@ -955,7 +1014,7 @@ void setup()
     }
 #endif
 
-    dbprintf("config: tz:%d ntp:%s logging: %s:%d\n", config.tz_offset,
+    dlog.info(FPSTR(TAG), F("config: tz:%d ntp:%s logging: %s:%d"), config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     bool clock_needs_sync = updateTZOffset();
@@ -970,7 +1029,7 @@ void setup()
     }
 #endif
 
-    dbprintf("sleep_delay_left: %lu\n", dsd.sleep_delay_left);
+    dlog.info(FPSTR(TAG), F("sleep_delay_left: %lu"), dsd.sleep_delay_left);
 
     if (dsd.sleep_delay_left != 0)
     {
@@ -990,27 +1049,27 @@ void setup()
 
     initWiFi();
 
-    dbprintf("###### rtc data size: %d\n", sizeof(RTCDeepSleepData));
+    dlog.debug(FPSTR(TAG), F("###### rtc data size: %d"), sizeof(RTCDeepSleepData));
 
     ntp.begin(NTP_PORT);
 
     if (!enabled)
     {
-        dbprintln("enabling clock");
+        dlog.info(FPSTR(TAG), F("enabling clock"));
         clk.setEnable(true);
     }
     else
     {
-        dbprintln("clock is enabled, skipping init of RTC");
+        dlog.info(FPSTR(TAG), F("clock is enabled, skipping init of RTC"));
     }
 
 #if !defined(DISABLE_INITIAL_NTP)
-    dbprintln("syncing RTC from NTP!");
+    dlog.info(FPSTR(TAG), F("syncing RTC from NTP!"));
     setRTCfromNTP(config.ntp_server, true, NULL, NULL);
 #endif
 
 #if !defined(DISABLE_INITIAL_SYNC)
-    dbprintln("syncing clock to RTC!");
+    dlog.info(FPSTR(TAG), F("syncing clock to RTC!"));
     setCLKfromRTC();
 #endif
 
@@ -1027,7 +1086,7 @@ void setup()
 #endif
     }
 
-    dbprintln("starting HTTP");
+    dlog.info(FPSTR(TAG), F("starting HTTP"));
     HTTP.on("/offset",      HTTP_GET, handleOffset);
     HTTP.on("/adjust",      HTTP_GET, handleAdjustment);
     HTTP.on("/position",    HTTP_GET, handlePosition);
@@ -1049,7 +1108,9 @@ void setup()
 
 void sleepFor(uint32_t sleep_duration)
 {
-    dbprintf("sleepFor: %u\n", sleep_duration);
+    static PROGMEM const char TAG[] = "sleepFor";
+
+    dlog.info(FPSTR(TAG), F("seconds: %u"), sleep_duration);
     dsd.sleep_delay_left = sleep_duration;
     sleep_duration = MAX_SLEEP_DURATION;
     RFMode mode = RF_DEFAULT;
@@ -1057,19 +1118,18 @@ void sleepFor(uint32_t sleep_duration)
     {
         dsd.sleep_delay_left = dsd.sleep_delay_left - MAX_SLEEP_DURATION;
         mode = RF_DISABLED;
-        dbprintf("sleepFor: sleep_duration > max, mode=DISABLED sleep_delay_left=%lu\n", dsd.sleep_delay_left);
+        dlog.info(FPSTR(TAG), F("sleep_duration > max, mode=DISABLED sleep_delay_left=%lu"), dsd.sleep_delay_left);
     }
     else
     {
         sleep_duration = dsd.sleep_delay_left;
         dsd.sleep_delay_left = 0;
-        dbprintf("sleepFor: delay less than max, mode=DEFAULT sleep_delay_left=%lu\n", dsd.sleep_delay_left);
+        dlog.info(FPSTR(TAG), F("delay less than max, mode=DEFAULT sleep_delay_left=%lu"), dsd.sleep_delay_left);
     }
 
     writeDeepSleepData();
-    dbprintf("Deep Sleep Time: %lu\n", sleep_duration);
-    dbflush();
-    dbend();
+    dlog.info(FPSTR(TAG), F("Deep Sleep Time: %lu"), sleep_duration);
+    dlog.end();
     ESP.deepSleep(sleep_duration * 1000000, mode);
 }
 
@@ -1084,6 +1144,8 @@ void loop()
 
 int setRTCfromOffset(double offset, bool sync)
 {
+    static PROGMEM const char TAG[] = "setRTCfromOffset";
+
     int32_t  seconds = (int32_t)offset;
     uint32_t msdelay = fabs((offset - (double)seconds) * 1000);
 
@@ -1093,7 +1155,7 @@ int setRTCfromOffset(double offset, bool sync)
         msdelay = 1000.0 - msdelay;
     }
 
-    dbprintf("setRTCfromOffset:: offset: %lf seconds: %d msdelay: %d sync: %s\n",
+    dlog.info(FPSTR(TAG), F("offset: %lf seconds: %d msdelay: %d sync: %s"),
             offset, seconds, msdelay, sync ? "true" : "false");
 
     DS3231DateTime dt;
@@ -1102,11 +1164,11 @@ int setRTCfromOffset(double offset, bool sync)
 
     if (rtc.readTime(dt))
     {
-        dbprintln("setRTCfromOffset: failed to read from RTC, attempting corrective action...");
+        dlog.error(FPSTR(TAG), F("failed to read from RTC, attempting corrective action..."));
         WireUtils.clearBus();
         if (rtc.readTime(dt))
         {
-            dbprintln("setRTCfromOffset: failed to read from RTC!");
+            dlog.error(FPSTR(TAG), F("failed to read from RTC!"));
             return ERROR_RTC;
         }
     }
@@ -1125,7 +1187,7 @@ int setRTCfromOffset(double offset, bool sync)
     {
         if (rtc.writeTime(dt))
         {
-            dbprintf("setRTCfromOffset: FAILED to set RTC: %s\n", dt.string());
+            dlog.error(FPSTR(TAG), F("FAILED to set RTC: %s"), dt.string());
             return ERROR_RTC;
         }
     }
@@ -1136,8 +1198,8 @@ int setRTCfromOffset(double offset, bool sync)
     delay(1); // DS3231 seems to need a short delay after write before we read the time back
     updateTZOffset();
 
-    dbprintf("setRTCfromOffset: old_time: %d new_time: %d\n", old_time, new_time);
-    dbprintf("setRTCfromOffset: RTC: %s\n", dt.string());
+    dlog.info(FPSTR(TAG), F("old_time: %d new_time: %d"), old_time, new_time);
+    dlog.info(FPSTR(TAG), F("RTC: %s\n"), dt.string());
     return 0;
 }
 
@@ -1151,7 +1213,7 @@ int getTime(uint32_t *result)
     DS3231DateTime dt;
     if (rtc.readTime(dt))
     {
-        dbprintln("getTime: failed to read from RTC!");
+        dlog.error(F("getTime"), F("failed to read from RTC!"));
         return -1;
     }
     *result = dt.getUnixTime();
@@ -1160,14 +1222,15 @@ int getTime(uint32_t *result)
 
 int setRTCfromDrift()
 {
+    static PROGMEM const char TAG[] = "setRTCfromDrift";
     double offset;
     if (ntp.getOffsetUsingDrift(&offset, &getTime))
     {
-        dbprintln("setRTCfromDrift: failed, not adjusting for drift!");
+        dlog.error(FPSTR(TAG), F("failed, not adjusting for drift!"));
         return -1;
     }
 
-    dbprintf("********* DRIFT OFFSET: %lf\n", offset);
+    dlog.info(FPSTR(TAG), F("********* DRIFT OFFSET: %lf"), offset);
 
     int error = setRTCfromOffset(offset, true);
     if (error)
@@ -1175,18 +1238,20 @@ int setRTCfromDrift()
         return error;
     }
 
-    dbprintln("setRTCfromDrift: returning OK");
+    dlog.debug(FPSTR(TAG), F("returning OK"));
     return 0;
 }
 
 int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddress* result_address)
 {
-    dbprintf("using server: %s\n", server);
+    static PROGMEM const char TAG[] = "setRTCfromNTP";
+
+    dlog.info(FPSTR(TAG), F("using server: %s"), server);
 
     double offset;
     if (ntp.getOffset(server, &offset, &getTime))
     {
-        dbprintf("setRTCfromNTP: NTP Failed!\n");
+        dlog.warning(FPSTR(TAG), F("NTP Failed!"));
         return ERROR_NTP;
     }
 
@@ -1200,7 +1265,7 @@ int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddres
         *result_offset = offset;
     }
 
-    dbprintf("********* NTP OFFSET: %lf\n", offset);
+    dlog.info(FPSTR(TAG), F("********* NTP OFFSET: %lf"), offset);
 
     int error = setRTCfromOffset(offset, sync);
     if (error)
@@ -1208,16 +1273,18 @@ int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddres
         return error;
     }
 
-    dbprintln("setRTCfromNTP: returning OK");
+    dlog.debug(FPSTR(TAG), F("returning OK"));
     return 0;
 }
 
 int setCLKfromRTC()
 {
+    static PROGMEM const char TAG[] = "setCLKfromRTC";
+
     // if there is already an adjustment in progress then stop it.
     if (clk.writeAdjustment(0))
     {
-        dbprintln("setCLKfromRTC: failed to clear adjustment!");
+        dlog.error(FPSTR(TAG), F("failed to clear adjustment!"));
         return -1;
     }
 
@@ -1232,25 +1299,25 @@ int setCLKfromRTC()
 
         if (clk.readPosition(&clock_pos))
         {
-            dbprintln("setCLKfromRTC: failed to read position, ignoring");
+            dlog.error(FPSTR(TAG), F("failed to read position, ignoring"));
             return -1;
         }
-        dbprintf("setCLKfromRTC: clock position:%d\n", clock_pos);
+        dlog.info(FPSTR(TAG), F("clock position:%d"), clock_pos);
 
         DS3231DateTime dt;
         if (rtc.readTime(dt))
         {
-            dbprintln("setCLKfromRTC: FAILED to read RTC");
+            dlog.error(FPSTR(TAG), F("FAILED to read RTC"));
             return -1;
         }
         rtc_pos = dt.getPosition(config.tz_offset);
-        dbprintf("setCLKfromRTC: RTC position:%d\n", rtc_pos);
+        dlog.info(FPSTR(TAG), F("RTC position:%d"), rtc_pos);
 
         delta = rtc_pos - clock_pos;
         if (delta < 0 && abs(delta) < STOP_THE_CLOCK_MAX)
         {
             int stop_for = abs(delta) + STOP_THE_CLOCK_EXTRA;
-            dbprintf("setCLKfromRTC: stop the clock delta is %d stopping for %d seconds\n", delta, stop_for);
+            dlog.info(FPSTR(TAG), F("stop the clock delta is %d stopping for %d seconds"), delta, stop_for);
 
             // stop the clock for delta seconds
             clk.setEnable(false);
@@ -1267,19 +1334,19 @@ int setCLKfromRTC()
     uint16_t clock_pos;
     if (clk.readPosition(&clock_pos))
     {
-        dbprintln("setCLKfromRTC: failed to read position, ignoring");
+        dlog.error(FPSTR(TAG), F("failed to read position, ignoring"));
         return -1;
     }
-    dbprintf("setCLKfromRTC: clock position:%d\n", clock_pos);
+    dlog.info(FPSTR(TAG), F("clock position:%d"), clock_pos);
 
     DS3231DateTime dt;
     if (rtc.readTime(dt))
     {
-        dbprintln("setCLKfromRTC: FAILED to read RTC");
+        dlog.error(FPSTR(TAG), F("FAILED to read RTC"));
         return -1;
     }
     uint16_t rtc_pos = dt.getPosition(config.tz_offset);
-    dbprintf("setCLKfromRTC: RTC position:%d\n", rtc_pos);
+    dlog.info(FPSTR(TAG), F("RTC position:%d"), rtc_pos);
 #endif
 
     if (clock_pos != rtc_pos)
@@ -1289,11 +1356,11 @@ int setCLKfromRTC()
         {
             adj += MAX_POSITION;
         }
-        dbprintf("setCLKfromRTC: sending adjustment of %u\n", adj);
+        dlog.info(FPSTR(TAG), F("sending adjustment of %u"), adj);
         clk.waitForEdge(CLOCK_EDGE_RISING);
         if (clk.writeAdjustment(adj))
         {
-            dbprintln("setCLKfromRTC: failed to set adjustment!");
+            dlog.error(FPSTR(TAG), F("failed to set adjustment!"));
             return -1;
         }
     }
@@ -1327,9 +1394,10 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length)
 
 boolean loadConfig()
 {
+    static PROGMEM const char TAG[] = "loadConfig";
     EEConfig cfg;
     // Read struct from EEPROM
-    dbprintln("loadConfig: loading from EEPROM");
+    dlog.debug(FPSTR(TAG), F("loading from EEPROM"));
     unsigned int i;
     uint8_t* p = (uint8_t*) &cfg;
     for (i = 0; i < sizeof(cfg); ++i)
@@ -1337,27 +1405,28 @@ boolean loadConfig()
         p[i] = EEPROM.read(i);
         //dbprintf("loadConfig: p[%u] = %u\n", i, p[i]);
     }
-    dbprintln("loadConfig: checking CRC");
+    dlog.debug(FPSTR(TAG), F("checking CRC"));
     uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
-    //dbprintf("CRC32 of data: %08x\n", crcOfData);
-    //dbprintf("CRC32 read from EEPROM: %08x\n", cfg.crc);
+    dlog.trace(FPSTR(TAG), F("CRC32 of data: %08x"), crcOfData);
+    dlog.trace(FPSTR(TAG), F("CRC32 read from EEPROM: %08x"), cfg.crc);
     if (crcOfData != cfg.crc)
     {
-        dbprintln("CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!");
+        dlog.warning(FPSTR(TAG), F("CRC32 in EEPROM memory doesn't match CRC32 of data. Data is probably invalid!"));
         return false;
     }
-    //dbprintln("CRC32 check ok, data is probably valid.");
+    dlog.debug(FPSTR(TAG), F("CRC32 check ok, data is probably valid."));
     memcpy(&config, &cfg.data, sizeof(config));
     return true;
 }
 
 void saveConfig()
 {
+    static PROGMEM const char TAG[] = "saveConfig";
     EEConfig cfg;
     memcpy(&cfg.data, &config, sizeof(cfg.data));
     cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
-    //dbprintf("caculated CRC: %08x\n", cfg.crc);
-    dbprintln("Saving configuration to EEPROM!");
+    dlog.debug(FPSTR(TAG), F("caculated CRC: %08x"), cfg.crc);
+    dlog.info(FPSTR(TAG), F("Saving configuration to EEPROM!"));
 
     unsigned int i;
     uint8_t* p = (uint8_t*) &cfg;
@@ -1370,18 +1439,19 @@ void saveConfig()
 
 boolean readDeepSleepData()
 {
+    static PROGMEM const char TAG[] = "readDeepSleepData";
     RTCDeepSleepData rtcdsd;
-    dbprintln("loading deep sleep data from RTC Memory");
+    dlog.info(FPSTR(TAG), F("loading deep sleep data from RTC Memory"));
     if (!ESP.rtcUserMemoryRead(0, (uint32_t*) &rtcdsd, sizeof(rtcdsd)))
     {
-        dbprintln("readDeepSleepData: failed to read RTC Memory");
+        dlog.error(FPSTR(TAG), F("failed to read RTC Memory"));
         return false;
     }
 
     uint32_t crcOfData = calculateCRC32(((uint8_t*) &rtcdsd.data), sizeof(rtcdsd.data));
     if (crcOfData != rtcdsd.crc)
     {
-        dbprintln("CRC32 in RTC Memory doesn't match CRC32 of data. Data is probably invalid!");
+        dlog.warning(FPSTR(TAG), F("CRC32 in RTC Memory doesn't match CRC32 of data. Data is probably invalid!"));
         return false;
     }
     memcpy(&dsd, &rtcdsd.data, sizeof(dsd));
@@ -1396,7 +1466,7 @@ boolean writeDeepSleepData()
 
     if (!ESP.rtcUserMemoryWrite(0, (uint32_t*) &rtcdsd, sizeof(rtcdsd)))
     {
-        dbprintln("writeDeepSleepData: failed to write RTC Memory");
+        dlog.error(F("writeDeepSleepData"), F("failed to write RTC Memory"));
         return false;
     }
     return true;

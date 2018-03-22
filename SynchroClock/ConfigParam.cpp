@@ -22,8 +22,7 @@
 
 #include "ConfigParam.h"
 
-//#define DEBUG
-#include "Logger.h"
+static PROGMEM const char TAG[] = "ConfigParam";
 
 ConfigParam::ConfigParam(WiFiManager &wifi, const char *label)
 {
@@ -85,7 +84,7 @@ ConfigParam::~ConfigParam()
 
 void ConfigParam::init(WiFiManager &wifi, const char *id, const char *placeholder, int length)
 {
-    dbprintf("ConfigParam::init: id:%s value:'%s'\n", id, _value);
+    dlog.debug(FPSTR(TAG), F("::init: id:%s value:'%s'"), id, _value);
     _wmp = new WiFiManagerParameter(id, placeholder, _value, length);
     wifi.addParameter(_wmp);
 }
@@ -94,7 +93,7 @@ boolean ConfigParam::isChanged()
 {
     if (strcmp(_wmp->getValue(), _value))
     {
-        dbprintf("ConfigParam::isChanged: id:%s old:'%s', new:'%s'\n", _wmp->getID(), _value, _wmp->getValue());
+        dlog.trace(FPSTR(TAG), F("::isChanged: id:%s old:'%s', new:'%s'"), _wmp->getID(), _value, _wmp->getValue());
         return true;
     }
     return false;
@@ -104,7 +103,7 @@ void ConfigParam::apply()
 {
     if (_apply != NULL)
     {
-        dbprintf("ConfigParam::apply: id:%s value:'%s'\n", _wmp->getID(), _wmp->getValue());
+        dlog.trace(FPSTR(TAG), F("::apply: id:%s value:'%s'"), _wmp->getID(), _wmp->getValue());
         _apply(_wmp->getValue());
     }
 }

@@ -26,6 +26,7 @@
 #include <Wire.h>
 #include "WireUtils.h"
 #include "DS3231DateTime.h"
+#include "Logger.h"
 
 // I2C address
 const uint8_t DS3231_ADDRESS       = 0x68;

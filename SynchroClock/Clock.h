@@ -26,6 +26,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "WireUtils.h"
+#include "Logger.h"
 
 #define I2C_ADDRESS     0x09
 

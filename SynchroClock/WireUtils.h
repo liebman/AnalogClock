@@ -23,6 +23,7 @@
 #ifndef WIREUTILS_H_
 #define WIREUTILS_H_
 #include <Arduino.h>
+#include "Logger.h"
 
 class WireUtilsC {
 public:

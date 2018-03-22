@@ -7,8 +7,7 @@
 
 #include "UDPWrapper.h"
 
-//#define DEBUG
-#include "Logger.h"
+static PROGMEM const char TAG[] = "UDPWrapper";
 
 UDPWrapper::UDPWrapper()
 {
@@ -28,12 +27,12 @@ int UDPWrapper::begin(int local_port)
 
 int UDPWrapper::open(IPAddress address, uint16_t port)
 {
-    dbprintf("UDPWrapper::open address:%u.%u.%u.%u:%u (local port: %d)\n",
+    dlog.debug(FPSTR(TAG), F("::open address:%u.%u.%u.%u:%u (local port: %d)"),
             address[0], address[1], address[2], address[3], port, _local_port);
 
     if (!_udp.beginPacket(address, port))
     {
-        dbprintln("UDPWrapper::open: beginPacket failed!");
+        dlog.error(FPSTR(TAG), F("::open: beginPacket failed!"));
         return 1;
     }
     return 0;
@@ -41,18 +40,18 @@ int UDPWrapper::open(IPAddress address, uint16_t port)
 
 int UDPWrapper::send(void* buffer, size_t size)
 {
-    dbprintf("UDPWrapper::send: size:%u\n", size);
+    dlog.debug(FPSTR(TAG), F("::send: size:%u"), size);
     int n = _udp.write((const uint8_t *) buffer, size);
 
     if ( n < 0 )
     {
-        dbprintf("UDPWrapper::send: write failed!  expected %d got %d\n", size, n);
+        dlog.error(FPSTR(TAG), F("::send: write failed!  expected %d got %d"), size, n);
     }
     _udp.flush();
 
     if (!_udp.endPacket())
     {
-        dbprintln("UDPWrapper::send: endPacket failed!");
+        dlog.error(FPSTR(TAG), F("::send: endPacket failed!"));
         return n;
     }
     return n;
@@ -74,7 +73,7 @@ int UDPWrapper::recv(void* buffer, size_t wanted, unsigned int timeout_ms)
 
     if (size != wanted)
     {
-        dbprintf("UDPWrapper::recv: failed wanted:%d != size:%d\n", wanted, size);
+        dlog.error(FPSTR(TAG), F("::recv: failed wanted:%d != size:%d"), wanted, size);
         return size;
     }
 
@@ -85,7 +84,7 @@ int UDPWrapper::recv(void* buffer, size_t wanted, unsigned int timeout_ms)
 
 int UDPWrapper::close()
 {
-    dbprintln("UDPWrapper::close called!");
+    dlog.debug(FPSTR(TAG), F("::close called!"));
     _udp.stop();
     return 0;
 }

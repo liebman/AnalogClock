@@ -24,6 +24,8 @@
 #define TIMEUTILS_H_
 #include <Arduino.h>
 #include <time.h>
+#include "Logger.h"
+
 typedef struct
 {
     int     tz_offset;     // seconds offset from UTC
