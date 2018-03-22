@@ -41,6 +41,7 @@ before_install:
   - install_library "https://github.com/liebman/DLog.git"
   - install_library "https://github.com/liebman/DLogNet.git"
   - install_library "WiFiManager"
+  - install_library "PinChangeInterrupt"
 
   # make it look like a sketch for arduino
   - touch "${I2CANALOGCLOCK_DIR}/I2CAnalogClock.ino"
