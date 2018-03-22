@@ -6,6 +6,7 @@ env:
      - APPLICATION_FOLDER="${HOME}/arduino-ide"
      - SKETCHBOOK_FOLDER="${HOME}/arduino-sketchbook"
      - ESP8266_DEVICE="esp8266:esp8266:generic:CpuFrequency=80,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=13,LwIPVariant=v2mss536,Debug=Serial,DebugLevel=CORE"
+     - ATTINY_DEVICE="ATTinyCore:avr:attinyx5:LTO=disable,TimerClockSource=default,chip=85,clock=1internal,bod=1v8"
      - SYNCROCLOCK_DIR="${TRAVIS_BUILD_DIR}/SynchroClock"
      - I2CANALOGCLOCK_DIR="${TRAVIS_BUILD_DIR}/I2CAnalogClock"
 
@@ -34,6 +35,7 @@ before_install:
   - install_ide "1.8.5"
 
   - install_package "esp8266:esp8266" "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
+  - install_package "ATTinyCore:avr" "http://drazzy.com/package_drazzy.com_index.json"
 
   # install libraries needed
   - install_library "https://github.com/liebman/DLog.git"
@@ -44,4 +46,5 @@ before_install:
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
 script:
-  - build_sketch "${SYNCROCLOCK_DIR}" "${ESP8266_DEVICE}" "false" "1.8.5"
+  - build_sketch "${I2CANALOGCLOCK_DIR}" "${ATTINY_DEVICE}"  "false" "1.8.5"
+  - build_sketch "${SYNCROCLOCK_DIR}"    "${ESP8266_DEVICE}" "false" "1.8.5"
