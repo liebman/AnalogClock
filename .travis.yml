@@ -5,8 +5,9 @@ env:
   global:
      - APPLICATION_FOLDER="${HOME}/arduino-ide"
      - SKETCHBOOK_FOLDER="${HOME}/arduino-sketchbook"
-     - SYNCROCLOCK_DIR="${SKETCHBOOK_FOLDER}/SynchroClock"
      - ESP8266_DEVICE="esp8266:esp8266:generic:CpuFrequency=80,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=13,LwIPVariant=v2mss536,Debug=Serial,DebugLevel=CORE"
+     - SYNCROCLOCK_DIR="${TRAVIS_BUILD_DIR}/SynchroClock"
+     - I2CANALOGCLOCK_DIR="${TRAVIS_BUILD_DIR}/I2CAnalogClock"
 
 before_install:
   # setup arduino-ci-script
