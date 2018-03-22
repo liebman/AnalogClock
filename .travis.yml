@@ -43,6 +43,7 @@ before_install:
   - install_library "WiFiManager"
 
   # make it look like a sketch for arduino
+  - touch "${I2CANALOGCLOCK_DIR}/I2CAnalogClock.ino"
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
 script:
