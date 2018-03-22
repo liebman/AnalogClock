@@ -3,6 +3,8 @@ Project to sync analog clocks to a few milliseconds using NTP for time synchroni
 
 Its a work in progress - more documentation coming soon-ish.
 
+[![Build Status](https://travis-ci.org/liebman/AnalogClock.svg?branch=master)](https://travis-ci.org/liebman/AnalogClock)
+
 [I2CAnalogClock](I2CAnalogClock) contains the code for the ATTiny85 as an I2C based Analog Clock controller.  I used [Eclipse with an Arduino plugin](http://sloeber.io) for development.  If you want to use the Arduino IDE then create an empty file named I2CAnalogClock.ino.
 
 [SynchroClock](SynchroClock) contains the code for the ESP8266 module.   I used [Eclipse with an Arduino plugin](http://sloeber.io) for development.  If you want to use the Arduino IDE then create an empty file named SynchroClock.ino.
