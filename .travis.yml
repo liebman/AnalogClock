@@ -1,0 +1,44 @@
+language: c
+sudo: required
+
+env:
+  global:
+     - APPLICATION_FOLDER="${HOME}/arduino-ide"
+     - SKETCHBOOK_FOLDER="${HOME}/arduino-sketchbook"
+     - SYNCROCLOCK_DIR="${SKETCHBOOK_FOLDER}/SynchroClock"
+     - ESP8266_DEVICE="esp8266:esp8266:generic:CpuFrequency=80,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=13,LwIPVariant=v2mss536,Debug=Serial,DebugLevel=CORE"
+
+before_install:
+  # setup arduino-ci-script
+  - git clone https://github.com/per1234/arduino-ci-script.git "${HOME}/scripts"
+  - cd "${HOME}/scripts"
+  # Get new tags from the remote
+  - git fetch --tags
+  # Checkout the latest tag
+  - git checkout $(git describe --tags `git rev-list --tags --max-count=1`)
+  - source "${HOME}/scripts/arduino-ci-script.sh"
+
+  # Uncomment the following lines to get verbose output for debugging
+  # 0 (minimum/default) - 2 (maximum) verbosity
+  #- set_script_verbosity 1
+  # Turn on verbose output during compilation
+  #- set_verbose_output_during_compilation "true"
+
+  # Don't for library issues that don't affect compilation
+  - set_library_testing "false"
+
+  - set_application_folder "$APPLICATION_FOLDER"
+  - set_sketchbook_folder "$SKETCHBOOK_FOLDER"
+
+  - install_ide "1.8.5"
+
+  - install_package "esp8266:esp8266" "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
+
+  # install libraries needed
+  - install_library https://github.com/liebman/DLog.git
+  - install_library https://github.com/liebman/DLogNet.git
+
+  - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino
+
+script:
+  - build_sketch "${SYNCROCLOCK_DIR}" "${ESP8266_DEVICE}" "false" "1.8.5"
