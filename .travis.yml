@@ -36,9 +36,11 @@ before_install:
   - install_package "esp8266:esp8266" "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
 
   # install libraries needed
-  - install_library https://github.com/liebman/DLog.git
-  - install_library https://github.com/liebman/DLogNet.git
+  - install_library "https://github.com/liebman/DLog.git"
+  - install_library "https://github.com/liebman/DLogNet.git"
+  - install_library "WiFiManager"
 
+  # make it look like a sketch for arduino
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
 script:
