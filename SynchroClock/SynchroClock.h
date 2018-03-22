@@ -38,6 +38,8 @@
 #include "Logger.h"
 #include "DLogPrintWriter.h"
 #include "DLogTCPWriter.h"
+#include <memory>
+#include <vector>
 
 #define USE_DRIFT                   // apply drift
 #define USE_NTP_POLL_ESTIMATE       // use ntp estimated drift for sleep duration calculation
@@ -186,6 +188,8 @@ typedef struct rtc_deep_sleep_data
     uint32_t crc;
     uint8_t data[sizeof(DeepSleepData)];
 } RTCDeepSleepData;
+
+typedef std::shared_ptr<ConfigParam> ConfigParamPtr;
 
 boolean parseBoolean(const char* value);
 uint8_t parseDuty(const char* value);

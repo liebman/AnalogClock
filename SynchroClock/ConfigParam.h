@@ -41,7 +41,6 @@ public:
     void init(WiFiManager &wifi, const char *id, const char *placeholder, int length);
     boolean     isChanged();
     const char* getValue();
-    int         getIntValue();
     void        apply();
     void        applyIfChanged();
 

@@ -22,7 +22,6 @@
 
 #include "SynchroClock.h"
 
-
 //
 // These are only used when debugging
 //
@@ -155,18 +154,18 @@ void handleAdjustment()
             dlog.info(FPSTR(TAG), F("setting adjustment:%u"), adj);
             if (clk.writeAdjustment(adj))
             {
-                dlog.error(FPSTR(TAG), "failed to set adjustment!");
+                dlog.error(FPSTR(TAG), F("failed to set adjustment!"));
             }
         }
     }
 
     if (clk.readAdjustment(&adj))
     {
-        sprintf(message, "failed to read adjustment!\n");
+        sprintf_P(message, PSTR("failed to read adjustment!\n"));
     }
     else
     {
-        sprintf(message, "adjustment: %d\n", adj);
+        sprintf_P(message, PSTR("adjustment: %d\n"), adj);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -180,23 +179,23 @@ void handlePosition()
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
-        dlog.info(FPSTR(TAG), "setting position:%u\n", pos);
+        dlog.info(FPSTR(TAG), F("setting position:%u\n"), pos);
         if (clk.writePosition(pos))
         {
-            dlog.error(FPSTR(TAG), "failed to set position!");
+            dlog.error(FPSTR(TAG), F("failed to set position!"));
         }
     }
 
     if (clk.readPosition(&pos))
     {
-        sprintf(message, "failed to read position!\n");
+        sprintf_P(message, PSTR("failed to read position!\n"));
     }
     else
     {
         int hours = pos / 3600;
         int minutes = (pos - (hours * 3600)) / 60;
         int seconds = pos - (hours * 3600) - (minutes * 60);
-        sprintf(message, "position: %d (%02d:%02d:%02d)\n", pos, hours, minutes, seconds);
+        sprintf_P(message, PSTR("position: %d (%02d:%02d:%02d)\n"), pos, hours, minutes, seconds);
     }
 
     HTTP.send(200, "text/Plain", message);
@@ -210,20 +209,20 @@ void handleTPDuration()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dlog.info(FPSTR(TAG), "setting tp_duration:%u\n", value);
+        dlog.info(FPSTR(TAG), F("setting tp_duration:%u\n"), value);
         if (clk.writeTPDuration(value))
         {
-            dlog.error(FPSTR(TAG), "failed to set TP duration!");
+            dlog.error(FPSTR(TAG), F("failed to set TP duration!"));
         }
     }
 
     if (clk.readTPDuration(&value))
     {
-        sprintf(message, "failed to read TP duration\n");
+        sprintf_P(message, PSTR("failed to read TP duration\n"));
     }
     else
     {
-        sprintf(message, "TP duration: %u\n", value);
+        sprintf_P(message, PSTR("TP duration: %u\n"), value);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -245,11 +244,11 @@ void handleTPDuty()
 
     if (clk.readTPDuty(&value))
     {
-        sprintf(message, "failed to read TP duty\n");
+        sprintf_P(message, PSTR("failed to read TP duty\n"));
     }
     else
     {
-        sprintf(message, "TP duty: %u\n", value);
+        sprintf_P(message, PSTR("TP duty: %u\n"), value);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -271,11 +270,11 @@ void handleAPDuration()
 
     if (clk.readAPDuration(&value))
     {
-        sprintf(message, "failed to read AP duration\n");
+        sprintf_P(message, PSTR("failed to read AP duration\n"));
     }
     else
     {
-        sprintf(message, "AP duration: %u\n", value);
+        sprintf_P(message, PSTR("AP duration: %u\n"), value);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -297,11 +296,11 @@ void handleAPDuty()
 
     if (clk.readAPDuty(&value))
     {
-        sprintf(message, "failed to read AP duty\n");
+        sprintf_P(message, PSTR("failed to read AP duty\n"));
     }
     else
     {
-        sprintf(message, "AP duty: %u\n", value);
+        sprintf_P(message, PSTR("AP duty: %u\n"), value);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -323,11 +322,11 @@ void handleAPDelay()
 
     if (clk.readAPDelay(&value))
     {
-        sprintf(message, "failed to read AP delay\n");
+        sprintf_P(message, PSTR("failed to read AP delay\n"));
     }
     else
     {
-        sprintf(message, "AP delay: %u\n", value);
+        sprintf_P(message, PSTR("AP delay: %u\n"), value);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -349,11 +348,11 @@ void handleAPStartDuration()
 
     if (clk.readAPStartDuration(&value))
     {
-        sprintf(message, "failed to read AP start duration\n");
+        sprintf_P(message, PSTR("failed to read AP start duration\n"));
     }
     else
     {
-        sprintf(message, "AP start duration: %u\n", value);
+        sprintf_P(message, PSTR("AP start duration: %u\n"), value);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -375,11 +374,11 @@ void handlePWMTop()
 
     if (clk.readPWMTop(&value))
     {
-        sprintf(message, "failed to read pwm_top!\n");
+        sprintf_P(message, PSTR("failed to read pwm_top!\n"));
     }
     else
     {
-        sprintf(message, "pwm_top: %u\n", value);
+        sprintf_P(message, PSTR("pwm_top: %u\n"), value);
     }
 
     HTTP.send(200, "text/plain", message);
@@ -425,11 +424,11 @@ void handleRTC()
         int hours = value / 3600;
         int minutes = (value - (hours * 3600)) / 60;
         int seconds = value - (hours * 3600) - (minutes * 60);
-        sprintf(message, "%d (%02d:%02d:%02d)\n", value, hours, minutes, seconds);
+        sprintf_P(message, PSTR("%d (%02d:%02d:%02d)\n"), value, hours, minutes, seconds);
     }
     else
     {
-        sprintf(message, "rtc.readTime() failed!\n");
+        sprintf_P(message, PSTR("rtc.readTime() failed!\n"));
     }
 
     HTTP.send(200, "text/plain", message);
@@ -461,7 +460,7 @@ void handleNTP()
     if (setRTCfromNTP(server, sync, &offset, &address))
     {
         code = 500;
-        snprintf(message, 64, "NTP Failed!\n");
+        snprintf_P(message, 64, PSTR("NTP Failed!\n"));
     }
     else
     {
@@ -472,7 +471,7 @@ void handleNTP()
         }
         code = 200;
 
-        snprintf(message, 64, "OFFSET: %0.6lf (%s)\n", offset, address.toString().c_str());
+        snprintf_P(message, 64, PSTR("OFFSET: %0.6lf (%s)\n"), offset, address.toString().c_str());
     }
 
     dlog.info(FPSTR(TAG), F("%s"), message);
@@ -482,27 +481,29 @@ void handleNTP()
 
 void handleWire()
 {
-    char message[64];
     int rtn = WireUtils.clearBus();
     if (rtn != 0)
     {
-        snprintf(message, 64, "I2C bus error. Could not clear\n");
         if (rtn == 1)
         {
-            snprintf(message, 64, "SCL clock line held low\n");
+            snprintf_P(message, 64, PSTR("SCL clock line held low\n"));
         }
         else if (rtn == 2)
         {
-            snprintf(message, 64, "SCL clock line held low by slave clock stretch\n");
+            snprintf_P(message, 64, PSTR("SCL clock line held low by slave clock stretch\n"));
         }
         else if (rtn == 3)
         {
-            snprintf(message, 64, "SDA data line held low\n");
+            snprintf_P(message, 64, PSTR("SDA data line held low\n"));
+        }
+        else
+        {
+            snprintf_P(message, 64, PSTR("I2C bus error. Could not clear\n"));
         }
     }
     else
     {
-        snprintf(message, 64, "Recovered!\n");
+        snprintf_P(message, 64, PSTR("Recovered!\n"));
     }
 
     HTTP.send(200, "text/Plain", message);
@@ -555,6 +556,151 @@ bool updateTZOffset()
     return false;
 }
 
+void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
+{
+    static PROGMEM const char TAG[] = "wifiParams";
+    uint16_t pos;
+    char pos_str[16];
+    clk.readPosition(&pos);
+    int hours = pos / 3600;
+    int minutes = (pos - (hours * 3600)) / 60;
+    int seconds = pos - (hours * 3600) - (minutes * 60);
+    memset(pos_str, 0, sizeof(pos_str));
+    snprintf_P(pos_str, 15, PSTR("%02d:%02d:%02d"), hours, minutes, seconds);
+
+    params.push_back(std::make_shared<ConfigParam>(wifi, "position", "Clock Position", pos_str, 10, [](const char* result)
+    {
+        if (strlen(result))
+        {
+            uint16_t position = TimeUtils::parsePosition(result);
+            dlog.info(FPSTR(TAG), F("setting position to %d"), position);
+            if (clk.writePosition(position))
+            {
+                dlog.error(FPSTR(TAG), F("failed to set initial position!"));
+            }
+        }
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result)
+    {
+            strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "<p>1st Time Change</p>"));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 3, [](const char* result)
+    {
+        config.tc[0].occurrence = TimeUtils::parseOccurrence(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_day_of_week", "Day of Week (Sun=0)", config.tc[0].day_of_week, 2, [](const char* result)
+    {
+        config.tc[0].day_of_week = TimeUtils::parseDayOfWeek(result);
+    }));
+
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_day_offset", "day offset", config.tc[0].day_offset, 3, [](const char* result)
+    {
+        config.tc[0].day_offset = TimeUtils::parseOccurrence(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_month", "Month (Jan=1)", config.tc[0].month, 3, [](const char* result)
+    {
+        config.tc[0].month = TimeUtils::parseMonth(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_hour", "Hour (0-23)", config.tc[0].hour, 3, [](const char* result)
+    {
+        config.tc[0].hour = TimeUtils::parseHour(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_offset", "Time Offset", config.tc[0].tz_offset, 8, [](const char* result)
+    {
+        config.tc[0].tz_offset = TimeUtils::parseOffset(result);
+    }));
+
+    params.push_back(std::make_shared<ConfigParam>(wifi, "<p>2nd Time Change</p>"));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 3, [](const char* result)
+    {
+        config.tc[1].occurrence = TimeUtils::parseOccurrence(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc2_day_of_week", "Day of Week (Sun=0)", config.tc[1].day_of_week, 2, [](const char* result)
+    {
+        config.tc[1].day_of_week = TimeUtils::parseDayOfWeek(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc2_day_offset", "day offset", config.tc[1].day_offset, 3, [](const char* result)
+    {
+        config.tc[1].day_offset = TimeUtils::parseOccurrence(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc2_month", "Month (Jan=1)", config.tc[1].month, 3, [](const char* result)
+    {
+        config.tc[1].month = TimeUtils::parseMonth(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc2_hour", "Hour (0-23)", config.tc[1].hour, 3, [](const char* result)
+    {
+        config.tc[1].hour = TimeUtils::parseHour(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tc2_offset", "Time Offset", config.tc[1].tz_offset, 8, [](const char* result)
+    {
+        config.tc[1].tz_offset = TimeUtils::parseOffset(result);
+    }));
+
+    params.push_back(std::make_shared<ConfigParam>(wifi, "<p>Advanced Settings!</p>"));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "stay_awake", "Stay Awake 'true'", "", 8, [](const char* result)
+    {
+        stay_awake = parseBoolean(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "sleep_duration", "Sleep", config.sleep_duration, 8, [](const char* result)
+    {
+        config.sleep_duration = atoi(result);
+    }));
+    uint8_t value;
+    clk.readTPDuration(&value);
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tp_duration", "Tick Pulse", value, 8, [](const char* result)
+    {
+        uint8_t tp_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeTPDuration(tp_duration);
+    }));
+    clk.readTPDuty(&value);
+    params.push_back(std::make_shared<ConfigParam>(wifi, "tp_duty", "Tick Pulse Duty", value, 8, [](const char* result)
+    {
+        uint8_t tp_duty = parseDuty(result);
+        clk.writeTPDuty(tp_duty);
+    }));
+    clk.readAPStartDuration(&value);
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ap_start", "Adjust Start Pulse", value, 4, [](const char* result)
+    {
+        uint8_t ap_start = TimeUtils::parseSmallDuration(result);
+        clk.writeAPStartDuration(ap_start);
+    }));
+    clk.readAPDuration(&value);
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ap_duration", "Adjust Pulse", value, 4, [](const char* result)
+    {
+        uint8_t ap_duration = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDuration(ap_duration);
+    }));
+    clk.readAPDuty(&value);
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ap_duty", "Adjust Pulse Duty", value, 8, [](const char* result)
+    {
+        uint8_t ap_duty = parseDuty(result);
+        clk.writeAPDuty(ap_duty);
+    }));
+    clk.readAPDelay(&value);
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ap_delay", "Adjust Delay", value, 4, [](const char* result)
+    {
+        uint8_t ap_delay = TimeUtils::parseSmallDuration(result);
+        clk.writeAPDelay(ap_delay);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
+    {
+        strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 6, [](const char* result)
+    {
+        config.network_logger_port = atoi(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "clear_ntp_persist", "Clear NTP Persist 'true'", "", 8, [](const char* result)
+    {
+        boolean clearit = parseBoolean(result);
+        if (clearit)
+        {
+            memset(&config.ntp_persist, 0, sizeof(config.ntp_persist));
+        }
+    }));
+}
+
 void initWiFi()
 {
     static PROGMEM const char TAG[] = "initWiFi";
@@ -580,149 +726,10 @@ void initWiFi()
         feedback.blink(FEEDBACK_LED_FAST);
     });
 #endif
-    uint16_t pos;
-    char pos_str[16];
-    clk.readPosition(&pos);
-    int hours = pos / 3600;
-    int minutes = (pos - (hours * 3600)) / 60;
-    int seconds = pos - (hours * 3600) - (minutes * 60);
-    memset(pos_str, 0, sizeof(pos_str));
-    snprintf(pos_str, 15, "%02d:%02d:%02d", hours, minutes, seconds);
 
-    ConfigParam position(wifi, "position", "Clock Position", pos_str, 10, [](const char* result)
-    {
-        if (strlen(result))
-        {
-            uint16_t position = TimeUtils::parsePosition(result);
-            dlog.info(FPSTR(TAG), F("setting position to %d"), position);
-            if (clk.writePosition(position))
-            {
-                dlog.error(FPSTR(TAG), F("failed to set initial position!"));
-            }
-        }
-    });
+    std::vector<ConfigParamPtr> params(30);
+    createWiFiParams(wifi, params);
 
-    ConfigParam ntp_server(wifi, "ntp_server", "NTP Server", config.ntp_server, 32, [](const char* result)
-    {
-        strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
-    });
-
-    ConfigParam tc1_label(wifi, "<p>1st Time Change</p>");
-    ConfigParam tc1_occurence(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 3, [](const char* result)
-    {
-        config.tc[0].occurrence = TimeUtils::parseOccurrence(result);
-    });
-    ConfigParam tc1_day_of_week(wifi, "tc1_day_of_week", "Day of Week (Sun=0)", config.tc[0].day_of_week, 2, [](const char* result)
-    {
-        config.tc[0].day_of_week = TimeUtils::parseDayOfWeek(result);
-    });
-    ConfigParam tc1_day_offset(wifi, "tc1_day_offset", "day offset", config.tc[0].day_offset, 3, [](const char* result)
-    {
-        config.tc[0].day_offset = TimeUtils::parseOccurrence(result);
-    });
-    ConfigParam tc1_month(wifi, "tc1_month", "Month (Jan=1)", config.tc[0].month, 3, [](const char* result)
-    {
-        config.tc[0].month = TimeUtils::parseMonth(result);
-    });
-    ConfigParam tc1_hour(wifi, "tc1_hour", "Hour (0-23)", config.tc[0].hour, 3, [](const char* result)
-    {
-        config.tc[0].hour = TimeUtils::parseHour(result);
-    });
-    ConfigParam tc1_offset(wifi, "tc1_offset", "Time Offset", config.tc[0].tz_offset, 8, [](const char* result)
-    {
-        config.tc[0].tz_offset = TimeUtils::parseOffset(result);
-    });
-
-    ConfigParam tc2_label(wifi, "<p>2nd Time Change</p>");
-    ConfigParam tc2_occurence(wifi, "tc2_occurrence", "occurrence", config.tc[1].occurrence, 3, [](const char* result)
-    {
-        config.tc[1].occurrence = TimeUtils::parseOccurrence(result);
-    });
-    ConfigParam tc2_day_of_week(wifi, "tc2_day_of_week", "Day of Week (Sun=0)", config.tc[1].day_of_week, 2, [](const char* result)
-    {
-        config.tc[1].day_of_week = TimeUtils::parseDayOfWeek(result);
-    });
-    ConfigParam tc2_day_offset(wifi, "tc2_day_offset", "day offset", config.tc[1].day_offset, 3, [](const char* result)
-    {
-        config.tc[1].day_offset = TimeUtils::parseOccurrence(result);
-    });
-    ConfigParam tc2_month(wifi, "tc2_month", "Month (Jan=1)", config.tc[1].month, 3, [](const char* result)
-    {
-        config.tc[1].month = TimeUtils::parseMonth(result);
-    });
-    ConfigParam tc2_hour(wifi, "tc2_hour", "Hour (0-23)", config.tc[1].hour, 3, [](const char* result)
-    {
-        config.tc[1].hour = TimeUtils::parseHour(result);
-    });
-    ConfigParam tc2_offset(wifi, "tc2_offset", "Time Offset", config.tc[1].tz_offset, 8, [](const char* result)
-    {
-        config.tc[1].tz_offset = TimeUtils::parseOffset(result);
-    });
-
-    ConfigParam advance_label(wifi, "<p>Advanced Settings!</p>");
-    ConfigParam no_sleep(wifi, "stay_awake", "Stay Awake 'true'", "", 8, [](const char* result)
-    {
-        stay_awake = parseBoolean(result);
-        dlog.info(FPSTR(TAG), F("no_sleep: result:'%s' -> stay_awake:%d"), result, stay_awake);
-    });
-    ConfigParam sleep_duration(wifi, "sleep_duration", "Sleep", config.sleep_duration, 8, [](const char* result)
-    {
-        config.sleep_duration = atoi(result);
-    });
-    uint8_t value;
-    clk.readTPDuration(&value);
-    ConfigParam tp_duration(wifi, "tp_duration", "Tick Pulse", value, 8, [](const char* result)
-    {
-        uint8_t tp_duration = TimeUtils::parseSmallDuration(result);
-        clk.writeTPDuration(tp_duration);
-    });
-    clk.readTPDuty(&value);
-    ConfigParam tp_duty(wifi, "tp_duty", "Tick Pulse Duty", value, 8, [](const char* result)
-    {
-        uint8_t tp_duty = parseDuty(result);
-        clk.writeTPDuty(tp_duty);
-    });
-    clk.readAPStartDuration(&value);
-    ConfigParam ap_start(wifi, "ap_start", "Adjust Start Pulse", value, 4, [](const char* result)
-    {
-        uint8_t ap_start = TimeUtils::parseSmallDuration(result);
-        clk.writeAPStartDuration(ap_start);
-    });
-    clk.readAPDuration(&value);
-    ConfigParam ap_duration(wifi, "ap_duration", "Adjust Pulse", value, 4, [](const char* result)
-    {
-        uint8_t ap_duration = TimeUtils::parseSmallDuration(result);
-        clk.writeAPDuration(ap_duration);
-    });
-    clk.readAPDuty(&value);
-    ConfigParam ap_duty(wifi, "ap_duty", "Adjust Pulse Duty", value, 8, [](const char* result)
-    {
-        uint8_t ap_duty = parseDuty(result);
-        clk.writeAPDuty(ap_duty);
-    });
-    clk.readAPDelay(&value);
-    ConfigParam ap_delay(wifi, "ap_delay", "Adjust Delay", value, 4, [](const char* result)
-    {
-        uint8_t ap_delay = TimeUtils::parseSmallDuration(result);
-        clk.writeAPDelay(ap_delay);
-    });
-    ConfigParam network_logger_host(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
-    {
-        strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
-    });
-    ConfigParam network_logger_port(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 6, [](const char* result)
-    {
-        config.network_logger_port = atoi(result);
-    });
-    ConfigParam clear_ntp_persist(wifi, "clear_ntp_persist", "Clear NTP Persist 'true'", "", 8, [](const char* result)
-    {
-        boolean clearit = parseBoolean(result);
-        dlog.info(FPSTR(TAG), F("clear_ntp_persist: result:'%s' -> clear_ntp_persist:%d"), result, clearit);
-        if (clearit)
-        {
-            memset(&config.ntp_persist, 0, sizeof(config.ntp_persist));
-        }
-    });
     String ssid = "SynchroClock" + String(ESP.getChipId());
 
 #if defined(HARD_CODE_WIFI)
@@ -775,31 +782,11 @@ void initWiFi()
     //
     if (save_config)
     {
-        position.applyIfChanged();
-        ntp_server.applyIfChanged();
-        tc1_occurence.applyIfChanged();
-        tc1_day_of_week.applyIfChanged();
-        tc1_day_offset.applyIfChanged();
-        tc1_month.applyIfChanged();
-        tc1_hour.applyIfChanged();
-        tc1_offset.applyIfChanged();
-        tc2_occurence.applyIfChanged();
-        tc2_day_of_week.applyIfChanged();
-        tc2_day_offset.applyIfChanged();
-        tc2_month.applyIfChanged();
-        tc2_hour.applyIfChanged();
-        tc2_offset.applyIfChanged();
-        no_sleep.applyIfChanged();
-        tp_duration.applyIfChanged();
-        tp_duty.applyIfChanged();
-        ap_start.applyIfChanged();
-        ap_duration.applyIfChanged();
-        ap_duty.applyIfChanged();
-        ap_delay.applyIfChanged();
-        sleep_duration.applyIfChanged();
-        network_logger_host.applyIfChanged();
-        network_logger_port.applyIfChanged();
-        clear_ntp_persist.applyIfChanged();
+        for(ConfigParamPtr p : params)
+        {
+            p->applyIfChanged();
+        }
+
         clk.saveConfig();
         saveConfig();
         updateTZOffset();
@@ -818,6 +805,9 @@ void initWiFi()
     dlog.info(FPSTR(TAG), F("Connected! IP address is: %u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
 }
 
+//
+// prefix loglines with time
+//
 void dlogPrefix(DLogBuffer& buffer, DLogLevel level)
 {
     (void)level; // not used
@@ -971,7 +961,7 @@ void setup()
     bool enabled = clk.getEnable();
     dlog.info(FPSTR(TAG), F("clock enable is:%u"), enabled);
 
-    strncpy(config.ntp_server, DEFAULT_NTP_SERVER, sizeof(config.ntp_server) - 1);
+    strncpy_P(config.ntp_server, PSTR(DEFAULT_NTP_SERVER), sizeof(config.ntp_server) - 1);
     config.ntp_server[sizeof(config.ntp_server) - 1] = 0;
 
     // Default to disabled (all tz_offsets = 0)
@@ -1199,7 +1189,7 @@ int setRTCfromOffset(double offset, bool sync)
     updateTZOffset();
 
     dlog.info(FPSTR(TAG), F("old_time: %d new_time: %d"), old_time, new_time);
-    dlog.info(FPSTR(TAG), F("RTC: %s\n"), dt.string());
+    dlog.info(FPSTR(TAG), F("RTC: %s"), dt.string());
     return 0;
 }
 
