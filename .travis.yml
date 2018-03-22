@@ -39,7 +39,7 @@ before_install:
   - install_library https://github.com/liebman/DLog.git
   - install_library https://github.com/liebman/DLogNet.git
 
-  - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino
+  - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
 script:
   - build_sketch "${SYNCROCLOCK_DIR}" "${ESP8266_DEVICE}" "false" "1.8.5"
