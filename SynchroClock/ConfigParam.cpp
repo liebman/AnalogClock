@@ -26,8 +26,9 @@ static PROGMEM const char TAG[] = "ConfigParam";
 
 ConfigParam::ConfigParam(WiFiManager &wifi, const char *label)
 {
-    _apply = NULL;
+    _apply = nullptr;
     _wmp = new WiFiManagerParameter(label);
+    dlog.trace(FPSTR(TAG), F("ConfigParam: create label='%s'"), label);
     _value[0] = '\0';
     wifi.addParameter(_wmp);
 }
@@ -103,19 +104,23 @@ void ConfigParam::init(WiFiManager &wifi, const char *id, const char *placeholde
 
 boolean ConfigParam::isChanged()
 {
-    if (_wmp->getValue() != nullptr)
-    dlog.trace(FPSTR(TAG), F("::isChanged: id:%s old:'%s', new:'%s'"), _wmp->getID(), _value, _wmp->getValue());
-    if (strcmp(_wmp->getValue(), _value))
+    dlog.trace(FPSTR(TAG), F("::isChanged: _wmp: 0x%08x"), (uint32_t)_wmp);
+
+    if (_wmp != nullptr && _wmp->getValue() != nullptr)
     {
-        dlog.debug(FPSTR(TAG), F("::isChanged: true!"));
-        return true;
+        dlog.trace(FPSTR(TAG), F("::isChanged: id:%s old:'%s', new:'%s'"), _wmp->getID(), _value, _wmp->getValue());
+        if (strcmp(_wmp->getValue(), _value))
+        {
+            dlog.debug(FPSTR(TAG), F("::isChanged: true!"));
+            return true;
+        }
     }
     return false;
 }
 
 void ConfigParam::apply()
 {
-    if (_apply != NULL)
+    if (_apply != nullptr)
     {
         dlog.debug(FPSTR(TAG), F("::apply: id:%s value:'%s'"), _wmp->getID(), _wmp->getValue());
         _apply(_wmp->getValue());
@@ -130,8 +135,12 @@ void ConfigParam::applyIfChanged()
     }
 }
 
+const char* ConfigParam::getId()
+{
+    return _wmp->getID();
+}
+
 const char* ConfigParam::getValue()
 {
     return _wmp->getValue();
 }
-

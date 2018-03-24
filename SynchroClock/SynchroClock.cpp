@@ -28,23 +28,6 @@
 //#define DISABLE_DEEP_SLEEP
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
-//#define USE_BUILTIN_LED
-//#define HARD_CODED_WIFI
-
-//#define DEFAULT_LOG_ADDR "192.168.0.42"
-//#define DEFAULT_LOG_PORT 1421
-
-#if defined(USE_BUILTIN_LED)
-#undef LED_PIN
-#define LED_PIN BUILTIN_LED
-#endif
-
-#ifdef HARD_CODED_WIFI
-#define HARD_CODED_SSID "Whatever"
-#define HARD_CODED_PASS "the password"
-// define to declare clock position if its not already running.
-//#define HARD_CODED_POSITION "00:00:00"
-#endif
 
 DLog&             dlog = DLog::getLog();
 Config           config;                    // configuration persisted in the EEPROM
@@ -705,12 +688,9 @@ void initWiFi()
 {
     static PROGMEM const char TAG[] = "initWiFi";
     dlog.info(FPSTR(TAG), F("starting WiFi!"));
-    dlog.setLevel(F("initWiFi"), DLOG_LEVEL_DEBUG);
 
-#if defined(LED_PIN)
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
-#endif
 
     WiFiManager wifi;
     wifi.setDebugOutput(false);
@@ -720,41 +700,19 @@ void initWiFi()
     {
         save_config = true;
     });
-#if defined(LED_PIN)
+
     wifi.setAPCallback([](WiFiManager *)
     {
         feedback.blink(FEEDBACK_LED_FAST);
     });
-#endif
 
-    std::vector<ConfigParamPtr> params(30);
+    std::vector<ConfigParamPtr> params;
     createWiFiParams(wifi, params);
+
+    dlog.info(FPSTR(TAG), "params has %d items", params.size());
 
     String ssid = "SynchroClock" + String(ESP.getChipId());
 
-#if defined(HARD_CODE_WIFI)
-    config.network_logger_host[0] = 0;
-    save_config = true;
-#if defined(HARD_CODED_POSITION)
-    if (!clk.getEnable())
-    {
-        uint16_t position = TimeUtils::parsePosition(HARD_CODED_POSITION);
-        dlog.info(FPSTR(TAG), F("setting position to %d"), position);
-        if (clk.writePosition(position))
-        {
-            dlog.info(FPSTR(TAG), F("failed to set initial position!"));
-        }
-    }
-#endif
-    Serial.print("HACK: Connecting to wifi");
-    WiFi.begin(HARD_CODED_SSID, HARD_CODED_PASS);
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-    Serial.println("done!");
-#else
     if (force_config)
     {
         wifi.startConfigPortal(ssid.c_str(), NULL);
@@ -763,10 +721,9 @@ void initWiFi()
     {
         wifi.autoConnect(ssid.c_str(), NULL);
     }
-#endif
-#if defined(LED_PIN)
+
     feedback.off();
-#endif
+
     //
     // if we are not connected then deep sleep and try again.
     if (!WiFi.isConnected())
@@ -777,11 +734,15 @@ void initWiFi()
         ESP.deepSleep(MAX_SLEEP_DURATION, RF_DEFAULT);
     }
 
+    IPAddress ip = WiFi.localIP();
+    dlog.info(FPSTR(TAG), F("Connected! IP address is: %u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
+
     //
     //  Config was set from captive portal!
     //
     if (save_config)
     {
+        dlog.info(FPSTR(TAG), F("updating changed params"));
         for(ConfigParamPtr p : params)
         {
             p->applyIfChanged();
@@ -801,12 +762,10 @@ void initWiFi()
         dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port));
     }
 
-    IPAddress ip = WiFi.localIP();
-    dlog.info(FPSTR(TAG), F("Connected! IP address is: %u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
 }
 
 //
-// prefix loglines with time
+// prefix log lines with current time
 //
 void dlogPrefix(DLogBuffer& buffer, DLogLevel level)
 {
@@ -922,39 +881,12 @@ void setup()
 #if defined(LED_PIN)
         feedback.on();
 #endif
-        dlog.info(FPSTR(TAG), F("waiting for config release"));
-        while (digitalRead(CONFIG_PIN) == 0)
-        {
-            // wait for it to be let up.
-            delay(10);
-        }
-
-
+        dlog.info(FPSTR(TAG), F("reset button pressed, forcing config!"));
+        force_config = true;
         //
-        // now a short delay, if the button is pressed again after that then we use stay
-        // awake mode and start a web server.
+        //  If we force config because of the config button then we stop the clock.
         //
-        dlog.info(FPSTR(TAG), F("short delay to see if its pressed again."));
-        delay(2000);
-
-#if defined(LED_PIN)
-        feedback.off();
-#endif
-
-        if (digitalRead(CONFIG_PIN) == 0)
-        {
-            dlog.info(FPSTR(TAG), F("Its pressed, use stay awake!"));
-            stay_awake = true;
-        }
-        else
-        {
-            dlog.info(FPSTR(TAG), F("reset button pressed, forcing config!"));
-            force_config = true;
-            //
-            //  If we force config because of the config button then we stop the clock.
-            //
-            clk.setEnable(false);
-        }
+        clk.setEnable(false);
     }
 
 

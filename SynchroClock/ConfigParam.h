@@ -25,6 +25,9 @@
 #include <WiFiManager.h>
 #include "Logger.h"
 
+#include <functional>
+typedef std::function<void(const char* result)> ConfigParamApply;
+
 #define MAX_VALUE_LENGTH 63
 
 class ConfigParam
@@ -41,12 +44,13 @@ public:
     void init(WiFiManager &wifi, const char *id, const char *placeholder, int length);
     boolean     isChanged();
     const char* getValue();
+    const char* getId();
     void        apply();
     void        applyIfChanged();
 
 private:
     WiFiManagerParameter* _wmp;
-    void                  (*_apply)(const char* result);
+    ConfigParamApply      _apply;
     char                  _value[MAX_VALUE_LENGTH+1];
 };
 
