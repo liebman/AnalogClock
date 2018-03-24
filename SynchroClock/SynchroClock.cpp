@@ -21,6 +21,7 @@
  */
 
 #include "SynchroClock.h"
+#include "SynchroClockVersion.h"
 
 //
 // These are only used when debugging
@@ -44,7 +45,43 @@ boolean save_config  = false; // used by wifi manager when settings were updated
 boolean force_config = false; // reset handler sets this to force into config mode if button held
 boolean stay_awake   = false; // don't use deep sleep (from config mode option)
 
+const char* ota_url = nullptr; // over-the-air update url
+const char* ota_fp  = nullptr; // over-the-air update fingerprint
+
 char message[128]; // buffer for http return values
+
+bool isOTASet()
+{
+    return ota_url != nullptr;
+}
+
+void setOTAurl(const char* value)
+{
+    if (ota_url != nullptr)
+    {
+        free((void*)ota_url);
+    }
+    ota_url = strdup(value);
+}
+
+const char* getOTAurl()
+{
+    return ota_url != nullptr ? ota_url : "";
+}
+
+void setOTAfp(const char* value)
+{
+    if (ota_fp != nullptr)
+    {
+        free((void*)ota_fp);
+    }
+    ota_fp = strdup(value);
+}
+
+const char* getOTAfp()
+{
+    return ota_fp != nullptr ? ota_fp : "";
+}
 
 boolean parseBoolean(const char* value)
 {
@@ -567,6 +604,16 @@ void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
     {
             strncpy(config.ntp_server, result, sizeof(config.ntp_server) - 1);
     }));
+
+    params.push_back(std::make_shared<ConfigParam>(wifi, "<p>OTA Update</p>"));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_url", "OTA URL", getOTAurl(), 127, [](const char* result)
+    {
+        setOTAurl(result);
+    }));
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_fp", "OTA fingerprint", getOTAfp(), 127, [](const char* result)
+    {
+        setOTAfp(result);
+    }));
     params.push_back(std::make_shared<ConfigParam>(wifi, "<p>1st Time Change</p>"));
     params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 3, [](const char* result)
     {
@@ -706,6 +753,7 @@ void initWiFi()
         feedback.blink(FEEDBACK_LED_FAST);
     });
 
+
     std::vector<ConfigParamPtr> params;
     createWiFiParams(wifi, params);
 
@@ -760,8 +808,46 @@ void initWiFi()
     {
         dlog.info(FPSTR(TAG), F("starting TCP logging to '%s:%d'"), config.network_logger_host, config.network_logger_port);
         dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port));
+        dlog.info(FPSTR(TAG), F("TCP Logging started! SYNCHRO_CLOCK_VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
     }
 
+}
+
+void processOTA()
+{
+    static PROGMEM const char TAG[] = "processOTA";
+    if (isOTASet())
+    {
+        dlog.info(FPSTR(TAG), F("checking for OTA from: '%s'"), getOTAurl());
+        feedback.blink(FEEDBACK_LED_MEDIUM);
+
+        t_httpUpdate_return ret;
+
+        if (strncmp(getOTAurl(), "https:", 6) == 0)
+        {
+            ret = ESPhttpUpdate.update(getOTAurl(), SYNCHRO_CLOCK_VERSION, getOTAfp());
+        }
+        else
+        {
+            ret = ESPhttpUpdate.update(getOTAurl(), SYNCHRO_CLOCK_VERSION);
+        }
+
+        switch(ret)
+        {
+            case HTTP_UPDATE_FAILED:
+                dlog.info(FPSTR(TAG), F("OTA update failed!"));
+                break;
+            case HTTP_UPDATE_NO_UPDATES:
+                dlog.info(FPSTR(TAG), F("OTA no updates!"));
+                break;
+            case HTTP_UPDATE_OK:
+                dlog.info(FPSTR(TAG), F("OTA update OK!")); // may not be reached as ESP is restarted!
+                break;
+            default:
+                dlog.info(FPSTR(TAG), F("OTA update WTF? unexpected return code: %d"), ret);
+                break;
+        }
+    }
 }
 
 //
@@ -792,7 +878,7 @@ void setup()
     Serial.begin(115200);
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
-    dlog.info(FPSTR(TAG), F("Startup!"));
+    dlog.info(FPSTR(TAG), F("Startup! SYNCHRO_CLOCK_VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
@@ -847,9 +933,8 @@ void setup()
     //
     // make sure the device is available!
     //
-#if defined(LED_PIN)
     feedback.blink(0.9);
-#endif
+
     dlog.info(FPSTR(TAG), F("starting clock interface"));
     while (clk.begin())
     {
@@ -878,9 +963,8 @@ void setup()
             ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
         }
 
-#if defined(LED_PIN)
         feedback.on();
-#endif
+
         dlog.info(FPSTR(TAG), F("reset button pressed, forcing config!"));
         force_config = true;
         //
@@ -970,6 +1054,9 @@ void setup()
 #endif
 
     initWiFi();
+
+    dlog.info(FPSTR(TAG), F("process any OTA update"));
+    processOTA();
 
     dlog.debug(FPSTR(TAG), F("###### rtc data size: %d"), sizeof(RTCDeepSleepData));
 
