@@ -24,6 +24,7 @@
 #define _SynchroClock_H_
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
+#include "ESP8266httpUpdate.h"
 #include <WiFiManager.h>
 #include <Wire.h>
 #include <ESP8266WebServer.h>

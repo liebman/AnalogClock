@@ -4,6 +4,7 @@
 */.project
 */.cproject
 */.settings
+*/spec.d
 I2CAnalogClock/I2CAnalogClock.ino
 SynchroClock/SynchroClock.ino
 */Release
