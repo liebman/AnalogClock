@@ -813,13 +813,16 @@ void initWiFi()
 
 }
 
-void processOTA()
+void processOTA(bool enable_clock)
 {
     static PROGMEM const char TAG[] = "processOTA";
+
     if (isOTASet())
     {
         dlog.info(FPSTR(TAG), F("checking for OTA from: '%s'"), getOTAurl());
         feedback.blink(FEEDBACK_LED_MEDIUM);
+
+        ESPhttpUpdate.rebootOnUpdate(false);
 
         t_httpUpdate_return ret;
 
@@ -832,19 +835,27 @@ void processOTA()
             ret = ESPhttpUpdate.update(getOTAurl(), SYNCHRO_CLOCK_VERSION);
         }
 
+        String reason = ESPhttpUpdate.getLastErrorString();
+
         switch(ret)
         {
-            case HTTP_UPDATE_FAILED:
-                dlog.info(FPSTR(TAG), F("OTA update failed!"));
-                break;
-            case HTTP_UPDATE_NO_UPDATES:
-                dlog.info(FPSTR(TAG), F("OTA no updates!"));
-                break;
             case HTTP_UPDATE_OK:
-                dlog.info(FPSTR(TAG), F("OTA update OK!")); // may not be reached as ESP is restarted!
+                clk.setEnable(enable_clock);
+                dlog.info(FPSTR(TAG), F("OTA update OK! restarting..."));
+                dlog.end();
+                ESP.restart();
                 break;
+
+            case HTTP_UPDATE_FAILED:
+                dlog.info(FPSTR(TAG), F("OTA update failed! reason:'%s'"), reason.c_str());
+                break;
+
+            case HTTP_UPDATE_NO_UPDATES:
+                dlog.info(FPSTR(TAG), F("OTA no updates! reason:'%s'"), reason.c_str());
+                break;
+
             default:
-                dlog.info(FPSTR(TAG), F("OTA update WTF? unexpected return code: %d"), ret);
+                dlog.info(FPSTR(TAG), F("OTA update WTF? unexpected return code: %d reason: '%s'"), ret, reason.c_str());
                 break;
         }
     }
@@ -883,9 +894,8 @@ void setup()
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
 
-#if defined(LED_PIN)
     feedback.off();
-#endif
+
     //
     // lets read deep sleep data and see if we need to immed go back to sleep.
     //
@@ -946,7 +956,9 @@ void setup()
         }
         delay(10000);
     }
-    dlog.info(FPSTR(TAG), F("clock interface started"));
+
+    bool clock_was_enabled = clk.getEnable();
+    dlog.info(FPSTR(TAG), F("clock interface started, enabled:%s"), clock_was_enabled ? "true" : "false");
 
     // if the reset/config button is pressed then force config
     if (digitalRead(CONFIG_PIN) == 0)
@@ -958,6 +970,7 @@ void setup()
         if (dsd.sleep_delay_left != 0)
         {
             dlog.info(FPSTR(TAG), F("reset button pressed with radio off, short sleep to enable!"));
+            dlog.end();
             dsd.sleep_delay_left = 0;
             writeDeepSleepData();
             ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
@@ -1056,7 +1069,7 @@ void setup()
     initWiFi();
 
     dlog.info(FPSTR(TAG), F("process any OTA update"));
-    processOTA();
+    processOTA(clock_was_enabled);
 
     dlog.debug(FPSTR(TAG), F("###### rtc data size: %d"), sizeof(RTCDeepSleepData));
 
