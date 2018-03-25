@@ -538,11 +538,7 @@ void handleSave()
 
 void handleErase()
 {
-    for (unsigned int i = 0; i < sizeof(EEConfig); ++i)
-    {
-        EEPROM.write(i, 0);
-    }
-    EEPROM.commit();
+    eraseConfig();
     HTTP.send(200, "text/plain", "Erased!\n");
 }
 
@@ -739,23 +735,23 @@ void initWiFi()
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
 
-    WiFiManager wifi;
-    wifi.setDebugOutput(false);
-    wifi.setConnectTimeout(CONNECTION_TIMEOUT);
-
-    wifi.setSaveConfigCallback([]()
+    WiFiManager wm;
+    wm.setEnableConfigPortal(false); // don't automatically use the captive portal
+    wm.setDebugOutput(false);
+    wm.setConnectTimeout(CONNECTION_TIMEOUT);
+    wm.setSaveConfigCallback([]()
     {
         save_config = true;
     });
 
-    wifi.setAPCallback([](WiFiManager *)
+    wm.setAPCallback([](WiFiManager *)
     {
+        dlog.info(FPSTR(TAG), F("config portal up!"));
         feedback.blink(FEEDBACK_LED_FAST);
     });
 
-
     std::vector<ConfigParamPtr> params;
-    createWiFiParams(wifi, params);
+    createWiFiParams(wm, params);
 
     dlog.info(FPSTR(TAG), "params has %d items", params.size());
 
@@ -763,11 +759,11 @@ void initWiFi()
 
     if (force_config)
     {
-        wifi.startConfigPortal(ssid.c_str(), NULL);
+        wm.startConfigPortal(ssid.c_str(), NULL);
     }
     else
     {
-        wifi.autoConnect(ssid.c_str(), NULL);
+        wm.autoConnect(ssid.c_str(), NULL);
     }
 
     feedback.off();
@@ -777,9 +773,7 @@ void initWiFi()
     if (!WiFi.isConnected())
     {
         dlog.error(FPSTR(TAG), F("failed to connect to wifi!"));
-        dlog.info(FPSTR(TAG), F("Deep Sleep Time: %d"), MAX_SLEEP_DURATION);
-        dlog.end();
-        ESP.deepSleep(MAX_SLEEP_DURATION, RF_DEFAULT);
+        sleepFor(MAX_SLEEP_DURATION);
     }
 
     IPAddress ip = WiFi.localIP();
@@ -984,6 +978,31 @@ void setup()
         //  If we force config because of the config button then we stop the clock.
         //
         clk.setEnable(false);
+
+        time_t start = millis();
+        while (digitalRead(CONFIG_PIN) == 0)
+        {
+            time_t now = millis();
+            if ((now-start) > FACTORY_RESET_DELAY)
+            {
+                dlog.info(FPSTR(TAG), F("factory reset activated!"));
+                feedback.off();
+
+                dlog.debug(FPSTR(TAG), F("invalidating config..."));
+                EEPROM.begin(sizeof(EEConfig));
+                eraseConfig();
+
+                dlog.debug(FPSTR(TAG), F("erase WiFi config..."));
+                ESP.eraseConfig();
+
+                dlog.debug(FPSTR(TAG), F("rebooting!"));
+                dlog.end();
+                delay(100);
+                ESP.restart();
+                delay(1000);
+            }
+            delay(100);
+        }
     }
 
 
@@ -1011,9 +1030,6 @@ void setup()
             config.ntp_server, config.network_logger_host, config.network_logger_port);
 
     dlog.debug(FPSTR(TAG), F("EEConfig size: %u"), sizeof(EEConfig));
-
-    EEPROM.begin(sizeof(EEConfig));
-    delay(100);
 
     //
     // if the saved config was not good and the clock is not running
@@ -1413,11 +1429,20 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length)
     return crc;
 }
 
+void initConfig()
+{
+    if (EEPROM.length() != sizeof(EEConfig))
+    {
+        dlog.info(F("initConfig"), F("initializing EEPROM"));
+        EEPROM.begin(sizeof(EEConfig));
+    }
+}
 
 boolean loadConfig()
 {
     static PROGMEM const char TAG[] = "loadConfig";
     EEConfig cfg;
+    initConfig();
     // Read struct from EEPROM
     dlog.debug(FPSTR(TAG), F("loading from EEPROM"));
     unsigned int i;
@@ -1445,6 +1470,7 @@ void saveConfig()
 {
     static PROGMEM const char TAG[] = "saveConfig";
     EEConfig cfg;
+    initConfig();
     memcpy(&cfg.data, &config, sizeof(cfg.data));
     cfg.crc = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));
     dlog.debug(FPSTR(TAG), F("caculated CRC: %08x"), cfg.crc);
@@ -1456,7 +1482,22 @@ void saveConfig()
     {
         EEPROM.write(i, p[i]);
     }
-    EEPROM.commit();
+    bool result = EEPROM.commit();
+    dlog.info(FPSTR(TAG), F("result: %s"), result ? "success" : "FAILURE");
+}
+
+void eraseConfig()
+{
+    static PROGMEM const char TAG[] = "eraseConfig";
+    initConfig();
+    dlog.info(FPSTR(TAG), F("erasing...."));
+    for (unsigned int i = 0; i < sizeof(EEConfig); ++i)
+    {
+        EEPROM.write(i, 0xff);
+    }
+    dlog.info(FPSTR(TAG), F("committing...."));
+    bool result = EEPROM.commit();
+    dlog.info(FPSTR(TAG), F("result: %s"), result ? "success" : "FAILURE");
 }
 
 boolean readDeepSleepData()

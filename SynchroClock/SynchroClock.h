@@ -69,7 +69,8 @@
 
 #define CLOCK_STRETCH_LIMIT    1500 // i2c clock stretch timeout in microseconds
 #define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
-#define CONNECTION_TIMEOUT     300  // wifi portal timeout - we will deep sleep and try again later
+#define CONNECTION_TIMEOUT     30   // wifi connection timeout - we will deep sleep and try again later
+#define FACTORY_RESET_DELAY 10000   // how long to hold factory reset after LED is ON - 10 seconds (10,000 milliseconds)
 
 #define offset2longDouble(x)   ((long double)x / 4294967296L)
 
@@ -221,6 +222,7 @@ int setRTCfromNTP(const char* server, bool sync, double* result_offset, IPAddres
 int setCLKfromRTC();
 void saveConfig();
 boolean loadConfig();
+void eraseConfig();
 boolean readDeepSleepData();
 boolean writeDeepSleepData();
 
