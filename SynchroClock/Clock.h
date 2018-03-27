@@ -43,10 +43,16 @@
 #define CMD_PWMTOP      0x0a
 #define CMD_TP_DUTY     0x0b
 #define CMD_AP_DUTY     0x0c
+#define CMD_RESET       0x0d // factory reset
+#define CMD_RST_REASON  0x0e // last reset reason
 
 // control register bits
 #define BIT_ENABLE      0x80
-#define BIT_STAY_ACTIVE 0x40
+
+// status register bits
+#define STATUS_BIT_TICK    0x01
+#define STATUS_BIT_PWFBAD  0x80
+
 
 #define CLOCK_ID_VALUE  0x42
 
@@ -80,6 +86,10 @@ public:
     int writeAPStartDuration(uint8_t value);
     int readPWMTop(uint8_t* value);
     int writePWMTop(uint8_t value);
+    int readStatus(uint8_t* value);
+    int factoryReset();
+    int readResetReason(uint8_t* value);
+
     bool getEnable();
     void setEnable(bool enable);
     int saveConfig();

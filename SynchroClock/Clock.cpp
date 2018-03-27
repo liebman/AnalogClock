@@ -157,6 +157,21 @@ int Clock::writePWMTop(uint8_t value)
     return write(CMD_PWMTOP, value);
 }
 
+int Clock::readStatus(uint8_t* value)
+{
+    return read(CMD_STATUS, value);
+}
+
+int Clock::factoryReset()
+{
+    return write(CMD_RESET, (uint8_t)0);
+}
+
+int Clock::readResetReason(uint8_t* value)
+{
+    return read(CMD_RST_REASON, value);
+}
+
 bool Clock::getEnable()
 {
     return getCommandBit(BIT_ENABLE);

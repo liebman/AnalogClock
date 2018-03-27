@@ -82,12 +82,15 @@
 #define CMD_PWMTOP      0x0a
 #define CMD_TP_DUTY     0x0b
 #define CMD_AP_DUTY     0x0c
+#define CMD_RESET       0x0d
+#define CMD_RST_REASON  0x0e
 
 // control register bits
 #define BIT_ENABLE      0x80
 
 // status register bits
-#define STATUS_BIT_TICK 0x01
+#define STATUS_BIT_TICK    0x01
+#define STATUS_BIT_PWFBAD  0x80
 
 #define ID_VALUE        0x42
 
@@ -184,10 +187,12 @@ void advanceClock(uint16_t duration, uint8_t duty);
 void tick();
 
 uint32_t calculateCRC32(const uint8_t *data, size_t length);
+void clearConfig();
 boolean loadConfig();
 void saveConfig();
 
 #if defined(PWRFAIL_PIN)
+void clearPowerFailData();
 boolean loadPowerFailData();
 void savePowerFailData();
 #endif
