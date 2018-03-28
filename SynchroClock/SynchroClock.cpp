@@ -22,6 +22,8 @@
 
 #include "SynchroClock.h"
 #include "SynchroClockVersion.h"
+#include <time.h>
+#include <sys/time.h>
 
 //
 // These are only used when debugging
