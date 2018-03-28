@@ -84,6 +84,7 @@
 #define CMD_AP_DUTY     0x0c
 #define CMD_RESET       0x0d
 #define CMD_RST_REASON  0x0e
+#define CMD_VERSION     0x0f
 
 // control register bits
 #define BIT_ENABLE      0x80

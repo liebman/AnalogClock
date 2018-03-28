@@ -21,6 +21,7 @@
  */
 
 #include "I2CAnalogClock.h"
+#include "I2CACVersion.h"
 #include <avr/wdt.h>
 
 volatile uint16_t     position;         // This is the position that we believe the clock is in.
@@ -146,6 +147,9 @@ void i2crequest()
         break;
     case CMD_RST_REASON:
         Wire.write(reset_reason);
+        break;
+    case CMD_VERSION:
+        Wire.write(I2C_ANALOG_CLOCK_VERSION);
         break;
 
     case CMD_CONTROL:

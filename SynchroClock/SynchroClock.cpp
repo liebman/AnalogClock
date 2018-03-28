@@ -575,9 +575,9 @@ bool updateTZOffset()
 void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
 {
     static PROGMEM const char TAG[] = "wifiParams";
-    uint16_t pos;
+    uint16_t pos = 0;
     char pos_str[16];
-    clk.readPosition(&pos);
+    clk.readPosition(&pos, 3);
     int hours = pos / 3600;
     int minutes = (pos - (hours * 3600)) / 60;
     int seconds = pos - (hours * 3600) - (minutes * 60);
@@ -802,9 +802,7 @@ void initWiFi()
     {
         dlog.info(FPSTR(TAG), F("starting TCP logging to '%s:%d'"), config.network_logger_host, config.network_logger_port);
         dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port));
-        dlog.info(FPSTR(TAG), F("TCP Logging started! SYNCHRO_CLOCK_VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
     }
-
 }
 
 void processOTA(bool enable_clock)
@@ -925,7 +923,7 @@ void setup()
     Serial.begin(115200);
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
-    dlog.info(FPSTR(TAG), F("Startup! SYNCHRO_CLOCK_VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
+    dlog.info(FPSTR(TAG), F("Startup!"));
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
@@ -954,17 +952,7 @@ void setup()
     }
 
     DS3231DateTime dt;
-    while (rtc.readTime(dt))
-    {
-        dlog.error(FPSTR(TAG), F("RTC readTime failed! Attempting recovery..."));
-
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
-        delay(1000);
-    }
+    getEdgeSyncedTime(dt, 1);
     struct timeval tv;
     tv.tv_sec  = dt.getUnixTime();
     tv.tv_usec = 0;
@@ -982,57 +970,39 @@ void setup()
     feedback.blink(0.9);
 
     dlog.info(FPSTR(TAG), F("starting clock interface"));
-    while (clk.begin())
+    while (clk.begin(3) != 0)
     {
         dlog.error(FPSTR(TAG), F("can't talk with Clock Controller!"));
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
         delay(10000);
     }
 
+    uint8_t version = 0;
+    while (clk.readVersion(&version, 3) != 0)
+    {
+        dlog.error(FPSTR(TAG), F("can't read clock status!"));
+        delay(10000);
+    }
+    dlog.info(FPSTR(TAG), F("I2CAnalogClock VERSION: %u"), version);
+
+    uint8_t clk_reason; // restart reason of clk
+    while (clk.readResetReason(&clk_reason, 3) != 0)
+    {
+        dlog.error(FPSTR(TAG), F("can't read clock reset reason!"));
+        delay(10000);
+    }
+    dlog.info(FPSTR(TAG), F("I2CAnalogClock restart reason: 0x%02x"), clk_reason);
+
     uint16_t pos;
-    while(clk.readPosition(&pos) != 0)
+    while (clk.readPosition(&pos, 3))
     {
         dlog.error(FPSTR(TAG), F("can't read clock position!"));
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
-        delay(1000);
+        delay(10000);
     }
     int hours = pos / 3600;
     int minutes = (pos - (hours * 3600)) / 60;
     int seconds = pos - (hours * 3600) - (minutes * 60);
     dlog.info(FPSTR(TAG), F("clock position: %d (%02d:%02d:%02d)"), pos, hours, minutes, seconds);
 
-    uint8_t status;
-    while (clk.readStatus(&status) != 0)
-    {
-        dlog.error(FPSTR(TAG), F("can't read clock status!"));
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
-        delay(1000);
-    }
-    dlog.info(FPSTR(TAG), F("clk status: 0x%02x"), status);
-    uint8_t reason;
-    while (clk.readResetReason(&reason) != 0)
-    {
-        dlog.error(FPSTR(TAG), F("can't read clock status!"));
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
-        delay(1000);
-    }
-    dlog.info(FPSTR(TAG), F("clk rst_reason: 0x%02x"), reason);
 
     bool clock_was_enabled = clk.getEnable();
     dlog.info(FPSTR(TAG), F("clock interface started, enabled:%s"), clock_was_enabled ? "true" : "false");
@@ -1155,6 +1125,11 @@ void setup()
 #endif
 
     initWiFi();
+    //
+    // Network started, log versions
+    //
+    dlog.info(FPSTR(TAG), F("SynchroClock VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
+    dlog.info(FPSTR(TAG), F("I2CAnalogClock VERSION: %u"), version);
 
     dlog.info(FPSTR(TAG), F("process any OTA update"));
     processOTA(clock_was_enabled);

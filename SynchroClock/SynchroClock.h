@@ -215,6 +215,7 @@ void handleRTC();
 void handleNTP();
 void handleSave();
 void sleepFor(uint32_t sleep_duration);
+int getEdgeSyncedTime(DS3231DateTime& dt, unsigned int retries);
 int setRTCfromOffset(double offset_ms, bool sync);
 int getTime(uint32_t *result);
 int setRTCfromDrift();

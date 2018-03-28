@@ -45,6 +45,7 @@
 #define CMD_AP_DUTY     0x0c
 #define CMD_RESET       0x0d // factory reset
 #define CMD_RST_REASON  0x0e // last reset reason
+#define CMD_VERSION     0x0f // Clock firmware version
 
 // control register bits
 #define BIT_ENABLE      0x80
@@ -67,10 +68,12 @@ class Clock
 public:
     Clock(int _pin);
     int begin();
+    int begin(unsigned int retries);
     bool isClockPresent();
     int readAdjustment(uint16_t *value);
     int writeAdjustment(uint16_t value);
     int readPosition(uint16_t* value);
+    int readPosition(uint16_t* value, unsigned int retries);
     int writePosition(uint16_t value);
     int readTPDuration(uint8_t* value);
     int writeTPDuration(uint8_t value);
@@ -87,8 +90,12 @@ public:
     int readPWMTop(uint8_t* value);
     int writePWMTop(uint8_t value);
     int readStatus(uint8_t* value);
+    int readStatus(uint8_t* value, unsigned int retries);
     int factoryReset();
     int readResetReason(uint8_t* value);
+    int readResetReason(uint8_t* value, unsigned int retries);
+    int readVersion(uint8_t* value);
+    int readVersion(uint8_t* value, unsigned int retries);
 
     bool getEnable();
     void setEnable(bool enable);
