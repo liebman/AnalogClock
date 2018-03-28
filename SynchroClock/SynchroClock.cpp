@@ -755,7 +755,7 @@ void initWiFi()
     std::vector<ConfigParamPtr> params;
     createWiFiParams(wm, params);
 
-    dlog.info(FPSTR(TAG), "params has %d items", params.size());
+    dlog.info(FPSTR(TAG), F("params has %d items"), params.size());
 
     String ssid = "SynchroClock" + String(ESP.getChipId());
 
@@ -803,13 +803,14 @@ void initWiFi()
     if (strlen(config.network_logger_host) && config.network_logger_port)
     {
         dlog.info(FPSTR(TAG), F("starting TCP logging to '%s:%d'"), config.network_logger_host, config.network_logger_port);
-        dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port));
+        dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port, 1, 1000));
     }
 }
 
 void processOTA(bool enable_clock)
 {
     static PROGMEM const char TAG[] = "processOTA";
+    dlog.info(FPSTR(TAG), F("process any OTA update"));
 
     if (isOTASet())
     {
@@ -925,7 +926,9 @@ void setup()
     Serial.begin(115200);
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
-    dlog.info(FPSTR(TAG), F("Startup!"));
+    dlog.info(FPSTR(TAG), F("Startup! SynchroClock version: %s"), SYNCHRO_CLOCK_VERSION);
+    dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
+
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
@@ -1132,8 +1135,8 @@ void setup()
     //
     dlog.info(FPSTR(TAG), F("SynchroClock VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
     dlog.info(FPSTR(TAG), F("I2CAnalogClock VERSION: %u"), version);
+    dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
 
-    dlog.info(FPSTR(TAG), F("process any OTA update"));
     processOTA(clock_was_enabled);
 
     dlog.debug(FPSTR(TAG), F("###### rtc data size: %d"), sizeof(RTCDeepSleepData));
