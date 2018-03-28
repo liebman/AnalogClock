@@ -1252,6 +1252,27 @@ void loop()
     delay(100);
 }
 
+int getEdgeSyncedTime(DS3231DateTime& dt, unsigned int retries)
+{
+    static PROGMEM const char TAG[] = "getEdgeSyncedTime";
+    clk.waitForEdge(CLOCK_EDGE_FALLING);
+
+    while(retries-- > 0)
+    {
+        clk.waitForEdge(CLOCK_EDGE_FALLING);
+        // need 1ms delay!  but why?  noise?
+        delay(1);
+        if (rtc.readTime(dt) == 0)
+        {
+            return 0;
+        }
+
+        dlog.warning(FPSTR(TAG), F("failed to read from RTC, %d retries left"), retries);
+        WireUtils.clearBus();
+    }
+    return -1;
+}
+
 int setRTCfromOffset(double offset, bool sync)
 {
     static PROGMEM const char TAG[] = "setRTCfromOffset";
@@ -1270,17 +1291,10 @@ int setRTCfromOffset(double offset, bool sync)
 
     DS3231DateTime dt;
 
-    clk.waitForEdge(CLOCK_EDGE_FALLING);
-
-    if (rtc.readTime(dt))
+    if (getEdgeSyncedTime(dt, 3))
     {
-        dlog.error(FPSTR(TAG), F("failed to read from RTC, attempting corrective action..."));
-        WireUtils.clearBus();
-        if (rtc.readTime(dt))
-        {
-            dlog.error(FPSTR(TAG), F("failed to read from RTC!"));
-            return ERROR_RTC;
-        }
+        dlog.error(FPSTR(TAG), F("failed to read from RTC!"));
+        return ERROR_RTC;
     }
 
     // wait for where the next second should start
