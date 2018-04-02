@@ -22,6 +22,8 @@
 
 #include "SynchroClock.h"
 #include "SynchroClockVersion.h"
+#include <time.h>
+#include <sys/time.h>
 
 //
 // These are only used when debugging
@@ -97,7 +99,7 @@ uint8_t parseDuty(const char* value)
     int i = atoi(value);
     if (i < 1 || i > 100)
     {
-        dlog.error(F("parseDuty"), F("invalid value %s: using 50 instead!\n"), value);
+        dlog.error(F("parseDuty"), F("invalid value %s: using 50 instead!"), value);
         i = 50;
     }
     return (uint8_t) i;
@@ -140,7 +142,7 @@ uint8_t getValidByte(String name)
     int i = atoi(HTTP.arg(name).c_str());
     if (i < 0 || i > 255)
     {
-        dlog.error(F("getValidByte"), F("invalid value %d: using 255 instead!\n"), i);
+        dlog.error(F("getValidByte"), F("invalid value %d: using 255 instead!"), i);
         i = 255;
     }
     return (uint8_t) i;
@@ -151,7 +153,7 @@ void handleOffset()
     if (HTTP.hasArg("set"))
     {
         config.tz_offset = getValidOffset("set");
-        dlog.info(F("handleOffset"), F("seconds offset:%d\n"), config.tz_offset);
+        dlog.info(F("handleOffset"), F("seconds offset:%d"), config.tz_offset);
     }
 
     HTTP.send(200, "text/plain", String(config.tz_offset) + "\n");
@@ -199,7 +201,7 @@ void handlePosition()
     if (HTTP.hasArg("set"))
     {
         pos = getValidPosition("set");
-        dlog.info(FPSTR(TAG), F("setting position:%u\n"), pos);
+        dlog.info(FPSTR(TAG), F("setting position:%u"), pos);
         if (clk.writePosition(pos))
         {
             dlog.error(FPSTR(TAG), F("failed to set position!"));
@@ -229,7 +231,7 @@ void handleTPDuration()
     if (HTTP.hasArg("set"))
     {
         value = getValidDuration("set");
-        dlog.info(FPSTR(TAG), F("setting tp_duration:%u\n"), value);
+        dlog.info(FPSTR(TAG), F("setting tp_duration:%u"), value);
         if (clk.writeTPDuration(value))
         {
             dlog.error(FPSTR(TAG), F("failed to set TP duration!"));
@@ -563,7 +565,7 @@ bool updateTZOffset()
     // if the time zone changed then save the new value and return true
     if (config.tz_offset != new_offset)
     {
-        dlog.info(FPSTR(TAG), F("time zone offset changed from %d to %d\n"), config.tz_offset, new_offset);
+        dlog.info(FPSTR(TAG), F("time zone offset changed from %d to %d"), config.tz_offset, new_offset);
         config.tz_offset = new_offset;
         saveConfig();
         return true;
@@ -575,9 +577,9 @@ bool updateTZOffset()
 void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
 {
     static PROGMEM const char TAG[] = "wifiParams";
-    uint16_t pos;
+    uint16_t pos = 0;
     char pos_str[16];
-    clk.readPosition(&pos);
+    clk.readPosition(&pos, 3);
     int hours = pos / 3600;
     int minutes = (pos - (hours * 3600)) / 60;
     int seconds = pos - (hours * 3600) - (minutes * 60);
@@ -753,7 +755,7 @@ void initWiFi()
     std::vector<ConfigParamPtr> params;
     createWiFiParams(wm, params);
 
-    dlog.info(FPSTR(TAG), "params has %d items", params.size());
+    dlog.info(FPSTR(TAG), F("params has %d items"), params.size());
 
     String ssid = "SynchroClock" + String(ESP.getChipId());
 
@@ -801,15 +803,14 @@ void initWiFi()
     if (strlen(config.network_logger_host) && config.network_logger_port)
     {
         dlog.info(FPSTR(TAG), F("starting TCP logging to '%s:%d'"), config.network_logger_host, config.network_logger_port);
-        dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port));
-        dlog.info(FPSTR(TAG), F("TCP Logging started! SYNCHRO_CLOCK_VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
+        dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port, 1, 1000));
     }
-
 }
 
 void processOTA(bool enable_clock)
 {
     static PROGMEM const char TAG[] = "processOTA";
+    dlog.info(FPSTR(TAG), F("process any OTA update"));
 
     if (isOTASet())
     {
@@ -855,6 +856,48 @@ void processOTA(bool enable_clock)
     }
 }
 
+void factoryReset()
+{
+    static PROGMEM const char TAG[] = "factoryReset";
+
+    dlog.info(FPSTR(TAG), F("activated!"));
+
+    dlog.info(FPSTR(TAG), F("sending factory reset to Clock..."));
+    feedback.blink(FEEDBACK_LED_SLOW);
+    while (clk.factoryReset() != 0)
+    {
+        dlog.error(FPSTR(TAG), F("can't talk with Clock Controller!"));
+        while (WireUtils.clearBus())
+        {
+            delay(10000);
+            dlog.info(FPSTR(TAG), F("lets try that again..."));
+        }
+        delay(10000);
+
+    }
+    feedback.off();
+
+    dlog.info(FPSTR(TAG), F("invalidating config..."));
+    EEPROM.begin(sizeof(EEConfig));
+    eraseConfig();
+
+    dlog.info(FPSTR(TAG), F("erase WiFi config..."));
+    ESP.eraseConfig();
+
+    dlog.info(FPSTR(TAG), F("waiting for power off!!!!"));
+    dlog.end();
+
+    //
+    // delay one second then restart!
+    //
+    delay(1000);
+
+    ESP.restart();
+    while(true)
+    {
+    }
+}
+
 //
 // prefix log lines with current time
 //
@@ -883,7 +926,9 @@ void setup()
     Serial.begin(115200);
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
-    dlog.info(FPSTR(TAG), F("Startup! SYNCHRO_CLOCK_VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
+    dlog.info(FPSTR(TAG), F("Startup! SynchroClock version: %s"), SYNCHRO_CLOCK_VERSION);
+    dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
+
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
@@ -912,17 +957,7 @@ void setup()
     }
 
     DS3231DateTime dt;
-    while (rtc.readTime(dt))
-    {
-        dlog.error(FPSTR(TAG), F("RTC readTime failed! Attempting recovery..."));
-
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
-        delay(1000);
-    }
+    getEdgeSyncedTime(dt, 1);
     struct timeval tv;
     tv.tv_sec  = dt.getUnixTime();
     tv.tv_usec = 0;
@@ -940,16 +975,39 @@ void setup()
     feedback.blink(0.9);
 
     dlog.info(FPSTR(TAG), F("starting clock interface"));
-    while (clk.begin())
+    while (clk.begin(3) != 0)
     {
         dlog.error(FPSTR(TAG), F("can't talk with Clock Controller!"));
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
         delay(10000);
     }
+
+    uint8_t version = 0;
+    while (clk.readVersion(&version, 3) != 0)
+    {
+        dlog.error(FPSTR(TAG), F("can't read clock status!"));
+        delay(10000);
+    }
+    dlog.info(FPSTR(TAG), F("I2CAnalogClock VERSION: %u"), version);
+
+    uint8_t clk_reason; // restart reason of clk
+    while (clk.readResetReason(&clk_reason, 3) != 0)
+    {
+        dlog.error(FPSTR(TAG), F("can't read clock reset reason!"));
+        delay(10000);
+    }
+    dlog.info(FPSTR(TAG), F("I2CAnalogClock restart reason: 0x%02x"), clk_reason);
+
+    uint16_t pos;
+    while (clk.readPosition(&pos, 3))
+    {
+        dlog.error(FPSTR(TAG), F("can't read clock position!"));
+        delay(10000);
+    }
+    int hours = pos / 3600;
+    int minutes = (pos - (hours * 3600)) / 60;
+    int seconds = pos - (hours * 3600) - (minutes * 60);
+    dlog.info(FPSTR(TAG), F("clock position: %d (%02d:%02d:%02d)"), pos, hours, minutes, seconds);
+
 
     bool clock_was_enabled = clk.getEnable();
     dlog.info(FPSTR(TAG), F("clock interface started, enabled:%s"), clock_was_enabled ? "true" : "false");
@@ -972,39 +1030,28 @@ void setup()
 
         feedback.on();
 
-        dlog.info(FPSTR(TAG), F("reset button pressed, forcing config!"));
+        dlog.info(FPSTR(TAG), F("reset button pressed, forcing config or factory reset!"));
         force_config = true;
         //
         //  If we force config because of the config button then we stop the clock.
         //
+        clk.writeAdjustment(0);
         clk.setEnable(false);
 
+        //
+        // if the buttin is held for FACTORY_RESET_DELAY milliseconds then factory reset!
+        //
         time_t start = millis();
         while (digitalRead(CONFIG_PIN) == 0)
         {
             time_t now = millis();
             if ((now-start) > FACTORY_RESET_DELAY)
             {
-                dlog.info(FPSTR(TAG), F("factory reset activated!"));
-                feedback.off();
-
-                dlog.debug(FPSTR(TAG), F("invalidating config..."));
-                EEPROM.begin(sizeof(EEConfig));
-                eraseConfig();
-
-                dlog.debug(FPSTR(TAG), F("erase WiFi config..."));
-                ESP.eraseConfig();
-
-                dlog.debug(FPSTR(TAG), F("rebooting!"));
-                dlog.end();
-                delay(100);
-                ESP.restart();
-                delay(1000);
+                factoryReset();
             }
             delay(100);
         }
     }
-
 
     bool enabled = clk.getEnable();
     dlog.info(FPSTR(TAG), F("clock enable is:%u"), enabled);
@@ -1083,8 +1130,13 @@ void setup()
 #endif
 
     initWiFi();
+    //
+    // Network started, log versions
+    //
+    dlog.info(FPSTR(TAG), F("SynchroClock VERSION: '%s'"), SYNCHRO_CLOCK_VERSION);
+    dlog.info(FPSTR(TAG), F("I2CAnalogClock VERSION: %u"), version);
+    dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
 
-    dlog.info(FPSTR(TAG), F("process any OTA update"));
     processOTA(clock_was_enabled);
 
     dlog.debug(FPSTR(TAG), F("###### rtc data size: %d"), sizeof(RTCDeepSleepData));
@@ -1180,6 +1232,27 @@ void loop()
     delay(100);
 }
 
+int getEdgeSyncedTime(DS3231DateTime& dt, unsigned int retries)
+{
+    static PROGMEM const char TAG[] = "getEdgeSyncedTime";
+    clk.waitForEdge(CLOCK_EDGE_FALLING);
+
+    while(retries-- > 0)
+    {
+        clk.waitForEdge(CLOCK_EDGE_FALLING);
+        // need 1ms delay!  but why?  noise?
+        delay(1);
+        if (rtc.readTime(dt) == 0)
+        {
+            return 0;
+        }
+
+        dlog.warning(FPSTR(TAG), F("failed to read from RTC, %d retries left"), retries);
+        WireUtils.clearBus();
+    }
+    return -1;
+}
+
 int setRTCfromOffset(double offset, bool sync)
 {
     static PROGMEM const char TAG[] = "setRTCfromOffset";
@@ -1198,17 +1271,10 @@ int setRTCfromOffset(double offset, bool sync)
 
     DS3231DateTime dt;
 
-    clk.waitForEdge(CLOCK_EDGE_FALLING);
-
-    if (rtc.readTime(dt))
+    if (getEdgeSyncedTime(dt, 3))
     {
-        dlog.error(FPSTR(TAG), F("failed to read from RTC, attempting corrective action..."));
-        WireUtils.clearBus();
-        if (rtc.readTime(dt))
-        {
-            dlog.error(FPSTR(TAG), F("failed to read from RTC!"));
-            return ERROR_RTC;
-        }
+        dlog.error(FPSTR(TAG), F("failed to read from RTC!"));
+        return ERROR_RTC;
     }
 
     // wait for where the next second should start
@@ -1450,7 +1516,6 @@ boolean loadConfig()
     for (i = 0; i < sizeof(cfg); ++i)
     {
         p[i] = EEPROM.read(i);
-        //dbprintf("loadConfig: p[%u] = %u\n", i, p[i]);
     }
     dlog.debug(FPSTR(TAG), F("checking CRC"));
     uint32_t crcOfData = calculateCRC32(((uint8_t*) &cfg.data), sizeof(cfg.data));

@@ -40,8 +40,9 @@ before_install:
   # install libraries needed
   - install_library "https://github.com/liebman/DLog.git"
   - install_library "https://github.com/liebman/DLogNet.git"
+  # We require some features from development branch of WiFiManager
   #- install_library "WiFiManager"
-  - install_library "https://github.com/liebman/WiFiManager.git" allow_disable_portal
+  - install_library "https://github.com/tzapu/WiFiManager.git" "development"
   - install_library "PinChangeInterrupt"
 
   # make it look like a sketch for arduino

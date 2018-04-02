@@ -21,6 +21,8 @@
  */
 
 #include "I2CAnalogClock.h"
+#include "I2CACVersion.h"
+#include <avr/wdt.h>
 
 volatile uint16_t     position;         // This is the position that we believe the clock is in.
 volatile uint16_t     adjustment;       // This is the adjustment to be made.
@@ -30,8 +32,9 @@ volatile uint8_t      control;          // This is our control "register".
 volatile unsigned int pwm_duration;     // PWM cycle count down.
 volatile bool         adjust_active;    // adjustment is active.
 volatile bool         save_config;      // set if the config was updated.
-
+volatile bool         factory_reset;    // set if factory reset is active
 volatile Config       config;           // Configuration
+uint8_t               reset_reason;     //
 
 #if defined(PWRFAIL_PIN)
 volatile bool         power_failed;     // power has failed, we need to save NOW!
@@ -87,6 +90,9 @@ void i2creceive(int size)
             (void)Wire.read(); // we ignore as its just a placeholder
             save_config = true;
             break;
+        case CMD_RESET:
+            (void)Wire.read(); // we ignore as its just a placeholder
+            factory_reset = true;
         }
         command = 0xff;
     }
@@ -139,6 +145,12 @@ void i2crequest()
         value = config.pwm_top;
         Wire.write(value);
         break;
+    case CMD_RST_REASON:
+        Wire.write(reset_reason);
+        break;
+    case CMD_VERSION:
+        Wire.write(I2C_ANALOG_CLOCK_VERSION);
+        break;
 
     case CMD_CONTROL:
         Wire.write(control);
@@ -148,6 +160,15 @@ void i2crequest()
         break;
     }
     command = 0xff;
+}
+
+void reboot()
+{
+    wdt_reset();
+    wdt_enable(WDTO_15MS);
+    while (true)
+    {
+    }
 }
 
 void (*timer_cb)();
@@ -377,6 +398,7 @@ void tick()
 #if defined(LED_PIN)
     digitalWrite(LED_PIN, !digitalRead(LED_PIN));
 #endif
+
     if (isEnabled())
     {
         if (adjustment != 0)
@@ -419,8 +441,23 @@ void powerFail()
 }
 #endif
 
+//
+// if we are in a factory reset then clear powerFail data
+// and Configuration data and hang out till we are reset with
+//
+void factoryReset()
+{
+    clearPowerFailData();
+    clearConfig();
+    reboot();
+}
+
 void setup()
 {
+    reset_reason = MCUSR;
+    MCUSR = 0; // reset status flag
+    wdt_disable();
+
 #if defined(SERIAL_BAUD)
     Serial.begin(SERIAL_BAUD);
     Serial.println("");
@@ -450,9 +487,10 @@ void setup()
 
     loadConfig();
 
-    adjustment    = 0;
-    adjust_active = false;
-    save_config   = false;
+    adjustment      = 0;
+    adjust_active   = false;
+    save_config     = false;
+    factory_reset   = false;
 
 #if defined(PWRFAIL_PIN)
     //
@@ -460,6 +498,8 @@ void setup()
     //
     if (!loadPowerFailData())
     {
+        status |= STATUS_BIT_PWFBAD;
+
         //
         // set up defaults if power save load failed
         //
@@ -544,6 +584,11 @@ void loop()
     sleep_disable();
 #endif
 
+    if (factory_reset)
+    {
+        factoryReset();
+    }
+
     if (save_config)
     {
         save_config = false;
@@ -556,9 +601,6 @@ void loop()
     //
     if (power_failed && !timer_running)
     {
-        //
-        // write current clock state to EEPROM
-        //
         savePowerFailData();
 
         //
@@ -632,6 +674,13 @@ uint32_t calculateCRC32(const uint8_t *data, size_t length)
     return crc;
 }
 
+void clearConfig()
+{
+    for (unsigned int i = 0; i < sizeof(EEConfig); ++i)
+    {
+        EEPROM.update(CONFIG_ADDRESS+i, 0xff);
+    }
+}
 
 boolean loadConfig()
 {
@@ -667,6 +716,12 @@ void saveConfig()
 }
 
 #if defined(PWRFAIL_PIN)
+void clearPowerFailData()
+{
+    position = MAX_SECONDS;
+    savePowerFailData();
+}
+
 boolean loadPowerFailData()
 {
     EEPowerFailData pfd;
@@ -696,7 +751,7 @@ void savePowerFailData()
     EEPowerFailData pfd;
     pfd.data.position    = position;
     pfd.data.control     = pwrfail_control;
-    pfd.data.status      = status;
+    pfd.data.status      = status & STATUS_BIT_TICK;
 
     pfd.crc = calculateCRC32(((uint8_t*) &pfd.data), sizeof(pfd.data));
 

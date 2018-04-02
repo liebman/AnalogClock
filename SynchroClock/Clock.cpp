@@ -21,6 +21,7 @@
  */
 
 #include "Clock.h"
+#include "WireUtils.h"
 
 static PROGMEM const char TAG[] = "Clock";
 
@@ -36,6 +37,21 @@ int Clock::begin()
 		return 0;
 	}
 	return -1;
+}
+
+int Clock::begin(unsigned int retries)
+{
+    while(retries-- > 0)
+    {
+        if (begin() == 0)
+        {
+            return 0;
+        }
+
+        dlog.warning(FPSTR(TAG), F("::begin: failed detect clock, %d retries left"), retries);
+        WireUtils.clearBus();
+    }
+    return -1;
 }
 
 //
@@ -80,6 +96,21 @@ int Clock::readPosition(uint16_t *value)
 		return -1;
 	}
 	return 0;
+}
+
+int Clock::readPosition(uint16_t *value, unsigned int retries)
+{
+    while(retries-- > 0)
+    {
+        if (readPosition(value) == 0)
+        {
+            return 0;
+        }
+
+        dlog.warning(FPSTR(TAG), F("::readPosition: failed, %d retries left"), retries);
+        WireUtils.clearBus();
+    }
+    return -1;
 }
 
 int Clock::writePosition(uint16_t value)
@@ -155,6 +186,71 @@ int Clock::readPWMTop(uint8_t* value)
 int Clock::writePWMTop(uint8_t value)
 {
     return write(CMD_PWMTOP, value);
+}
+
+int Clock::readStatus(uint8_t* value)
+{
+    return read(CMD_STATUS, value);
+}
+
+int Clock::readStatus(uint8_t* value, unsigned int retries)
+{
+    while(retries-- > 0)
+    {
+        if (readStatus(value) == 0)
+        {
+            return 0;
+        }
+
+        dlog.warning(FPSTR(TAG), F("::readStatus: failed, %d retries left"), retries);
+        WireUtils.clearBus();
+    }
+    return -1;
+}
+
+int Clock::factoryReset()
+{
+    return write(CMD_RESET, (uint8_t)0);
+}
+
+int Clock::readResetReason(uint8_t* value)
+{
+    return read(CMD_RST_REASON, value);
+}
+
+int Clock::readResetReason(uint8_t* value, unsigned int retries)
+{
+    while(retries-- > 0)
+    {
+        if (readResetReason(value) == 0)
+        {
+            return 0;
+        }
+
+        dlog.warning(FPSTR(TAG), F("::readResetReason: failed, %d retries left"), retries);
+        WireUtils.clearBus();
+    }
+    return -1;
+}
+
+int Clock::readVersion(uint8_t* value)
+{
+    return read(CMD_VERSION, value);
+}
+
+int Clock::readVersion(uint8_t* value, unsigned int retries)
+{
+    while(retries-- > 0)
+    {
+        if (readVersion(value) == 0)
+        {
+            return 0;
+        }
+
+        dlog.warning(FPSTR(TAG), F("::readVersion: failed, %d retries left"), retries);
+        WireUtils.clearBus();
+    }
+    return -1;
 }
 
 bool Clock::getEnable()
