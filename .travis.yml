@@ -47,11 +47,10 @@ before_install:
   - install_library "https://github.com/tzapu/WiFiManager.git" "development"
   - install_library "PinChangeInterrupt"
 
-  - ls -la "${APPLICATION_FOLDER}/"
-  - ls -la "${APPLICATION_FOLDER}/arduino/"
-  - ls -la "${APPLICATION_FOLDER}/arduino/hardware/"
-  - ls -la "${APPLICATION_FOLDER}/arduino/hardware/ATTinyCore"
+  - ls -la "${HOME}/"
   - ls -la "${SKETCHBOOK_FOLDER}/"
+  - ls -la "${SKETCHBOOK_FOLDER}/hardware/"
+  - ls -la "${APPLICATION_FOLDER}/arduino/"
 
   # make it look like a sketch for arduino
   - touch "${I2CANALOGCLOCK_DIR}/I2CAnalogClock.ino"
@@ -60,7 +59,7 @@ before_install:
   # install platformio
   - sudo pip install -U platformio
   - platformio platform  install "https://github.com/platformio/platform-atmelavr.git#develop" --with-package framework-arduinoavr
-  - cp -rp "${APPLICATION_FOLDER}/arduino/hardware/ATTinyCore/avr/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
+  - cp -rp "${SKETCHBOOK_FOLDER}/hardware/ATTinyCore/avr/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
   - platformio platform  install "https://github.com/platformio/platform-espressif8266.git#feature/stage" --with-package framework-arduinoespressif8266
 
 script:
