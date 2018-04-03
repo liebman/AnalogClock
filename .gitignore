@@ -12,6 +12,7 @@ SynchroClock/SynchroClock.ino
 */Release
 */Debug
 */libraries
+*/lib
 */core
 *.bak
 *-bak

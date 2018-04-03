@@ -1,5 +1,8 @@
 language: c
 sudo: required
+cache:
+    directories:
+        - "~/.platformio"
 
 env:
   global:
@@ -49,6 +52,17 @@ before_install:
   - touch "${I2CANALOGCLOCK_DIR}/I2CAnalogClock.ino"
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
+  # install platformio
+  - pip install -U platformio
+  - platformio update
+  - platformio platform  install atmelavr --with-package framework-arduinoavr
+  - cp -rp "${SKETCHBOOK_FOLDER}/hardware/ATTinyCore/avr/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
+  - platformio platform  install espressif8266 --with-package framework-arduinoespressif8266
+
 script:
+  # build with arduino
   - build_sketch "${I2CANALOGCLOCK_DIR}" "${ATTINY_DEVICE}"  "false" "1.8.5"
   - build_sketch "${SYNCROCLOCK_DIR}"    "${ESP8266_DEVICE}" "false" "1.8.5"
+  # build with platformio
+  - platformio run --project-dir "${I2CANALOGCLOCK_DIR}"
+  - platformio run --project-dir "${SYNCROCLOCK_DIR}"

@@ -1,0 +1,20 @@
+{
+  "build": {
+    "core": "tiny",
+    "extra_flags": "-DARDUINO_AVR_ATTINYX5 -D__AVR_ATtinyX5__",
+    "f_cpu": "1000000L",
+    "mcu": "attiny85",
+    "variant": "tinyX5"
+  },
+  "frameworks": [
+    "arduino"
+  ],
+  "name": "I2CAnalogClock",
+  "upload": {
+    "maximum_ram_size": 512,
+    "maximum_size": 8192,
+    "protocol": "usbtiny"
+  },
+  "url": "http://github/liebman/SynchroClock",
+  "vendor": "liebman"
+}
