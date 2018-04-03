@@ -48,6 +48,7 @@ before_install:
   - install_library "PinChangeInterrupt"
 
   - ls -la "${APPLICATION_FOLDER}/"
+  - ls -la "${APPLICATION_FOLDER}/arduino/"
   - ls -la "${SKETCHBOOK_FOLDER}/"
 
   # make it look like a sketch for arduino
