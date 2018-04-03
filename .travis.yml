@@ -42,7 +42,7 @@ before_install:
   - install_ide "1.8.5"
 
   - install_package "esp8266:esp8266" "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
-  - install_package "ATTinyCore:avr" "http://drazzy.com/package_drazzy.com_index.json"
+  - install_package "ATTinyCore:avr:1.1.5" "http://drazzy.com/package_drazzy.com_index.json"
 
   # install libraries needed
   - install_library "https://github.com/liebman/DLog.git"
@@ -61,7 +61,7 @@ before_install:
   - platformio platform  install "https://github.com/platformio/platform-atmelavr.git#develop" --with-package framework-arduinoavr
   - platformio platform  install "https://github.com/platformio/platform-espressif8266.git#feature/stage" --with-package framework-arduinoespressif8266
   # hack for missing varient in platformio!
-  - cp -rp "${HOME}/.arduino15/packages/ATTinyCore/avr/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
+  - cp -rp "${HOME}/.arduino15/packages/ATTinyCore/hardware/avr/1.1.5/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
 
 script:
   # build with arduino
