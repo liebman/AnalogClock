@@ -1,7 +1,7 @@
 language: python
   - "2.7"
 
-sudo: false
+sudo: required
 cache:
     directories:
         - "~/.platformio"
@@ -63,7 +63,7 @@ before_install:
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
   # install platformio
-  - pip install -U platformio
+  - sudo pip install -U platformio
   - platformio platform  install "https://github.com/platformio/platform-atmelavr.git#develop" --with-package framework-arduinoavr
   - cp -rp "${SKETCHBOOK_FOLDER}/hardware/ATTinyCore/avr/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
   - platformio platform  install "https://github.com/platformio/platform-espressif8266.git#feature/stage" --with-package framework-arduinoespressif8266
