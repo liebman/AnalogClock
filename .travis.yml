@@ -47,6 +47,9 @@ before_install:
   - install_library "https://github.com/tzapu/WiFiManager.git" "development"
   - install_library "PinChangeInterrupt"
 
+  - ls -l "$APPLICATION_FOLDER"
+  - ls -l "$SKETCHBOOK_FOLDER"
+
   # make it look like a sketch for arduino
   - touch "${I2CANALOGCLOCK_DIR}/I2CAnalogClock.ino"
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
