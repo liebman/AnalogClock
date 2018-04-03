@@ -1,8 +1,5 @@
 language: c
 sudo: required
-cache:
-    directories:
-        - "~/.platformio"
 
 env:
   global:
@@ -14,6 +11,8 @@ env:
      - I2CANALOGCLOCK_DIR="${TRAVIS_BUILD_DIR}/I2CAnalogClock"
 
 before_install:
+  - echo HOME is "'${HOME}'"
+  - id
   # setup arduino-ci-script
   - git clone https://github.com/per1234/arduino-ci-script.git "${HOME}/scripts"
   - cd "${HOME}/scripts"
