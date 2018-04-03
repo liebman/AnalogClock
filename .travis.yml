@@ -53,8 +53,8 @@ before_install:
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
   # install platformio
-  - pip install -U platformio
-  - platformio update
+  - sudo pip install -U platformio
+  - sudo platformio update
   - platformio platform  install atmelavr --with-package framework-arduinoavr
   - cp -rp "${SKETCHBOOK_FOLDER}/hardware/ATTinyCore/avr/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
   - platformio platform  install espressif8266 --with-package framework-arduinoespressif8266
