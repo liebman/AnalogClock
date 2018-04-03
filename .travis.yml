@@ -1,5 +1,10 @@
-language: c
+language: python
+  - "2.7"
+
 sudo: required
+cache:
+    directories:
+        - "~/.platformio"
 
 env:
   global:
@@ -11,6 +16,8 @@ env:
      - I2CANALOGCLOCK_DIR="${TRAVIS_BUILD_DIR}/I2CAnalogClock"
 
 before_install:
+  - echo HOME is "'${HOME}'"
+  - id
   # setup arduino-ci-script
   - git clone https://github.com/per1234/arduino-ci-script.git "${HOME}/scripts"
   - cd "${HOME}/scripts"
@@ -35,7 +42,7 @@ before_install:
   - install_ide "1.8.5"
 
   - install_package "esp8266:esp8266" "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
-  - install_package "ATTinyCore:avr" "http://drazzy.com/package_drazzy.com_index.json"
+  - install_package "ATTinyCore:avr:1.1.5" "http://drazzy.com/package_drazzy.com_index.json"
 
   # install libraries needed
   - install_library "https://github.com/liebman/DLog.git"
@@ -49,6 +56,17 @@ before_install:
   - touch "${I2CANALOGCLOCK_DIR}/I2CAnalogClock.ino"
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
 
+  # install platformio
+  - sudo pip install -U platformio
+  - platformio platform  install "https://github.com/platformio/platform-atmelavr.git#develop" --with-package framework-arduinoavr
+  - platformio platform  install "https://github.com/platformio/platform-espressif8266.git#feature/stage" --with-package framework-arduinoespressif8266
+  # hack for missing varient in platformio!
+  - cp -rp "${HOME}/.arduino15/packages/ATTinyCore/hardware/avr/1.1.5/variants/tinyX5" "${HOME}/.platformio/packages/framework-arduinoavr/variants/."
+
 script:
+  # build with arduino
   - build_sketch "${I2CANALOGCLOCK_DIR}" "${ATTINY_DEVICE}"  "false" "1.8.5"
   - build_sketch "${SYNCROCLOCK_DIR}"    "${ESP8266_DEVICE}" "false" "1.8.5"
+  # build with platformio
+  - platformio run --project-dir "${I2CANALOGCLOCK_DIR}"
+  - platformio run --project-dir "${SYNCROCLOCK_DIR}"

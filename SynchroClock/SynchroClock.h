@@ -23,6 +23,7 @@
 #ifndef _SynchroClock_H_
 #define _SynchroClock_H_
 #include <Arduino.h>
+#include <sys/time.h>
 #include <ESP8266WiFi.h>
 #include "ESP8266httpUpdate.h"
 #include <WiFiManager.h>
