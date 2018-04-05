@@ -904,19 +904,10 @@ void factoryReset()
 void dlogPrefix(DLogBuffer& buffer, DLogLevel level)
 {
     (void)level; // not used
-    struct timeval tv;
-    struct tm tm;
-    gettimeofday(&tv, nullptr);
-    gmtime_r(&tv.tv_sec, &tm);
-
-    buffer.printf(F("%04d/%02d/%02d %02d:%02d:%02d.%06ld "),
-            tm.tm_year+1900,
-            tm.tm_mon+1,
-            tm.tm_mday,
-            tm.tm_hour,
-            tm.tm_min,
-            tm.tm_sec,
-            tv.tv_usec);
+    uint32 usec = micros();
+    uint32 secs = usec / 1000000;
+    usec = usec - (secs * 1000000);
+    buffer.printf(F("%d.%06ld %ld "), secs, usec, ESP.getChipId());
 }
 
 void setup()
@@ -944,6 +935,7 @@ void setup()
     Wire.begin();
     Wire.setClockStretchLimit(CLOCK_STRETCH_LIMIT);
 
+    dlog.info(FPSTR(TAG), F("starting RTC"));
     while (rtc.begin())
     {
         dlog.error(FPSTR(TAG), F("RTC begin failed! Attempting recovery..."));
@@ -955,13 +947,6 @@ void setup()
         }
         delay(1000);
     }
-
-    DS3231DateTime dt;
-    getEdgeSyncedTime(dt, 1);
-    struct timeval tv;
-    tv.tv_sec  = dt.getUnixTime();
-    tv.tv_usec = 0;
-    settimeofday(&tv, nullptr);
 
     //
     // initialize config to defaults then load.
