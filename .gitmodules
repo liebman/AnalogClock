@@ -14,6 +14,6 @@
 	path = libraries/WiFiManager
 	url = https://github.com/tzapu/WiFiManager.git
 	branch = development
-[submodule "hardware/esp8266"]
-	path = hardware/esp8266
+[submodule "hardware/esp8266com/esp8266"]
+	path = hardware/esp8266com/esp8266
 	url = https://github.com/esp8266/Arduino.git
