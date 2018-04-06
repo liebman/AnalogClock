@@ -2,15 +2,12 @@ language: python
   - "2.7"
 
 sudo: required
-cache:
-    directories:
-        - "~/.platformio"
 
 env:
   global:
      - APPLICATION_FOLDER="${HOME}/arduino-ide"
-     - SKETCHBOOK_FOLDER="${HOME}/arduino-sketchbook"
-     - ESP8266_DEVICE="esp8266:esp8266:generic:CpuFrequency=80,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=13,LwIPVariant=v2mss536,Debug=Serial,DebugLevel=CORE"
+     - SKETCHBOOK_FOLDER="${TRAVIS_BUILD_DIR}"
+     - ESP8266_DEVICE="esp8266com:esp8266:generic:CpuFrequency=80,CrystalFreq=26,FlashFreq=40,FlashMode=qio,FlashSize=4M1M,led=13,LwIPVariant=v2mss536,Debug=Serial,DebugLevel=CORE"
      - ATTINY_DEVICE="ATTinyCore:avr:attinyx5:LTO=disable,TimerClockSource=default,chip=85,clock=1internal,bod=1v8"
      - SYNCROCLOCK_DIR="${TRAVIS_BUILD_DIR}/SynchroClock"
      - I2CANALOGCLOCK_DIR="${TRAVIS_BUILD_DIR}/I2CAnalogClock"
@@ -18,6 +15,8 @@ env:
 before_install:
   - echo HOME is "'${HOME}'"
   - id
+  - cd "${TRAVIS_BUILD_DIR}"
+  - ./update.sh
   # setup arduino-ci-script
   - git clone https://github.com/per1234/arduino-ci-script.git "${HOME}/scripts"
   - cd "${HOME}/scripts"
@@ -41,30 +40,11 @@ before_install:
 
   - install_ide "1.8.5"
 
-  - install_package "esp8266:esp8266" "http://arduino.esp8266.com/stable/package_esp8266com_index.json"
-  - install_package "ATTinyCore:avr:1.1.5" "http://drazzy.com/package_drazzy.com_index.json"
-
-  # install libraries needed
-  - install_library "https://github.com/liebman/DLog.git"
-  - install_library "https://github.com/liebman/DLogNet.git"
-  # We require some features from development branch of WiFiManager
-  #- install_library "WiFiManager"
-  - install_library "https://github.com/tzapu/WiFiManager.git" "development"
-  - install_library "PinChangeInterrupt"
-
   # make it look like a sketch for arduino
   - touch "${I2CANALOGCLOCK_DIR}/I2CAnalogClock.ino"
   - touch "${SYNCROCLOCK_DIR}/SynchroClock.ino"
-
-  # install platformio
-  - sudo pip install -U platformio
-  - platformio platform  install "https://github.com/platformio/platform-atmelavr.git#develop" --with-package framework-arduinoavr
-  - platformio platform  install "https://github.com/platformio/platform-espressif8266.git#feature/stage" --with-package framework-arduinoespressif8266
 
 script:
   # build with arduino
   - build_sketch "${I2CANALOGCLOCK_DIR}" "${ATTINY_DEVICE}"  "false" "1.8.5"
   - build_sketch "${SYNCROCLOCK_DIR}"    "${ESP8266_DEVICE}" "false" "1.8.5"
-  # build with platformio
-  - platformio run --project-dir "${I2CANALOGCLOCK_DIR}"
-  - platformio run --project-dir "${SYNCROCLOCK_DIR}"
