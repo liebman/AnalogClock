@@ -20,7 +20,9 @@ before_install:
   - cd hardware/esp8266/tools
   - ./get.py
   - cd "${TRAVIS_BUILD_DIR}/hardware"
-  - ln -s esp8266 esp8266com
+  - mkdir esp8266com
+  - cd esp8266com
+  - ln -s ../esp8266 .
   - cd "${HOME}"
   # setup arduino-ci-script
   - git clone https://github.com/per1234/arduino-ci-script.git "${HOME}/scripts"
