@@ -586,6 +586,11 @@ void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
     memset(pos_str, 0, sizeof(pos_str));
     snprintf_P(pos_str, 15, PSTR("%02d:%02d:%02d"), hours, minutes, seconds);
 
+    uint8_t version = 0;
+    clk.readVersion(&version, 3);
+    snprintf_P(message, sizeof(message), PSTR("<p>ESP: %s ATTiny: %u</p>"), SYNCHRO_CLOCK_VERSION, version);
+    params.push_back(std::make_shared<ConfigParam>(wifi, message));
+
     params.push_back(std::make_shared<ConfigParam>(wifi, "position", "Clock Position", pos_str, 10, [](const char* result)
     {
         if (strlen(result))
@@ -753,14 +758,13 @@ void initWiFi()
     });
 
     std::vector<ConfigParamPtr> params;
-    createWiFiParams(wm, params);
-
-    dlog.info(FPSTR(TAG), F("params has %d items"), params.size());
 
     String ssid = "SynchroClock" + String(ESP.getChipId());
 
     if (force_config)
     {
+        createWiFiParams(wm, params);
+        dlog.info(FPSTR(TAG), F("params has %d items"), params.size());
         wm.startConfigPortal(ssid.c_str(), NULL);
     }
     else
@@ -914,12 +918,11 @@ void setup()
 {
     static PROGMEM const char TAG[] = "setup";
 
-    Serial.begin(115200);
+    Serial.begin(76800); // use the default baud rate that the ESPs SDK uses
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
     dlog.info(FPSTR(TAG), F("Startup! SynchroClock version: %s"), SYNCHRO_CLOCK_VERSION);
     dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
-
 
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
@@ -935,19 +938,6 @@ void setup()
     Wire.begin();
     Wire.setClockStretchLimit(CLOCK_STRETCH_LIMIT);
 
-    dlog.info(FPSTR(TAG), F("starting RTC"));
-    while (rtc.begin())
-    {
-        dlog.error(FPSTR(TAG), F("RTC begin failed! Attempting recovery..."));
-
-        while (WireUtils.clearBus())
-        {
-            delay(10000);
-            dlog.info(FPSTR(TAG), F("lets try that again..."));
-        }
-        delay(1000);
-    }
-
     //
     // initialize config to defaults then load.
     memset(&config, 0, sizeof(config));
@@ -957,7 +947,6 @@ void setup()
     //
     // make sure the device is available!
     //
-    feedback.blink(0.9);
 
     dlog.info(FPSTR(TAG), F("starting clock interface"));
     while (clk.begin(3) != 0)
@@ -969,7 +958,7 @@ void setup()
     uint8_t version = 0;
     while (clk.readVersion(&version, 3) != 0)
     {
-        dlog.error(FPSTR(TAG), F("can't read clock status!"));
+        dlog.error(FPSTR(TAG), F("can't read clock version!"));
         delay(10000);
     }
     dlog.info(FPSTR(TAG), F("I2CAnalogClock VERSION: %u"), version);
@@ -992,7 +981,6 @@ void setup()
     int minutes = (pos - (hours * 3600)) / 60;
     int seconds = pos - (hours * 3600) - (minutes * 60);
     dlog.info(FPSTR(TAG), F("clock position: %d (%02d:%02d:%02d)"), pos, hours, minutes, seconds);
-
 
     bool clock_was_enabled = clk.getEnable();
     dlog.info(FPSTR(TAG), F("clock interface started, enabled:%s"), clock_was_enabled ? "true" : "false");
@@ -1083,6 +1071,19 @@ void setup()
 
     dlog.info(FPSTR(TAG), F("config: tz:%d ntp:%s logging: %s:%d"), config.tz_offset,
             config.ntp_server, config.network_logger_host, config.network_logger_port);
+
+    dlog.info(FPSTR(TAG), F("starting RTC"));
+    while (rtc.begin())
+    {
+        dlog.error(FPSTR(TAG), F("RTC begin failed! Attempting recovery..."));
+
+        while (WireUtils.clearBus())
+        {
+            delay(10000);
+            dlog.info(FPSTR(TAG), F("lets try that again..."));
+        }
+        delay(1000);
+    }
 
     bool clock_needs_sync = updateTZOffset();
 

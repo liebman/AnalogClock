@@ -30,20 +30,20 @@ DS3231::DS3231()
 
 int DS3231::begin()
 {
-    dlog.debug(FPSTR(TAG), F("::begin()"));
-
-    delay(2500); // DS3231 may need this on powerup.
+    dlog.info(FPSTR(TAG),F("::begin: enable OSC/no BBS/no CONV/1hz SQWV on/no ALRM"));
 
     uint8_t ctrl = 0b00000000;       // enable osc/no BBS/no CONV/1hz/SQWV on/no ALRM
     int err = write(DS3231_CONTROL_REG, ctrl); //CONTROL Register Address
     if (err)
     {
-        dlog.error(FPSTR(TAG), F("DS3231(): write(DS3231_CONTROL_REG) failed: %d"), err);
+        dlog.error(FPSTR(TAG), F("::begin: write(DS3231_CONTROL_REG) failed: %d"), err);
         return -1;
     }
 
+    dlog.info(FPSTR(TAG),F("::begin: small delay"));
     delay(100);
 
+    dlog.info(FPSTR(TAG),F("::begin: reading HOUR register to insure 24hr format"));
     // set the clock to 24hr format
     uint8_t hr;
     if (read(DS3231_HOUR_REG, &hr))
@@ -55,6 +55,8 @@ int DS3231::begin()
      // switch to 24hr mode if its not already
     if (hr & _BV(DS3231_AMPM))
     {
+        dlog.info(FPSTR(TAG),F("::begin: writing HOUR register to set 24hr format"));
+
         hr &= ~_BV(DS3231_AMPM);
 
         if(write(DS3231_HOUR_REG, hr))
@@ -64,6 +66,7 @@ int DS3231::begin()
         }
     }
 
+    dlog.info(FPSTR(TAG), F("::begin: done"));
     return 0;
 }
 
