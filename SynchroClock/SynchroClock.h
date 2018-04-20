@@ -60,18 +60,19 @@
 //#define USE_ISRAEL_TIMECHANGE      // Israel
 
 // pin definitions
-#define LED_PIN                13   // (GPIO13) LED on pin, active low
-#define SYNC_PIN               14   // (GPIO14) pin tied to 1hz square wave from RTC
-#define CONFIG_PIN             12   // (GPIO12) button tied to pin
+#define LED_PIN                13    // (GPIO13) LED on pin, active low
+#define SYNC_PIN               14    // (GPIO14) pin tied to 1hz square wave from RTC
+#define CONFIG_PIN             12    // (GPIO12) button tied to pin
 
-#define DEFAULT_TZ_OFFSET      0    // default timzezone offset in seconds
+#define DEFAULT_TZ_OFFSET      0     // default timzezone offset in seconds
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
 #define DEFAULT_SLEEP_DURATION 28800 // default is 8hrs when we are not using the poll estimate
 
-#define CLOCK_STRETCH_LIMIT    1500 // i2c clock stretch timeout in microseconds
-#define MAX_SLEEP_DURATION     3600 // we do multiple sleep of this to handle bigger sleeps
-#define CONNECTION_TIMEOUT     30   // wifi connection timeout - we will deep sleep and try again later
-#define FACTORY_RESET_DELAY 10000   // how long to hold factory reset after LED is ON - 10 seconds (10,000 milliseconds)
+#define CLOCK_STRETCH_LIMIT    1500  // i2c clock stretch timeout in microseconds
+#define MAX_SLEEP_DURATION     3600  // we do multiple sleep of this to handle bigger sleeps
+#define CONNECTION_TIMEOUT     30    // wifi connection timeout - we will deep sleep and try again later
+#define CONFIG_DELAY           1000  // how long to hold the button for config mode - light comes on after this time.
+#define FACTORY_RESET_DELAY    10000 // how long to hold the button for factory reset after LED is ON - 10 seconds (10,000 milliseconds)
 
 #define offset2longDouble(x)   ((long double)x / 4294967296L)
 

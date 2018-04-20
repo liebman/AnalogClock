@@ -1001,29 +1001,40 @@ void setup()
             ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
         }
 
-        feedback.on();
-
-        dlog.info(FPSTR(TAG), F("reset button pressed, forcing config or factory reset!"));
-        force_config = true;
-        //
-        //  If we force config because of the config button then we stop the clock.
-        //
-        clk.writeAdjustment(0);
-        clk.setEnable(false);
-
-        //
-        // if the buttin is held for FACTORY_RESET_DELAY milliseconds then factory reset!
-        //
         time_t start = millis();
+
         while (digitalRead(CONFIG_PIN) == 0)
         {
-            time_t now = millis();
-            if ((now-start) > FACTORY_RESET_DELAY)
+        	time_t delta = millis() - start;
+        	if (!force_config && delta > CONFIG_DELAY)
+        	{
+            	feedback.on();
+
+                dlog.info(FPSTR(TAG), F("reset button pressed, forcing config or factory reset!"));
+                force_config = true;
+                //
+                //  If we force config because of the config button then we stop the clock.
+                //
+                clk.writeAdjustment(0);
+                clk.setEnable(false);
+
+                // reset the start and continue for factory reset delay
+                start += delta;
+                continue;
+        	}
+
+            //
+            // if the button is held for FACTORY_RESET_DELAY milliseconds then factory reset!
+            //
+
+            if (delta > FACTORY_RESET_DELAY)
             {
                 factoryReset();
             }
             delay(100);
+
         }
+
     }
 
     bool enabled = clk.getEnable();
