@@ -17,3 +17,6 @@
 [submodule "hardware/esp8266com/esp8266"]
 	path = hardware/esp8266com/esp8266
 	url = https://github.com/esp8266/Arduino.git
+[submodule "libraries/Syslog"]
+	path = libraries/Syslog
+	url = https://github.com/arcao/Syslog.git

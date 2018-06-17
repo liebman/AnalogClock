@@ -47,7 +47,6 @@ int UDPWrapper::send(void* buffer, size_t size)
     {
         dlog.error(FPSTR(TAG), F("::send: write failed!  expected %d got %d"), size, n);
     }
-    _udp.flush();
 
     if (!_udp.endPacket())
     {

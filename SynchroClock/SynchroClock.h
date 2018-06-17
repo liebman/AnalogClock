@@ -39,7 +39,7 @@
 #include "ConfigParam.h"
 #include "Logger.h"
 #include "DLogPrintWriter.h"
-#include "DLogTCPWriter.h"
+#include "DLogSyslogWriter.h"
 #include <memory>
 #include <vector>
 
@@ -168,10 +168,10 @@ typedef struct config
 {
     uint32_t   sleep_duration;           // deep sleep duration in seconds
     int        tz_offset;                // time offset in seconds from UTC
-    uint16_t   network_logger_port;      // port for network logging
+    uint16_t   syslog_port;              // port for network logging
     TimeChange tc[TIME_CHANGE_COUNT];    // time change description
     char       ntp_server[64];           // host to use for ntp
-    char       network_logger_host[64];  // host for network logging
+    char       syslog_host[64];          // host for network logging
     NTPPersist ntp_persist;              // ntp persisted data
 } Config;
 

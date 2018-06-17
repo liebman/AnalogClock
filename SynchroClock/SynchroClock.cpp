@@ -47,6 +47,8 @@ boolean save_config  = false; // used by wifi manager when settings were updated
 boolean force_config = false; // reset handler sets this to force into config mode if button held
 boolean stay_awake   = false; // don't use deep sleep (from config mode option)
 
+char devicename[32];
+
 const char* ota_url = nullptr; // over-the-air update url
 const char* ota_fp  = nullptr; // over-the-air update fingerprint
 
@@ -716,13 +718,13 @@ void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
         uint8_t ap_delay = TimeUtils::parseSmallDuration(result);
         clk.writeAPDelay(ap_delay);
     }));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
+    params.push_back(std::make_shared<ConfigParam>(wifi, "syslog_host", "Syslog Host", config.syslog_host, 32, [](const char* result)
     {
-        strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
+        strncpy(config.syslog_host, result, sizeof(config.syslog_host) - 1);
     }));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 6, [](const char* result)
+    params.push_back(std::make_shared<ConfigParam>(wifi, "syslog_port", "Syslog Port", config.syslog_port, 6, [](const char* result)
     {
-        config.network_logger_port = atoi(result);
+        config.syslog_port = atoi(result);
     }));
     params.push_back(std::make_shared<ConfigParam>(wifi, "clear_ntp_persist", "Clear NTP Persist 'true'", "", 8, [](const char* result)
     {
@@ -759,17 +761,17 @@ void initWiFi()
 
     std::vector<ConfigParamPtr> params;
 
-    String ssid = "SynchroClock" + String(ESP.getChipId());
+    snprintf(devicename, sizeof(devicename), "SynchroClock:%08x", ESP.getChipId());
 
     if (force_config)
     {
         createWiFiParams(wm, params);
         dlog.info(FPSTR(TAG), F("params has %d items"), params.size());
-        wm.startConfigPortal(ssid.c_str(), NULL);
+        wm.startConfigPortal(devicename, NULL);
     }
     else
     {
-        wm.autoConnect(ssid.c_str(), NULL);
+        wm.autoConnect(devicename, NULL);
     }
 
     feedback.off();
@@ -801,13 +803,13 @@ void initWiFi()
         updateTZOffset();
     }
 
-    dlog.debug(FPSTR(TAG), F("TCP logging settings: '%s:%d'"), config.network_logger_host, config.network_logger_port);
+    dlog.debug(FPSTR(TAG), F("syslog settings: '%s:%d'"), config.syslog_host, config.syslog_port);
 
-    // Configure network logging if enabled
-    if (strlen(config.network_logger_host) && config.network_logger_port)
+    // Configure syslog logging if enabled
+    if (strlen(config.syslog_host) && config.syslog_port)
     {
-        dlog.info(FPSTR(TAG), F("starting TCP logging to '%s:%d'"), config.network_logger_host, config.network_logger_port);
-        dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port, 1, 1000));
+        dlog.info(FPSTR(TAG), F("starting syslog to '%s:%d'"), config.syslog_host, config.syslog_port);
+        dlog.begin(new DLogSyslogWriter(config.syslog_host, config.syslog_port, devicename, SYNCHRO_CLOCK_VERSION));
     }
 }
 
@@ -911,7 +913,7 @@ void dlogPrefix(DLogBuffer& buffer, DLogLevel level)
     uint32 usec = micros();
     uint32 secs = usec / 1000000;
     usec = usec - (secs * 1000000);
-    buffer.printf(F("%d.%06ld %ld "), secs, usec, ESP.getChipId());
+    buffer.printf(F("%d.%06ld "), secs, usec);
 }
 
 void setup()
@@ -943,6 +945,7 @@ void setup()
     memset(&config, 0, sizeof(config));
     config.sleep_duration = DEFAULT_SLEEP_DURATION;
     config.tz_offset = 0;
+    config.syslog_port = 514;
 
     //
     // make sure the device is available!
@@ -1058,7 +1061,7 @@ void setup()
     config.tc[1].tz_offset   = DEFAULT_TC1_OFFSET;
 
     dlog.debug(FPSTR(TAG), F("defaults: tz:%d ntp:%s logging: %s:%d"), config.tz_offset,
-            config.ntp_server, config.network_logger_host, config.network_logger_port);
+            config.ntp_server, config.syslog_host, config.syslog_port);
 
     dlog.debug(FPSTR(TAG), F("EEConfig size: %u"), sizeof(EEConfig));
 
@@ -1073,15 +1076,15 @@ void setup()
     }
 
 #if defined(DEFAULT_LOG_ADDR) && defined(DEFAULT_LOG_PORT)
-    if (strnlen(config.network_logger_host, 64) == 0)
+    if (strnlen(config.syslog_host, 64) == 0)
     {
-        strncpy(config.network_logger_host, DEFAULT_LOG_ADDR, 64);
-        config.network_logger_port = DEFAULT_LOG_PORT;
+        strncpy(config.syslog_host, DEFAULT_LOG_ADDR, 64);
+        config.syslog_port = DEFAULT_LOG_PORT;
     }
 #endif
 
     dlog.info(FPSTR(TAG), F("config: tz:%d ntp:%s logging: %s:%d"), config.tz_offset,
-            config.ntp_server, config.network_logger_host, config.network_logger_port);
+            config.ntp_server, config.syslog_host, config.syslog_port);
 
     dlog.info(FPSTR(TAG), F("starting RTC"));
     while (rtc.begin())

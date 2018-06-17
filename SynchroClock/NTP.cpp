@@ -153,14 +153,14 @@ int NTP::getOffsetUsingDrift(double *offset_result, int (*getTime)(uint32_t *res
 
     if (_runtime->drift_timestamp == 0)
     {
-        dlog.debug(FPSTR(TAG), F("::getOffsetUsingDrift: first time, setting initial timestamp!"));
+        dlog.debug(FPSTR(TAG), F("::getOffsetUsingDrift: first time, setting initial timestamp! (now=%lu)"), now);
         _runtime->drift_timestamp = now;
         return -1;
     }
 
     if (_runtime->drift_timestamp >= now)
     {
-        dlog.warning(FPSTR(TAG), F("::getOffsetUsingDrift: timewarped! resetting timestamp!"));
+        dlog.warning(FPSTR(TAG), F("::getOffsetUsingDrift: timewarped! resetting timestamp! (%lu >= %lu)"), _runtime->drift_timestamp, now);
         _runtime->drift_timestamp = now;
         return -1;
     }
