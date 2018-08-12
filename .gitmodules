@@ -12,11 +12,12 @@
 	url = https://github.com/NicoHood/PinChangeInterrupt.git
 [submodule "libraries/WiFiManager"]
 	path = libraries/WiFiManager
-	url = https://github.com/tzapu/WiFiManager.git
-	branch = development
+	url = https://github.com/liebman/WiFiManager.git
+	branch = fix_custom_html_from_out_of_scope
 [submodule "hardware/esp8266com/esp8266"]
 	path = hardware/esp8266com/esp8266
-	url = https://github.com/esp8266/Arduino.git
+	url = https://github.com/liebman/Arduino.git
+	branch = http_update_redirect_and_bear_ssl
 [submodule "libraries/Syslog"]
 	path = libraries/Syslog
 	url = https://github.com/arcao/Syslog.git
