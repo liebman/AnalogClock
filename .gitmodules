@@ -13,7 +13,7 @@
 [submodule "libraries/WiFiManager"]
 	path = libraries/WiFiManager
 	url = https://github.com/liebman/WiFiManager.git
-	branch = fix_custom_html_from_out_of_scope
+	branch = development
 [submodule "hardware/esp8266com/esp8266"]
 	path = hardware/esp8266com/esp8266
 	url = https://github.com/liebman/Arduino.git
