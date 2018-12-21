@@ -22,8 +22,10 @@
 
 #include "SynchroClock.h"
 #include "SynchroClockVersion.h"
+#include <FS.h>
 #include <time.h>
 #include <sys/time.h>
+#include "umm_malloc/umm_malloc.h"
 
 //
 // These are only used when debugging
@@ -46,46 +48,46 @@ DS3231           rtc;                       // real time clock on i2c interface
 boolean save_config  = false; // used by wifi manager when settings were updated.
 boolean force_config = false; // reset handler sets this to force into config mode if button held
 boolean stay_awake   = false; // don't use deep sleep (from config mode option)
+boolean url_update   = false; // set true of we got an update url
 
 char devicename[32];
 
-const char* ota_url = nullptr; // over-the-air update url
-const char* ota_fp  = nullptr; // over-the-air update fingerprint
-
 char message[128]; // buffer for http return values
 
-bool isOTASet()
-{
-    return ota_url != nullptr;
-}
+class SPIFFSCertStoreFile : public BearSSL::CertStoreFile {
+  public:
+    SPIFFSCertStoreFile(const char *name) {
+      _name = name;
+    };
+    virtual ~SPIFFSCertStoreFile() override {};
 
-void setOTAurl(const char* value)
-{
-    if (ota_url != nullptr)
-    {
-        free((void*)ota_url);
+    // The main API
+    virtual bool open(bool write = false) override {
+      _file = SPIFFS.open(_name, write ? "w" : "r");
+      return _file;
     }
-    ota_url = strdup(value);
-}
-
-const char* getOTAurl()
-{
-    return ota_url != nullptr ? ota_url : "";
-}
-
-void setOTAfp(const char* value)
-{
-    if (ota_fp != nullptr)
-    {
-        free((void*)ota_fp);
+    virtual bool seek(size_t absolute_pos) override {
+      return _file.seek(absolute_pos, SeekSet);
     }
-    ota_fp = strdup(value);
-}
+    virtual ssize_t read(void *dest, size_t bytes) override {
+      return _file.readBytes((char*)dest, bytes);
+    }
+    virtual ssize_t write(void *dest, size_t bytes) override {
+      return _file.write((uint8_t*)dest, bytes);
+    }
+    virtual void close() override {
+      _file.close();
+    }
 
-const char* getOTAfp()
-{
-    return ota_fp != nullptr ? ota_fp : "";
-}
+  private:
+    File _file;
+    const char *_name;
+};
+
+SPIFFSCertStoreFile certs_idx("/certs.idx");
+SPIFFSCertStoreFile certs_ar("/certs.ar");
+
+BearSSL::CertStore certStore;
 
 boolean parseBoolean(const char* value)
 {
@@ -611,13 +613,23 @@ void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
     }));
 
     params.push_back(std::make_shared<ConfigParam>(wifi, "<p>OTA Update</p>"));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_url", "OTA URL", getOTAurl(), 127, [](const char* result)
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_url", "OTA URL", "", 127, [](const char* result)
     {
-        setOTAurl(result);
-    }));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_fp", "OTA fingerprint", getOTAfp(), 127, [](const char* result)
-    {
-        setOTAfp(result);
+        if (SPIFFS.begin())
+        {
+            dlog.warning(FPSTR(TAG), F("SPIFFS begin failed!!!"));
+        }
+
+        dlog.info(FPSTR(TAG), F("opening file for writing '%s'"), UPDATE_URL_FILENAME);
+        File uf = SPIFFS.open(UPDATE_URL_FILENAME, "w");
+        size_t urlsize = strlen(result);
+        size_t written = uf.write((uint8_t*)result, urlsize);
+        if (written != urlsize)
+        {
+            dlog.error(FPSTR(TAG), F("writing url size %d failed, only wrote %d"), urlsize, written);
+        }
+        uf.close();
+        url_update = true;
     }));
     params.push_back(std::make_shared<ConfigParam>(wifi, "<p>1st Time Change</p>"));
     params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 3, [](const char* result)
@@ -774,6 +786,8 @@ void initWiFi()
         wm.autoConnect(devicename, NULL);
     }
 
+    WiFi.mode(WIFI_STA); // force station mode only (WifiManager issue work around)
+
     feedback.off();
 
     //
@@ -813,28 +827,112 @@ void initWiFi()
     }
 }
 
+bool setSystemTime()
+{
+    static PROGMEM const char TAG[] = "setSystemTime";
+    DS3231DateTime dt;
+    unsigned int tries = 10;
+
+    dlog.info(FPSTR(TAG), F("getting current date/time from RTC"));
+
+    while(rtc.readTime(dt))
+    {
+        --tries;
+        if (tries == 0)
+        {
+            return false;
+        }
+        dlog.error(FPSTR(TAG), F("FAILED to read RTC %d tries left!"), tries);
+        WireUtils.clearBus();
+    }
+
+    dlog.info(FPSTR(TAG), F("setting system time"));
+
+    struct timeval tv;
+    tv.tv_sec = dt.getUnixTime();
+    tv.tv_usec = 0;
+    int ret = settimeofday(&tv, nullptr);
+
+    if (ret != 0)
+    {
+        dlog.error(FPSTR(TAG), F("failed to set system time"));
+        return false;
+    }
+
+    return true;
+}
+
 void processOTA(bool enable_clock)
 {
     static PROGMEM const char TAG[] = "processOTA";
     dlog.info(FPSTR(TAG), F("process any OTA update"));
+    dlog.info(FPSTR(TAG), F("free mem: %u"), ESP.getFreeHeap());
 
-    if (isOTASet())
+    if (url_update)
     {
-        dlog.info(FPSTR(TAG), F("checking for OTA from: '%s'"), getOTAurl());
+        dlog.info(FPSTR(TAG), F("setting clock enable: %s"), enable_clock ? "true" : "false");
+        clk.setEnable(enable_clock);
+        dlog.info(FPSTR(TAG), F("got a url update, use deep sleep to reset for a clean heap!"));
+        dlog.end();
+        dsd.sleep_delay_left = 0;
+        writeDeepSleepData();
+        ESP.deepSleep(300000, RF_DEFAULT); // short sleep
+        while(true); // should never get here
+    }
+
+    if (!SPIFFS.begin())
+    {
+        dlog.warning(FPSTR(TAG), F("SPIFFS begin failed!!!"));
+    }
+
+    File uf = SPIFFS.open(UPDATE_URL_FILENAME, "r");
+
+    if (uf)
+    {
+        dlog.info(FPSTR(TAG), F("opened update file '%s"), UPDATE_URL_FILENAME);
+        size_t urlsize = uf.size();
+        dlog.info(FPSTR(TAG), F("file size is %d, allocating buffer"), urlsize);
+        char* url = new char[urlsize+1];
+        std::fill(&url[0], &url[urlsize+1], 0);
+        size_t gotsize = uf.read((uint8_t*)url, urlsize);
+        if (gotsize != urlsize)
+        {
+            dlog.warning(FPSTR(TAG), F("failed to read %d bytes from url file, only got %d"), urlsize, gotsize);
+        }
+        uf.close();
+        dlog.info(FPSTR(TAG), F("deleting file '%s"), UPDATE_URL_FILENAME);
+        SPIFFS.remove(UPDATE_URL_FILENAME);
+        // need to set system time so that TLS validation can happen
+        setSystemTime();
+        dlog.info(FPSTR(TAG), F("checking for OTA from: '%s'"), url);
         feedback.blink(FEEDBACK_LED_MEDIUM);
 
         ESPhttpUpdate.rebootOnUpdate(false);
 
-        t_httpUpdate_return ret;
+        //ESPhttpUpdate.followRedirects(true);
+        t_httpUpdate_return ret = HTTP_UPDATE_FAILED;
 
-        if (strncmp(getOTAurl(), "https:", 6) == 0)
+        WiFiClient *client = nullptr;
+        if (strncmp(url, "https:", 6) == 0)
         {
-            ret = ESPhttpUpdate.update(getOTAurl(), SYNCHRO_CLOCK_VERSION, getOTAfp());
+
+            int numCerts = certStore.initCertStore(&certs_idx, &certs_ar);
+            dlog.info(FPSTR(TAG), F("Number of CA certs read: %d"), numCerts);
+
+            BearSSL::WiFiClientSecure *bear  = new BearSSL::WiFiClientSecure();
+            // Integrate the cert store with this connection
+            dlog.info(FPSTR(TAG), F("adding cert store to connection"));
+            bear->setCertStore(&certStore);
+            client = bear;
         }
         else
         {
-            ret = ESPhttpUpdate.update(getOTAurl(), SYNCHRO_CLOCK_VERSION);
+            client = new WiFiClient;
         }
+
+        dlog.info(FPSTR(TAG), F("free mem: %u"), ESP.getFreeHeap());
+        dlog.info(FPSTR(TAG), F("starting update with client: 0x%08x"), (unsigned int)client);
+        ret = ESPhttpUpdate.update(*client, url, SYNCHRO_CLOCK_VERSION);
 
         String reason = ESPhttpUpdate.getLastErrorString();
 
@@ -919,13 +1017,14 @@ void dlogPrefix(DLogBuffer& buffer, DLogLevel level)
 void setup()
 {
     static PROGMEM const char TAG[] = "setup";
+    uint32_t free_mem = ESP.getFreeHeap();
 
     Serial.begin(76800); // use the default baud rate that the ESPs SDK uses
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
     dlog.info(FPSTR(TAG), F("Startup! SynchroClock version: %s"), SYNCHRO_CLOCK_VERSION);
     dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
-
+    dlog.info(FPSTR(TAG), F("free mem: %u"), free_mem);
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
 
@@ -1001,7 +1100,7 @@ void setup()
             dlog.end();
             dsd.sleep_delay_left = 0;
             writeDeepSleepData();
-            ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
+            ESP.deepSleep(300000, RF_DEFAULT); // short sleep to enable the radio!
         }
 
         time_t start = millis();
@@ -1217,10 +1316,13 @@ void sleepFor(uint32_t sleep_duration)
         dlog.info(FPSTR(TAG), F("delay less than max, mode=DEFAULT sleep_delay_left=%lu"), dsd.sleep_delay_left);
     }
 
+    uint64_t sleep_us = (uint64_t)sleep_duration * 1000000L;
+
     writeDeepSleepData();
-    dlog.info(FPSTR(TAG), F("Deep Sleep Time: %lu"), sleep_duration);
+
+    dlog.info(FPSTR(TAG), F("Deep Sleep Time: %u"), sleep_duration);
     dlog.end();
-    ESP.deepSleep(sleep_duration * 1000000, mode);
+    ESP.deepSleep(sleep_us, mode);
 }
 
 void loop()

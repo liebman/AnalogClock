@@ -9,6 +9,7 @@
 */spec.d
 I2CAnalogClock/I2CAnalogClock.ino
 SynchroClock/SynchroClock.ino
+SynchroClock/data
 */Release
 */Debug
 */libraries

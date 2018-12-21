@@ -14,7 +14,6 @@ Ping::Ping()
 }
 
 extern "C" {
-#include <user_interface.h>
 #include <ping.h>
 }
 

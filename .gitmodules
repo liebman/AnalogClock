@@ -16,8 +16,8 @@
 	branch = development
 [submodule "hardware/esp8266com/esp8266"]
 	path = hardware/esp8266com/esp8266
-	url = https://github.com/liebman/Arduino.git
-	branch = http_update_redirect_and_bear_ssl
+	url = https://github.com/esp8266/Arduino.git
+	branch = master
 [submodule "libraries/Syslog"]
 	path = libraries/Syslog
 	url = https://github.com/arcao/Syslog.git

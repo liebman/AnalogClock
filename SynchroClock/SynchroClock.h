@@ -74,6 +74,8 @@
 #define CONFIG_DELAY           1000  // how long to hold the button for config mode - light comes on after this time.
 #define FACTORY_RESET_DELAY    10000 // how long to hold the button for factory reset after LED is ON - 10 seconds (10,000 milliseconds)
 
+#define UPDATE_URL_FILENAME    "updateurl.txt"
+
 #define offset2longDouble(x)   ((long double)x / 4294967296L)
 
 #if defined(USE_US_PACIFIC_TIMECHANGE)
@@ -185,6 +187,7 @@ typedef struct deep_sleep_data
 {
     uint32_t sleep_delay_left;          // number seconds still to sleep
     NTPRunTime ntp_runtime;             // NTP runtime data
+    bool run_update;                    // do update if true
 } DeepSleepData;
 
 typedef struct rtc_deep_sleep_data
