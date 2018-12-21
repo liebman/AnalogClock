@@ -12,7 +12,7 @@
 	url = https://github.com/NicoHood/PinChangeInterrupt.git
 [submodule "libraries/WiFiManager"]
 	path = libraries/WiFiManager
-	url = https://github.com/liebman/WiFiManager.git
+	url = https://github.com/tzapu/WiFiManager.git
 	branch = development
 [submodule "hardware/esp8266com/esp8266"]
 	path = hardware/esp8266com/esp8266
