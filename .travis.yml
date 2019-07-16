@@ -15,5 +15,5 @@ install:
 script:
   - cd SynchroClock
   - platformio run
-  - cd I2CAnalogClock
+  - cd ../I2CAnalogClock
   - platformio run
