@@ -5,16 +5,15 @@
  *      Author: chris.l
  */
 
-#ifndef PING_H_
-#define PING_H_
+#ifndef _SIMPLE_PING_H_
+#define _SIMPLE_PING_H_
 #include "Arduino.h"
 #include <ESP8266WiFi.h>
 
-class Ping
+class SimplePing
 {
 public:
-    Ping();
+    SimplePing();
     void ping(IPAddress address);
 };
-
-#endif /* PING_H_ */
+#endif /* _SIMPLE_PING_H_ */

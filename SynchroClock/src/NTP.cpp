@@ -219,7 +219,7 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     // ARP cache etc.  Without this we see a varying 20ms -> 80ms delay on the
     // NTP packet.
     //
-    Ping ping;
+    SimplePing ping;
     ping.ping(address);
 
     Timer timer;

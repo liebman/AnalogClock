@@ -2,16 +2,16 @@
 	path = hardware/ATTinyCore
 	url = https://github.com/SpenceKonde/ATTinyCore.git
 [submodule "libraries/DLog"]
-	path = libraries/DLog
+	path = SynchroClock/lib/DLog
 	url = https://github.com/liebman/DLog.git
 [submodule "libraries/DLogNet"]
-	path = libraries/DLogNet
+	path = SynchroClock/lib/DLogNet
 	url = https://github.com/liebman/DLogNet.git
 [submodule "libraries/PinChangeInterrupt"]
-	path = libraries/PinChangeInterrupt
+	path = I2CAnalogClock/lib/PinChangeInterrupt
 	url = https://github.com/NicoHood/PinChangeInterrupt.git
 [submodule "libraries/WiFiManager"]
-	path = libraries/WiFiManager
+	path = SynchroClock/lib/WiFiManager
 	url = https://github.com/tzapu/WiFiManager.git
 	branch = development
 [submodule "hardware/esp8266com/esp8266"]
@@ -19,5 +19,5 @@
 	url = https://github.com/esp8266/Arduino.git
 	branch = master
 [submodule "libraries/Syslog"]
-	path = libraries/Syslog
+	path = SynchroClock/lib/Syslog
 	url = https://github.com/arcao/Syslog.git

@@ -34,7 +34,7 @@
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
 
-DLog&             dlog = DLog::getLog();
+DLog&            dlog = DLog::getLog();
 Config           config;                    // configuration persisted in the EEPROM
 DeepSleepData    dsd;                       // data persisted in the RTC memory
 #if defined(LED_PIN)
@@ -54,40 +54,9 @@ char devicename[32];
 
 char message[128]; // buffer for http return values
 
-class SPIFFSCertStoreFile : public BearSSL::CertStoreFile {
-  public:
-    SPIFFSCertStoreFile(const char *name) {
-      _name = name;
-    };
-    virtual ~SPIFFSCertStoreFile() override {};
-
-    // The main API
-    virtual bool open(bool write = false) override {
-      _file = SPIFFS.open(_name, write ? "w" : "r");
-      return _file;
-    }
-    virtual bool seek(size_t absolute_pos) override {
-      return _file.seek(absolute_pos, SeekSet);
-    }
-    virtual ssize_t read(void *dest, size_t bytes) override {
-      return _file.readBytes((char*)dest, bytes);
-    }
-    virtual ssize_t write(void *dest, size_t bytes) override {
-      return _file.write((uint8_t*)dest, bytes);
-    }
-    virtual void close() override {
-      _file.close();
-    }
-
-  private:
-    File _file;
-    const char *_name;
-};
-
-SPIFFSCertStoreFile certs_idx("/certs.idx");
-SPIFFSCertStoreFile certs_ar("/certs.ar");
-
+#ifdef USE_CERT_STORE
 BearSSL::CertStore certStore;
+#endif
 
 boolean parseBoolean(const char* value)
 {
@@ -915,14 +884,18 @@ void processOTA(bool enable_clock)
         WiFiClient *client = nullptr;
         if (strncmp(url, "https:", 6) == 0)
         {
-
-            int numCerts = certStore.initCertStore(&certs_idx, &certs_ar);
+#ifdef USE_CERT_STORE
+            int numCerts = certStore.initCertStore(SPIFFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
             dlog.info(FPSTR(TAG), F("Number of CA certs read: %d"), numCerts);
-
+#endif
             BearSSL::WiFiClientSecure *bear  = new BearSSL::WiFiClientSecure();
+#ifdef USE_CERT_STORE
             // Integrate the cert store with this connection
             dlog.info(FPSTR(TAG), F("adding cert store to connection"));
             bear->setCertStore(&certStore);
+#else
+            bear->setInsecure();
+#endif
             client = bear;
         }
         else
