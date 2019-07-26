@@ -9,7 +9,7 @@
 #define NTP_H_
 
 #include "Arduino.h"
-#include "Ping.h"
+#include "SimplePing.h"
 #include "Timer.h"
 #include "UDPWrapper.h"
 #include "Logger.h"

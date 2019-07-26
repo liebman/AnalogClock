@@ -39,7 +39,7 @@
 #include "ConfigParam.h"
 #include "Logger.h"
 #include "DLogPrintWriter.h"
-#include "DLogTCPWriter.h"
+#include "DLogSyslogWriter.h"
 #include <memory>
 #include <vector>
 
@@ -73,6 +73,8 @@
 #define CONNECTION_TIMEOUT     30    // wifi connection timeout - we will deep sleep and try again later
 #define CONFIG_DELAY           1000  // how long to hold the button for config mode - light comes on after this time.
 #define FACTORY_RESET_DELAY    10000 // how long to hold the button for factory reset after LED is ON - 10 seconds (10,000 milliseconds)
+
+#define UPDATE_URL_FILENAME    "updateurl.txt"
 
 #define offset2longDouble(x)   ((long double)x / 4294967296L)
 
@@ -168,10 +170,10 @@ typedef struct config
 {
     uint32_t   sleep_duration;           // deep sleep duration in seconds
     int        tz_offset;                // time offset in seconds from UTC
-    uint16_t   network_logger_port;      // port for network logging
+    uint16_t   syslog_port;              // port for network logging
     TimeChange tc[TIME_CHANGE_COUNT];    // time change description
     char       ntp_server[64];           // host to use for ntp
-    char       network_logger_host[64];  // host for network logging
+    char       syslog_host[64];          // host for network logging
     NTPPersist ntp_persist;              // ntp persisted data
 } Config;
 
@@ -185,6 +187,7 @@ typedef struct deep_sleep_data
 {
     uint32_t sleep_delay_left;          // number seconds still to sleep
     NTPRunTime ntp_runtime;             // NTP runtime data
+    bool run_update;                    // do update if true
 } DeepSleepData;
 
 typedef struct rtc_deep_sleep_data

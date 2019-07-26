@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="8.3.2">
+<eagle version="9.0.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -142,6 +142,7 @@
 <layer number="255" name="routoute" color="7" fill="1" visible="no" active="yes"/>
 </layers>
 <board>
+<fusionsync huburn="a.cGVyc29uYWw6dWUyZGMwYzgy" projecturn="a.cGVyc29uYWw6dWUyZGMwYzgyIzIwMTgwNTA1MTMwNTk0NDAx" f3durn="urn:adsk.wipprod:dm.lineage:oDkN18TAQXuDq9vELiR8Jw" pcbguid="99bdb58f-8b91-499c-bddc-85babd247309" lastpulledtime="" lastsyncedchangeguid="54434572-daed-71d7-d783-66858f93ba70"/>
 <plain>
 <wire x1="0" y1="0" x2="84.76" y2="0" width="0" layer="20"/>
 <wire x1="84.76" y1="0" x2="84.76" y2="45.71" width="0" layer="20"/>
@@ -3008,10 +3009,11 @@ design rules under a new name.</description>
 <param name="slThermalsForVias" value="0"/>
 <param name="dpMaxLengthDifference" value="10mm"/>
 <param name="dpGapFactor" value="2.5"/>
-<param name="checkGrid" value="0"/>
 <param name="checkAngle" value="0"/>
 <param name="checkFont" value="1"/>
 <param name="checkRestrict" value="1"/>
+<param name="checkStop" value="0"/>
+<param name="checkValues" value="0"/>
 <param name="useDiameter" value="13"/>
 <param name="maxErrors" value="50"/>
 </designrules>
@@ -3628,21 +3630,6 @@ design rules under a new name.</description>
 </signal>
 </signals>
 <errors>
-<approved hash="3,16,bcacb4dcb48cbcfc"/>
-<approved hash="3,1,a3d0a0dcaee820dc"/>
-<approved hash="3,1,2f9ca19ca3fcac84"/>
-<approved hash="3,1,7d79e3f46698691a"/>
-<approved hash="3,1,205fae52a352a37b"/>
-<approved hash="3,1,a498a49da9972094"/>
-<approved hash="3,1,667b69fceb117599"/>
-<approved hash="3,1,5f00e8f0eb865c76"/>
-<approved hash="3,1,3360256cb6b168d3"/>
-<approved hash="3,1,10192b7a53049cc1"/>
-<approved hash="3,1,9c2053df245b10b2"/>
-<approved hash="3,1,1eb0d0241538727c"/>
-<approved hash="3,1,7a5b1a29df1f19bf"/>
-<approved hash="3,1,cd4262326145ce35"/>
-<approved hash="3,1,79bee775661b699f"/>
 <approved hash="3,16,2e21565157612f11"/>
 </errors>
 </board>
@@ -3652,6 +3639,11 @@ design rules under a new name.</description>
 Since Version 8.2, EAGLE supports online libraries. The ids
 of those online libraries will not be understood (or retained)
 with this version.
+</note>
+<note version="8.3" severity="warning">
+Since Version 8.3, EAGLE supports Fusion synchronisation.
+This feature will not be available in this version and saving
+the document will break the link to the Fusion PCB feature.
 </note>
 <note version="8.3" severity="warning">
 Since Version 8.3, EAGLE supports URNs for individual library

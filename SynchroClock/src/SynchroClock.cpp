@@ -22,8 +22,10 @@
 
 #include "SynchroClock.h"
 #include "SynchroClockVersion.h"
+#include <FS.h>
 #include <time.h>
 #include <sys/time.h>
+#include "umm_malloc/umm_malloc.h"
 
 //
 // These are only used when debugging
@@ -32,7 +34,7 @@
 //#define DISABLE_INITIAL_NTP
 //#define DISABLE_INITIAL_SYNC
 
-DLog&             dlog = DLog::getLog();
+DLog&            dlog = DLog::getLog();
 Config           config;                    // configuration persisted in the EEPROM
 DeepSleepData    dsd;                       // data persisted in the RTC memory
 #if defined(LED_PIN)
@@ -46,44 +48,15 @@ DS3231           rtc;                       // real time clock on i2c interface
 boolean save_config  = false; // used by wifi manager when settings were updated.
 boolean force_config = false; // reset handler sets this to force into config mode if button held
 boolean stay_awake   = false; // don't use deep sleep (from config mode option)
+boolean url_update   = false; // set true of we got an update url
 
-const char* ota_url = nullptr; // over-the-air update url
-const char* ota_fp  = nullptr; // over-the-air update fingerprint
+char devicename[32];
 
 char message[128]; // buffer for http return values
 
-bool isOTASet()
-{
-    return ota_url != nullptr;
-}
-
-void setOTAurl(const char* value)
-{
-    if (ota_url != nullptr)
-    {
-        free((void*)ota_url);
-    }
-    ota_url = strdup(value);
-}
-
-const char* getOTAurl()
-{
-    return ota_url != nullptr ? ota_url : "";
-}
-
-void setOTAfp(const char* value)
-{
-    if (ota_fp != nullptr)
-    {
-        free((void*)ota_fp);
-    }
-    ota_fp = strdup(value);
-}
-
-const char* getOTAfp()
-{
-    return ota_fp != nullptr ? ota_fp : "";
-}
+#ifdef USE_CERT_STORE
+BearSSL::CertStore certStore;
+#endif
 
 boolean parseBoolean(const char* value)
 {
@@ -609,13 +582,23 @@ void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
     }));
 
     params.push_back(std::make_shared<ConfigParam>(wifi, "<p>OTA Update</p>"));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_url", "OTA URL", getOTAurl(), 127, [](const char* result)
+    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_url", "OTA URL", "", 127, [](const char* result)
     {
-        setOTAurl(result);
-    }));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "ota_fp", "OTA fingerprint", getOTAfp(), 127, [](const char* result)
-    {
-        setOTAfp(result);
+        if (SPIFFS.begin())
+        {
+            dlog.warning(FPSTR(TAG), F("SPIFFS begin failed!!!"));
+        }
+
+        dlog.info(FPSTR(TAG), F("opening file for writing '%s'"), UPDATE_URL_FILENAME);
+        File uf = SPIFFS.open(UPDATE_URL_FILENAME, "w");
+        size_t urlsize = strlen(result);
+        size_t written = uf.write((uint8_t*)result, urlsize);
+        if (written != urlsize)
+        {
+            dlog.error(FPSTR(TAG), F("writing url size %d failed, only wrote %d"), urlsize, written);
+        }
+        uf.close();
+        url_update = true;
     }));
     params.push_back(std::make_shared<ConfigParam>(wifi, "<p>1st Time Change</p>"));
     params.push_back(std::make_shared<ConfigParam>(wifi, "tc1_occurrence", "occurrence", config.tc[0].occurrence, 3, [](const char* result)
@@ -716,13 +699,13 @@ void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
         uint8_t ap_delay = TimeUtils::parseSmallDuration(result);
         clk.writeAPDelay(ap_delay);
     }));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "network_logger_host", "Network Log Host", config.network_logger_host, 32, [](const char* result)
+    params.push_back(std::make_shared<ConfigParam>(wifi, "syslog_host", "Syslog Host", config.syslog_host, 32, [](const char* result)
     {
-        strncpy(config.network_logger_host, result, sizeof(config.network_logger_host) - 1);
+        strncpy(config.syslog_host, result, sizeof(config.syslog_host) - 1);
     }));
-    params.push_back(std::make_shared<ConfigParam>(wifi, "network_logger_port", "Network Log Port", config.network_logger_port, 6, [](const char* result)
+    params.push_back(std::make_shared<ConfigParam>(wifi, "syslog_port", "Syslog Port", config.syslog_port, 6, [](const char* result)
     {
-        config.network_logger_port = atoi(result);
+        config.syslog_port = atoi(result);
     }));
     params.push_back(std::make_shared<ConfigParam>(wifi, "clear_ntp_persist", "Clear NTP Persist 'true'", "", 8, [](const char* result)
     {
@@ -759,18 +742,20 @@ void initWiFi()
 
     std::vector<ConfigParamPtr> params;
 
-    String ssid = "SynchroClock" + String(ESP.getChipId());
+    snprintf(devicename, sizeof(devicename), "SynchroClock:%08x", ESP.getChipId());
 
     if (force_config)
     {
         createWiFiParams(wm, params);
         dlog.info(FPSTR(TAG), F("params has %d items"), params.size());
-        wm.startConfigPortal(ssid.c_str(), NULL);
+        wm.startConfigPortal(devicename, NULL);
     }
     else
     {
-        wm.autoConnect(ssid.c_str(), NULL);
+        wm.autoConnect(devicename, NULL);
     }
+
+    WiFi.mode(WIFI_STA); // force station mode only (WifiManager issue work around)
 
     feedback.off();
 
@@ -801,38 +786,126 @@ void initWiFi()
         updateTZOffset();
     }
 
-    dlog.debug(FPSTR(TAG), F("TCP logging settings: '%s:%d'"), config.network_logger_host, config.network_logger_port);
+    dlog.debug(FPSTR(TAG), F("syslog settings: '%s:%d'"), config.syslog_host, config.syslog_port);
 
-    // Configure network logging if enabled
-    if (strlen(config.network_logger_host) && config.network_logger_port)
+    // Configure syslog logging if enabled
+    if (strlen(config.syslog_host) && config.syslog_port)
     {
-        dlog.info(FPSTR(TAG), F("starting TCP logging to '%s:%d'"), config.network_logger_host, config.network_logger_port);
-        dlog.begin(new DLogTCPWriter(config.network_logger_host, config.network_logger_port, 1, 1000));
+        dlog.info(FPSTR(TAG), F("starting syslog to '%s:%d'"), config.syslog_host, config.syslog_port);
+        dlog.begin(new DLogSyslogWriter(config.syslog_host, config.syslog_port, devicename, SYNCHRO_CLOCK_VERSION));
     }
+}
+
+bool setSystemTime()
+{
+    static PROGMEM const char TAG[] = "setSystemTime";
+    DS3231DateTime dt;
+    unsigned int tries = 10;
+
+    dlog.info(FPSTR(TAG), F("getting current date/time from RTC"));
+
+    while(rtc.readTime(dt))
+    {
+        --tries;
+        if (tries == 0)
+        {
+            return false;
+        }
+        dlog.error(FPSTR(TAG), F("FAILED to read RTC %d tries left!"), tries);
+        WireUtils.clearBus();
+    }
+
+    dlog.info(FPSTR(TAG), F("setting system time"));
+
+    struct timeval tv;
+    tv.tv_sec = dt.getUnixTime();
+    tv.tv_usec = 0;
+    int ret = settimeofday(&tv, nullptr);
+
+    if (ret != 0)
+    {
+        dlog.error(FPSTR(TAG), F("failed to set system time"));
+        return false;
+    }
+
+    return true;
 }
 
 void processOTA(bool enable_clock)
 {
     static PROGMEM const char TAG[] = "processOTA";
     dlog.info(FPSTR(TAG), F("process any OTA update"));
+    dlog.info(FPSTR(TAG), F("free mem: %u"), ESP.getFreeHeap());
 
-    if (isOTASet())
+    if (url_update)
     {
-        dlog.info(FPSTR(TAG), F("checking for OTA from: '%s'"), getOTAurl());
+        dlog.info(FPSTR(TAG), F("setting clock enable: %s"), enable_clock ? "true" : "false");
+        clk.setEnable(enable_clock);
+        dlog.info(FPSTR(TAG), F("got a url update, use deep sleep to reset for a clean heap!"));
+        dlog.end();
+        dsd.sleep_delay_left = 0;
+        writeDeepSleepData();
+        ESP.deepSleep(300000, RF_DEFAULT); // short sleep
+        while(true); // should never get here
+    }
+
+    if (!SPIFFS.begin())
+    {
+        dlog.warning(FPSTR(TAG), F("SPIFFS begin failed!!!"));
+    }
+
+    File uf = SPIFFS.open(UPDATE_URL_FILENAME, "r");
+
+    if (uf)
+    {
+        dlog.info(FPSTR(TAG), F("opened update file '%s"), UPDATE_URL_FILENAME);
+        size_t urlsize = uf.size();
+        dlog.info(FPSTR(TAG), F("file size is %d, allocating buffer"), urlsize);
+        char* url = new char[urlsize+1];
+        std::fill(&url[0], &url[urlsize+1], 0);
+        size_t gotsize = uf.read((uint8_t*)url, urlsize);
+        if (gotsize != urlsize)
+        {
+            dlog.warning(FPSTR(TAG), F("failed to read %d bytes from url file, only got %d"), urlsize, gotsize);
+        }
+        uf.close();
+        dlog.info(FPSTR(TAG), F("deleting file '%s"), UPDATE_URL_FILENAME);
+        SPIFFS.remove(UPDATE_URL_FILENAME);
+        // need to set system time so that TLS validation can happen
+        setSystemTime();
+        dlog.info(FPSTR(TAG), F("checking for OTA from: '%s'"), url);
         feedback.blink(FEEDBACK_LED_MEDIUM);
 
         ESPhttpUpdate.rebootOnUpdate(false);
 
-        t_httpUpdate_return ret;
+        //ESPhttpUpdate.followRedirects(true);
+        t_httpUpdate_return ret = HTTP_UPDATE_FAILED;
 
-        if (strncmp(getOTAurl(), "https:", 6) == 0)
+        WiFiClient *client = nullptr;
+        if (strncmp(url, "https:", 6) == 0)
         {
-            ret = ESPhttpUpdate.update(getOTAurl(), SYNCHRO_CLOCK_VERSION, getOTAfp());
+#ifdef USE_CERT_STORE
+            int numCerts = certStore.initCertStore(SPIFFS, PSTR("/certs.idx"), PSTR("/certs.ar"));
+            dlog.info(FPSTR(TAG), F("Number of CA certs read: %d"), numCerts);
+#endif
+            BearSSL::WiFiClientSecure *bear  = new BearSSL::WiFiClientSecure();
+#ifdef USE_CERT_STORE
+            // Integrate the cert store with this connection
+            dlog.info(FPSTR(TAG), F("adding cert store to connection"));
+            bear->setCertStore(&certStore);
+#else
+            bear->setInsecure();
+#endif
+            client = bear;
         }
         else
         {
-            ret = ESPhttpUpdate.update(getOTAurl(), SYNCHRO_CLOCK_VERSION);
+            client = new WiFiClient;
         }
+
+        dlog.info(FPSTR(TAG), F("free mem: %u"), ESP.getFreeHeap());
+        dlog.info(FPSTR(TAG), F("starting update with client: 0x%08x"), (unsigned int)client);
+        ret = ESPhttpUpdate.update(*client, url, SYNCHRO_CLOCK_VERSION);
 
         String reason = ESPhttpUpdate.getLastErrorString();
 
@@ -911,19 +984,20 @@ void dlogPrefix(DLogBuffer& buffer, DLogLevel level)
     uint32 usec = micros();
     uint32 secs = usec / 1000000;
     usec = usec - (secs * 1000000);
-    buffer.printf(F("%d.%06ld %ld "), secs, usec, ESP.getChipId());
+    buffer.printf(F("%d.%06ld "), secs, usec);
 }
 
 void setup()
 {
     static PROGMEM const char TAG[] = "setup";
+    uint32_t free_mem = ESP.getFreeHeap();
 
     Serial.begin(76800); // use the default baud rate that the ESPs SDK uses
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
     dlog.info(FPSTR(TAG), F("Startup! SynchroClock version: %s"), SYNCHRO_CLOCK_VERSION);
     dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
-
+    dlog.info(FPSTR(TAG), F("free mem: %u"), free_mem);
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
 
@@ -943,6 +1017,7 @@ void setup()
     memset(&config, 0, sizeof(config));
     config.sleep_duration = DEFAULT_SLEEP_DURATION;
     config.tz_offset = 0;
+    config.syslog_port = 514;
 
     //
     // make sure the device is available!
@@ -998,7 +1073,7 @@ void setup()
             dlog.end();
             dsd.sleep_delay_left = 0;
             writeDeepSleepData();
-            ESP.deepSleep(1, RF_DEFAULT); // super short sleep to enable the radio!
+            ESP.deepSleep(300000, RF_DEFAULT); // short sleep to enable the radio!
         }
 
         time_t start = millis();
@@ -1058,7 +1133,7 @@ void setup()
     config.tc[1].tz_offset   = DEFAULT_TC1_OFFSET;
 
     dlog.debug(FPSTR(TAG), F("defaults: tz:%d ntp:%s logging: %s:%d"), config.tz_offset,
-            config.ntp_server, config.network_logger_host, config.network_logger_port);
+            config.ntp_server, config.syslog_host, config.syslog_port);
 
     dlog.debug(FPSTR(TAG), F("EEConfig size: %u"), sizeof(EEConfig));
 
@@ -1073,15 +1148,15 @@ void setup()
     }
 
 #if defined(DEFAULT_LOG_ADDR) && defined(DEFAULT_LOG_PORT)
-    if (strnlen(config.network_logger_host, 64) == 0)
+    if (strnlen(config.syslog_host, 64) == 0)
     {
-        strncpy(config.network_logger_host, DEFAULT_LOG_ADDR, 64);
-        config.network_logger_port = DEFAULT_LOG_PORT;
+        strncpy(config.syslog_host, DEFAULT_LOG_ADDR, 64);
+        config.syslog_port = DEFAULT_LOG_PORT;
     }
 #endif
 
     dlog.info(FPSTR(TAG), F("config: tz:%d ntp:%s logging: %s:%d"), config.tz_offset,
-            config.ntp_server, config.network_logger_host, config.network_logger_port);
+            config.ntp_server, config.syslog_host, config.syslog_port);
 
     dlog.info(FPSTR(TAG), F("starting RTC"));
     while (rtc.begin())
@@ -1214,10 +1289,13 @@ void sleepFor(uint32_t sleep_duration)
         dlog.info(FPSTR(TAG), F("delay less than max, mode=DEFAULT sleep_delay_left=%lu"), dsd.sleep_delay_left);
     }
 
+    uint64_t sleep_us = (uint64_t)sleep_duration * 1000000L;
+
     writeDeepSleepData();
-    dlog.info(FPSTR(TAG), F("Deep Sleep Time: %lu"), sleep_duration);
+
+    dlog.info(FPSTR(TAG), F("Deep Sleep Time: %u"), sleep_duration);
     dlog.end();
-    ESP.deepSleep(sleep_duration * 1000000, mode);
+    ESP.deepSleep(sleep_us, mode);
 }
 
 void loop()

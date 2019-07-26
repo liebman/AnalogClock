@@ -1,25 +1,22 @@
 /*
- * Ping.cpp
+ * SimplePing.cpp
  *
  *  Created on: Jul 7, 2017
  *      Author: chris.l
  */
 
-#include "Ping.h"
+#include "SimplePing.h"
+#include <ping.h>
 
-Ping::Ping()
+SimplePing::SimplePing()
 {
     // TODO Auto-generated constructor stub
 
 }
 
-extern "C" {
-#include <user_interface.h>
-#include <ping.h>
-}
 
 struct ping_option _po;
-void Ping::ping(IPAddress server)
+void SimplePing::ping(IPAddress server)
 {
     _po.ip = server;
     _po.count = 1;
