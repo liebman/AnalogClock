@@ -49,16 +49,6 @@
 #define STOP_THE_CLOCK_MAX     60   // maximum difference where we will use stop the clock
 #define STOP_THE_CLOCK_EXTRA   2    // extra seconds to leave the clock stopped
 
-//
-// un-comment one to use as the "default" time changes.  It can still be updated
-// in the configuration portal
-//
-#define USE_US_PACIFIC_TIMECHANGE   // use US/Pacific timezone by default
-//#define USE_US_EASTERN_TIMECHANGE  // use US/Eastern timezone by default
-//#define USE_BANGKOK_TIMECHANGE     // Bangkok
-//#define USE_UK_TIMECHANGE          // UK
-//#define USE_ISRAEL_TIMECHANGE      // Israel
-
 // pin definitions
 #define LED_PIN                13    // (GPIO13) LED on pin, active low
 #define SYNC_PIN               14    // (GPIO14) pin tied to 1hz square wave from RTC
@@ -78,86 +68,66 @@
 
 #define offset2longDouble(x)   ((long double)x / 4294967296L)
 
-#if defined(USE_US_PACIFIC_TIMECHANGE)
-#define DEFAULT_TC0_OCCUR  2
-#define DEFAULT_TC0_DOW    0
-#define DEFAULT_TC0_DOFF   0
-#define DEFAULT_TC0_MONTH  3
-#define DEFAULT_TC0_HOUR   2
-#define DEFAULT_TC0_OFFSET -25200
-#define DEFAULT_TC1_OCCUR  1
-#define DEFAULT_TC1_DOW    0
-#define DEFAULT_TC1_DOFF   0
-#define DEFAULT_TC1_MONTH  11
-#define DEFAULT_TC1_HOUR   2
-#define DEFAULT_TC1_OFFSET -28800
-#elif defined(USE_US_EASTERN_TIMECHANGE)
-#define DEFAULT_TC0_OCCUR  2
-#define DEFAULT_TC0_DOW    0
-#define DEFAULT_TC0_DOFF   0
-#define DEFAULT_TC0_MONTH  3
-#define DEFAULT_TC0_HOUR   2
-#define DEFAULT_TC0_OFFSET -14400
-#define DEFAULT_TC1_OCCUR  1
-#define DEFAULT_TC1_DOW    0
-#define DEFAULT_TC1_DOFF   0
-#define DEFAULT_TC1_MONTH  11
-#define DEFAULT_TC1_HOUR   2
-#define DEFAULT_TC1_OFFSET -18000
-#elif defined(USE_BANGKOK_TIMECHANGE)
+// default time change definitions
+#if !defined(DEFAULT_TC0_OCCUR) 
+#warning "DEFAULT_TC0_OCCUR not configured!"
 #define DEFAULT_TC0_OCCUR  1
-#define DEFAULT_TC0_DOW    0
-#define DEFAULT_TC0_DOFF   0
-#define DEFAULT_TC0_MONTH  0
-#define DEFAULT_TC0_HOUR   0
-#define DEFAULT_TC0_OFFSET 25200
-#define DEFAULT_TC1_OCCUR  1
-#define DEFAULT_TC1_DOW    0
-#define DEFAULT_TC1_DOFF   0
-#define DEFAULT_TC1_MONTH  0
-#define DEFAULT_TC1_HOUR   0
-#define DEFAULT_TC1_OFFSET 25200
-#elif defined(USE_UK_TIMECHANGE)
-#define DEFAULT_TC0_OCCUR  -1
-#define DEFAULT_TC0_DOW    0
-#define DEFAULT_TC0_DOFF   0
-#define DEFAULT_TC0_MONTH  3
-#define DEFAULT_TC0_HOUR   1
-#define DEFAULT_TC0_OFFSET 3600
-#define DEFAULT_TC1_OCCUR  -1
-#define DEFAULT_TC1_DOW    0
-#define DEFAULT_TC1_DOFF   0
-#define DEFAULT_TC1_MONTH  10
-#define DEFAULT_TC1_HOUR   2
-#define DEFAULT_TC1_OFFSET 0
-#elif defined(USE_ISRAEL_TIMECHANGE)
-#define DEFAULT_TC0_OCCUR  -1
-#define DEFAULT_TC0_DOW    0
-#define DEFAULT_TC0_DOFF   -2
-#define DEFAULT_TC0_MONTH  3
-#define DEFAULT_TC0_HOUR   2
-#define DEFAULT_TC0_OFFSET 10800
-#define DEFAULT_TC1_OCCUR  -1
-#define DEFAULT_TC1_DOW    0
-#define DEFAULT_TC1_DOFF   0
-#define DEFAULT_TC1_MONTH  10
-#define DEFAULT_TC1_HOUR   2
-#define DEFAULT_TC1_OFFSET 7200
-#else // default no offset/no time changes
-#define DEFAULT_TC0_OCCUR  1
-#define DEFAULT_TC0_DOW    0
-#define DEFAULT_TC0_DOFF   0
-#define DEFAULT_TC0_MONTH  0
-#define DEFAULT_TC0_HOUR   0
-#define DEFAULT_TC0_OFFSET 0
-#define DEFAULT_TC1_OCCUR  1
-#define DEFAULT_TC1_DOW    0
-#define DEFAULT_TC1_DOFF   0
-#define DEFAULT_TC1_MONTH  0
-#define DEFAULT_TC1_HOUR   0
-#define DEFAULT_TC1_OFFSET 0
 #endif
 
+#if !defined(DEFAULT_TC0_DOW)
+#warning "DEFAULT_TC0_DOW not configured!"
+#define DEFAULT_TC0_DOW    0
+#endif
+
+#if !defined(DEFAULT_TC0_DOFF)
+#warning "DEFAULT_TC0_DOFF not configured!"
+#define DEFAULT_TC0_DOFF   0
+#endif
+
+#if !defined(DEFAULT_TC0_MONTH)
+#warning "DEFAULT_TC0_MONTH not configured!"
+#define DEFAULT_TC0_MONTH  0
+#endif
+
+#if !defined(DEFAULT_TC0_HOUR)
+#warning "DEFAULT_TC0_HOUR not configured!"
+#define DEFAULT_TC0_HOUR   0
+#endif
+
+#if !defined(DEFAULT_TC0_OFFSET)
+#warning "DEFAULT_TC0_OFFSET not configured!"
+#define DEFAULT_TC0_OFFSET 0
+#endif
+
+#if !defined(DEFAULT_TC1_OCCUR)
+#warning "DEFAULT_TC1_OCCUR not configured!"
+#define DEFAULT_TC1_OCCUR  1
+#endif
+
+#if !defined(DEFAULT_TC1_DOW)
+#warning "DEFAULT_TC1_DOW not configured!"
+#define DEFAULT_TC1_DOW    0
+#endif
+
+#if !defined(DEFAULT_TC1_DOFF)
+#warning "DEFAULT_TC1_DOFF not configured!"
+#define DEFAULT_TC1_DOFF   0
+#endif
+
+#if !defined(DEFAULT_TC1_MONTH)
+#warning "DEFAULT_TC1_MONTH not configured!"
+#define DEFAULT_TC1_MONTH  0
+#endif
+
+#if !defined(DEFAULT_TC1_HOUR)
+#warning "DEFAULT_TC1_HOUR not configured!"
+#define DEFAULT_TC1_HOUR   0
+#endif
+
+#if !defined(DEFAULT_TC1_OFFSET)
+#warning "DEFAULT_TC1_OFFSET not configured!"
+#define DEFAULT_TC1_OFFSET 0
+#endif
 
 // error codes for setRTCfromNTP()
 #define ERROR_DNS -1
