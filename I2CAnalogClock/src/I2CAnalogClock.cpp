@@ -1,5 +1,5 @@
 /*
- * I2CAnalogClock.h
+ * I2CAnalogClock.cpp
  *
  * Copyright 2017 Christopher B. Liebman
  *
