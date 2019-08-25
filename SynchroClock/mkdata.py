@@ -46,7 +46,7 @@ def generate_ssl_data(source, target, env):
     for i in range(0, len(pems)):
         certName = "data/ca_%03d.der" % (idx);
         thisPem = pems[i].replace("'", "")
-        print names[i] + " -> " + certName
+        print( names[i] + " -> " + certName)
         ssl = Popen(['openssl','x509','-inform','PEM','-outform','DER','-out', certName], shell = False, stdin = PIPE)
         pipe = ssl.stdin
         pipe.write(thisPem)
