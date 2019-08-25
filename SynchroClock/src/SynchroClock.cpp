@@ -717,7 +717,11 @@ void createWiFiParams(WiFiManager& wifi, std::vector<ConfigParamPtr> &params)
     }));
 }
 
-void initWiFi()
+//
+// connect to wifi, open config portal first if required. 
+// returns true if connected, false if not
+//
+bool initWiFi()
 {
     static PROGMEM const char TAG[] = "initWiFi";
     dlog.info(FPSTR(TAG), F("starting WiFi!"));
@@ -749,6 +753,7 @@ void initWiFi()
         createWiFiParams(wm, params);
         dlog.info(FPSTR(TAG), F("params has %d items"), params.size());
         wm.startConfigPortal(devicename, NULL);
+        delay(2000); // delay 2 seconds after portal for connect
     }
     else
     {
@@ -763,12 +768,12 @@ void initWiFi()
     // if we are not connected then deep sleep and try again.
     if (!WiFi.isConnected())
     {
-        dlog.error(FPSTR(TAG), F("failed to connect to wifi!"));
-        sleepFor(MAX_SLEEP_DURATION);
+        return false;
     }
 
-    IPAddress ip = WiFi.localIP();
-    dlog.info(FPSTR(TAG), F("Connected! IP address is: %u.%u.%u.%u"), ip[0], ip[1], ip[2], ip[3]);
+    IPAddress ip  = WiFi.localIP();
+    String    mac = WiFi.macAddress();
+    dlog.info(FPSTR(TAG), F("Connected! IP address is: %u.%u.%u.%u MAC:'%s'"), ip[0], ip[1], ip[2], ip[3], mac.c_str());
 
     //
     //  Config was set from captive portal!
@@ -794,6 +799,8 @@ void initWiFi()
         dlog.info(FPSTR(TAG), F("starting syslog to '%s:%d'"), config.syslog_host, config.syslog_port);
         dlog.begin(new DLogSyslogWriter(config.syslog_host, config.syslog_port, devicename, SYNCHRO_CLOCK_VERSION));
     }
+
+    return true;
 }
 
 bool setSystemTime()
@@ -1038,6 +1045,9 @@ void setup()
     }
     dlog.info(FPSTR(TAG), F("I2CAnalogClock VERSION: %u"), version);
 
+    struct rst_info * reset_info = ESP.getResetInfoPtr();
+    dlog.info(FPSTR(TAG), F("Reset reason: %lu '%s'"), reset_info->reason, ESP.getResetReason().c_str());
+
     uint8_t clk_reason; // restart reason of clk
     while (clk.readResetReason(&clk_reason, 3) != 0)
     {
@@ -1191,6 +1201,7 @@ void setup()
         {
             setCLKfromRTC();
         }
+
         sleepFor(dsd.sleep_delay_left);
     }
 
@@ -1201,7 +1212,21 @@ void setup()
     }
 #endif
 
-    initWiFi();
+    if (!initWiFi())
+    {
+        //
+        // if we are are enabled and not connected then make sure that the clock is in-sync with
+        // the actual time - it could have just been powered on and failed to connect.....
+        //
+        if (enabled)
+        {
+            setCLKfromRTC();
+        }
+
+        dlog.error(FPSTR(TAG), F("failed to connect to wifi!"));
+        sleepFor(MAX_SLEEP_DURATION);
+    }
+
     //
     // Network started, log versions
     //
