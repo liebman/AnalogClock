@@ -40,6 +40,7 @@
 #include "Logger.h"
 #include "DLogPrintWriter.h"
 #include "DLogSyslogWriter.h"
+#include "SynchroClockPins.h"
 #include <memory>
 #include <vector>
 
@@ -48,11 +49,6 @@
 #define USE_STOP_THE_CLOCK          // if defined then stop the clock for small negative adjustments
 #define STOP_THE_CLOCK_MAX     60   // maximum difference where we will use stop the clock
 #define STOP_THE_CLOCK_EXTRA   2    // extra seconds to leave the clock stopped
-
-// pin definitions
-#define LED_PIN                13    // (GPIO13) LED on pin, active low
-#define SYNC_PIN               14    // (GPIO14) pin tied to 1hz square wave from RTC
-#define CONFIG_PIN             12    // (GPIO12) button tied to pin
 
 #define DEFAULT_TZ_OFFSET      0     // default timzezone offset in seconds
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
