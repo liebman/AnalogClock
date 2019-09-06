@@ -1300,7 +1300,7 @@ void sleepFor(uint32_t sleep_duration)
     dlog.info(FPSTR(TAG), F("seconds: %u"), sleep_duration);
     dsd.sleep_delay_left = sleep_duration;
     sleep_duration = MAX_SLEEP_DURATION;
-    RFMode mode = RF_DEFAULT;
+    RFMode mode = RF_NO_CAL;
     if (dsd.sleep_delay_left > MAX_SLEEP_DURATION)
     {
         dsd.sleep_delay_left = dsd.sleep_delay_left - MAX_SLEEP_DURATION;

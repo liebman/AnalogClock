@@ -41,9 +41,9 @@ int UDPWrapper::open(IPAddress address, uint16_t port)
 int UDPWrapper::send(void* buffer, size_t size)
 {
     dlog.debug(FPSTR(TAG), F("::send: size:%u"), size);
-    int n = _udp.write((const uint8_t *) buffer, size);
+    size_t n = _udp.write((const uint8_t *) buffer, size);
 
-    if ( n < 0 )
+    if ( n != size )
     {
         dlog.error(FPSTR(TAG), F("::send: write failed!  expected %d got %d"), size, n);
     }

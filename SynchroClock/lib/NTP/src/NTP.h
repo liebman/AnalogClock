@@ -16,6 +16,10 @@
 
 #define NTP_PORT 123
 
+#ifndef NTP_REQUEST_COUNT
+#define NTP_REQUEST_COUNT 1
+#endif
+
 typedef struct ntp_sample
 {
     uint32_t timestamp;
@@ -98,6 +102,13 @@ public:
     int getOffset(const char* server, double* offset, int (*getTime)(uint32_t *result));
     int getLastOffset(double* offset);
     IPAddress getAddress();
+protected:
+    int  makeRequest(IPAddress address, double *offset, double *delay, uint32_t *timestamp, int (*getTime)(uint32_t *result));
+    int  makeRequest(IPAddress address, double *offset, double *delay, uint32_t *timestamp, int (*getTime)(uint32_t *result), const unsigned int bestof);
+    int  process(uint32_t timestamp, double offset, double delay);
+    void clock();
+    int  computeDrift(double* drift_result);
+    void updateDriftEstimate();
 private:
     NTPRunTime *_runtime;
     NTPPersist *_persist;
@@ -105,10 +116,6 @@ private:
     UDPWrapper _udp;
     int        _port;
     int        _factor; // only used when testing to reduce fixed poll interval values by factor
-    int  packet(NTPPacket* packet, NTPTime now);
-    void clock();
-    int  computeDrift(double* drift_result);
-    void updateDriftEstimate();
 };
 
 

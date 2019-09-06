@@ -1,94 +1,104 @@
 #include "Clock.h"
 #include "SynchroClockPins.h"
 #include "unity.h"
+#include "DLogPrintWriter.h"
+#include "DS3231.h"
 
 DLog&  dlog = DLog::getLog();
 Clock clk(SYNC_PIN);
+DS3231 ds;
+
+void test_factory_reset()
+{
+    TEST_ASSERT_EQUAL(0, clk.factoryReset());
+}
 
 void test_begin()
 {
-    TEST_ASSERT_EQUAL(0, clk.begin(1));
+    TEST_ASSERT_EQUAL(0, clk.begin(2));
 }
 
+void test_is_present()
+{
+    TEST_ASSERT(clk.isClockPresent());
+}
 
-#define READ_COUNT 5000
-void test_read_version()
+void test_version()
 {
     uint8_t version;
-    uint32_t read_errors = 0;
-    int32_t min_read_time = -1;
-    int32_t max_read_time = -1;
-    for (int i = 0; i<READ_COUNT; ++i)
-    {
-        uint32_t start = millis();
-        read_errors += clk.readVersion(& version) == 0 ? 0 : 1;
-        uint32_t duration = millis() - start;
-        if (min_read_time == -1 || (int)duration < min_read_time)
-        {
-            min_read_time = duration;
-        }
-        if (max_read_time == -1 || (int)duration > max_read_time)
-        {
-            max_read_time = duration;
-        }
-        if (version != 1)
-        {
-            Serial.printf("read_ver: %d invalid version: %u\n", i, version);
-        }
-        if ((i % 1000) == 0)
-        {
-            Serial.printf("read_ver: %d errors: %u min_ms: %d max_ms: %d\n", i, read_errors, min_read_time, max_read_time);
-        }
-        delay(1);
-    }
-    Serial.printf("read_ver: %d errors: %u min_ms: %d max_ms: %d\n", READ_COUNT, read_errors, min_read_time, max_read_time);
-    TEST_ASSERT_LESS_OR_EQUAL(20, read_errors);
+    TEST_ASSERT_EQUAL(0, clk.readVersion(& version));
+    TEST_ASSERT_EQUAL_UINT8(1, version);
 }
 
-void test_read_position()
+void test_position(uint16_t pos)
 {
+    TEST_ASSERT_EQUAL(0, clk.writePosition(pos));
     uint16_t position;
-    uint32_t read_errors = 0;
-    int32_t min_read_time = -1;
-    int32_t max_read_time = -1;
-    for (int i = 0; i<READ_COUNT; ++i)
+    TEST_ASSERT_EQUAL(0, clk.readPosition(&position));
+    TEST_ASSERT_EQUAL(pos, position);
+}
+
+void test_position_0()
+{
+    test_position(0);
+}
+
+void test_position_half()
+{
+    test_position(CLOCK_MAX/2);
+}
+
+void test_position_max()
+{
+    test_position(CLOCK_MAX-1);
+}
+
+void test_adjust(uint16_t adj)
+{
+    TEST_ASSERT_EQUAL(0, clk.writePosition(0));
+    TEST_ASSERT_EQUAL(0, clk.writeAdjustment(adj));
+    delay(3000);
+    uint16_t position;
+    TEST_ASSERT_EQUAL(0, clk.readPosition(&position));
+    TEST_ASSERT_EQUAL(10, position);
+}
+
+void test_adjust_10()
+{
+    test_adjust(10);
+}
+
+void test_reads()
+{
+    int errors = 0;
+    uint16_t position;
+    for (int i = 0; i < 5000; ++i)
     {
-        position = 0;
-        uint32_t start = millis();
-        read_errors += clk.readPosition(& position) == 0 ? 0 : 1;
-        uint32_t duration = millis() - start;
-        if (min_read_time == -1 || (int)duration < min_read_time)
-        {
-            min_read_time = duration;
-        }
-        if (max_read_time == -1 || (int)duration > max_read_time)
-        {
-            max_read_time = duration;
-        }
-        if (position > CLOCK_MAX)
-        {
-            Serial.printf("read_pos: %d invalid position: %u\n", i, position);
-        }
-        if ((i % 1000) == 0)
-        {
-            Serial.printf("read_pos: %d errors: %u min_ms: %d max_ms: %d\n", i, read_errors, min_read_time, max_read_time);
-        }
+        errors += clk.readPosition(&position) == 0 ? 0 : 1;
         delay(1);
     }
-    Serial.printf("read_pos: %d errors: %u min_ms: %d max_ms: %d\n", READ_COUNT, read_errors, min_read_time, max_read_time);
-    TEST_ASSERT_LESS_OR_EQUAL(20, read_errors);
+    TEST_ASSERT_EQUAL(0, errors);
 }
 
 void setup()
 {
     Wire.begin();
     Wire.setClockStretchLimit(1000000);
+    ds.begin(); // need this for the tick signal
     delay(2000);
     UNITY_BEGIN();
+    dlog.begin(new DLogPrintWriter(Serial));
     RUN_TEST(test_begin);
     delay(10);
-    RUN_TEST(test_read_position);
-    RUN_TEST(test_read_version);
+    RUN_TEST(test_factory_reset);
+    delay(1000);
+    RUN_TEST(test_is_present);
+    RUN_TEST(test_version);
+    RUN_TEST(test_position_0);
+    RUN_TEST(test_position_half);
+    RUN_TEST(test_position_max);
+    RUN_TEST(test_adjust_10);
+    RUN_TEST(test_reads);
     UNITY_END();
 }
 

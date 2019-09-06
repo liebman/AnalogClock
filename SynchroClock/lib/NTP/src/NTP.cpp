@@ -80,8 +80,7 @@ uint32_t NTP::getPollInterval()
 
     dlog.info(FPSTR(TAG), F("::getPollInterval: drift_estimate: %0.16f poll_interval: %0.16f"), _runtime->drift_estimate, _runtime->poll_interval);
 
-    //if (_runtime->poll_interval > 0.0)
-    if (_runtime->drift_estimate != 0.0)
+    if (_runtime->poll_interval > 0.0)
     {
         //
         // estimate the time till we apply the next offset
@@ -184,8 +183,132 @@ int NTP::getOffsetUsingDrift(double *offset_result, int (*getTime)(uint32_t *res
     return 0;
 }
 
-// return next poll delay or -1 on error.
-int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *result))
+int NTP::makeRequest(IPAddress address, double *offset, double *delay, uint32_t *timestamp, int (*getTime)(uint32_t *result))
+{
+    Timer timer;
+    NTPTime now;
+    NTPPacket ntp;
+
+    memset((void*) &ntp, 0, sizeof(ntp));
+    ntp.flags = setLI(LI_NONE) | setVERS(NTP_VERSION) | setMODE(MODE_CLIENT);
+    ntp.poll  = MINPOLL;
+
+    uint32_t start;
+    if (getTime(&start))
+    {
+        dlog.error(FPSTR(TAG), F("::makeRequest: failed to getTime() failed!"));
+        return -1;
+    }
+
+    timer.start();
+
+    now.seconds = toNTP(start);
+    now.fraction = 0;
+
+    ntp.orig_time = now;
+
+    // put non-zero timestamps in network byte order
+    ntp.orig_time.seconds = htonl(ntp.orig_time.seconds);
+    ntp.orig_time.fraction = htonl(ntp.orig_time.fraction);
+
+    dumpNTPPacket(&ntp, "makeRequest");
+
+    _udp.open(address, _port);
+    _udp.send(&ntp, sizeof(ntp));
+
+    memset(&ntp, 0, sizeof(ntp));
+
+    int size = _udp.recv(&ntp, sizeof(ntp), 1000);
+    uint32_t duration = timer.stop();
+
+    dlog.info(FPSTR(TAG), F("::makeRequest: used server: %s address: %s"), _runtime->server, address.toString().c_str());
+    dlog.info(FPSTR(TAG), F("::makeRequest: packet size: %d"), size);
+    dlog.info(FPSTR(TAG), F("::makeRequest: duration %ums"), duration);
+
+    if (size != 48)
+    {
+        dlog.error(FPSTR(TAG), F("::makeRequest: bad packet!"));
+        return -1;
+    }
+
+    ntp.delay = ntohl(ntp.delay);
+    ntp.dispersion = ntohl(ntp.dispersion);
+    ntp.ref_time.seconds = ntohl(ntp.ref_time.seconds);
+    ntp.ref_time.fraction = ntohl(ntp.ref_time.fraction);
+    ntp.recv_time.seconds = ntohl(ntp.recv_time.seconds);
+    ntp.recv_time.fraction = ntohl(ntp.recv_time.fraction);
+    ntp.xmit_time.seconds = ntohl(ntp.xmit_time.seconds);
+    ntp.xmit_time.fraction = ntohl(ntp.xmit_time.fraction);
+    ntp.orig_time = now;
+
+    dumpNTPPacket(&ntp, "makeRequest");
+
+    //
+    // assumes start at second start and less than 1 second duration
+    //
+    now.fraction = ms2fraction(duration);
+
+    if (ntp.stratum == 0)
+    {
+        dlog.error(FPSTR(TAG), F("::makeRequest: bad stratum!"));
+        return -1;
+    }
+
+    if (getLI(ntp.flags) == LI_NOSYNC)
+    {
+        dlog.warning(FPSTR(TAG), F("::makeRequest: leap indicator indicates NOSYNC!"));
+        return -1; /* unsynchronized */
+    }
+
+    uint64_t T1 = toUINT64(ntp.orig_time);
+    uint64_t T2 = toUINT64(ntp.recv_time);
+    uint64_t T3 = toUINT64(ntp.xmit_time);
+    uint64_t T4 = toUINT64(now);
+
+    *offset     = LFP2D(((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2);
+    *delay      = LFP2D( (int64_t)(T4 - T1) - (int64_t)(T3 - T2));
+    *timestamp  = now.seconds;
+    dlog.info(FPSTR(TAG), F("::makeRequest: offset: %0.6lf delay: %0.6lf"), *offset, *delay);
+
+    //
+    // this can happen if we timeout on a previous request and the delayed response 
+    // arrives after we have sent another request!
+    if (*delay < 0.0)
+    {
+        dlog.error(FPSTR(TAG), F("::makeRequest: delay (%0.6lf) less than 0!"), *delay);
+        return -1;
+    }
+    return 0;
+}
+
+int NTP::makeRequest(IPAddress address, double *offset, double *delay, uint32_t *timestamp, int (*getTime)(uint32_t *result), const unsigned int bestof)
+{
+    double this_offset;
+    double this_delay;
+    uint32_t this_timestamp;
+    bool valid = false; // true when we have saved to offset, delay, timestamp at least once
+    for (unsigned int i = 0; i < bestof; ++i)
+    {
+        int err = makeRequest(address, &this_offset, &this_delay, &this_timestamp, getTime);
+        if (err)
+        {
+            continue;
+        }
+
+        if (!valid || this_delay < *delay)
+        {
+            *offset = this_offset;
+            *delay = this_delay;
+            *timestamp = this_timestamp;
+            valid = true;
+        }
+    }
+    return valid ? 0 : -1;
+}
+
+
+// return 0 on success or -1 on error.
+int NTP::getOffset(const char* server, double *offsetp, int (*getTime)(uint32_t *result))
 {
     _runtime->reach <<= 1;
 
@@ -222,77 +345,28 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     SimplePing ping;
     ping.ping(address);
 
-    Timer timer;
-    NTPTime now;
-    NTPPacket ntp;
+    double offset;
+    double delay;
+    uint32_t timestamp;
 
-    memset((void*) &ntp, 0, sizeof(ntp));
-    ntp.flags = setLI(LI_NONE) | setVERS(NTP_VERSION) | setMODE(MODE_CLIENT);
-    ntp.poll  = MINPOLL;
-
-    uint32_t start;
-    if (getTime(&start))
-    {
-        dlog.error(FPSTR(TAG), F("::getOffset: failed to getTime() failed!"));
-        return -1;
-    }
-
-    timer.start();
-
-    now.seconds = toNTP(start);
-    now.fraction = 0;
-    // put non-zero timestamps in network byte order
-    ntp.orig_time.seconds = htonl(ntp.orig_time.seconds);
-    ntp.orig_time.fraction = htonl(ntp.orig_time.fraction);
-
-    ntp.orig_time = now;
-
-    dumpNTPPacket(&ntp, "getOffset");
-
-
-    _udp.open(address, _port);
-    _udp.send(&ntp, sizeof(ntp));
-
-    memset(&ntp, 0, sizeof(ntp));
-
-    int size = _udp.recv(&ntp, sizeof(ntp), 1000);
-    uint32_t duration = timer.stop();
-
-    dlog.info(FPSTR(TAG), F("::getOffset: used server: %s address: %s"), _runtime->server, address.toString().c_str());
-    dlog.info(FPSTR(TAG), F("::getOffset: packet size: %d"), size);
-    dlog.info(FPSTR(TAG), F("::getOffset: duration %ums"), duration);
-
-    if (size != 48)
-    {
-        dlog.error(FPSTR(TAG), F("::getOffset: bad packet!"));
-        return -1;
-    }
-
-    ntp.delay = ntohl(ntp.delay);
-    ntp.dispersion = ntohl(ntp.dispersion);
-    ntp.ref_time.seconds = ntohl(ntp.ref_time.seconds);
-    ntp.ref_time.fraction = ntohl(ntp.ref_time.fraction);
-    ntp.recv_time.seconds = ntohl(ntp.recv_time.seconds);
-    ntp.recv_time.fraction = ntohl(ntp.recv_time.fraction);
-    ntp.xmit_time.seconds = ntohl(ntp.xmit_time.seconds);
-    ntp.xmit_time.fraction = ntohl(ntp.xmit_time.fraction);
-    ntp.orig_time = now;
-
-    dumpNTPPacket(&ntp, "getOffset");
-
-    //
-    // assumes start at second start and less than 1 second duration
-    //
-    now.fraction = ms2fraction(duration);
-
-    int err = packet(&ntp, now);
+    int err = makeRequest(address, &offset, &delay, &timestamp, getTime, NTP_REQUEST_COUNT);
     if (err)
     {
-        dlog.error(FPSTR(TAG), F("::getOffset: packet returns: %d"), err);
+        dlog.error(FPSTR(TAG), F("::getOffset: makeRequest returns: %d"), err);
         return err;
     }
 
-    *offset = _runtime->samples[0].offset;
+    dlog.info(FPSTR(TAG), F("::getOffset: nsamples: %d nadjustments: %d"), _runtime->nsamples, _persist->nadjustments);
+
+
+    err = process(timestamp, offset, delay);
+    if (err)
+    {
+        dlog.error(FPSTR(TAG), F("::getOffset: process returns: %d"), err);
+        return err;
+    }
+
+    *offsetp = _runtime->samples[0].offset;
 
     //
     // set the update and drift timestamps.
@@ -302,41 +376,8 @@ int NTP::getOffset(const char* server, double *offset, int (*getTime)(uint32_t *
     return 0;
 }
 
-int NTP::packet(NTPPacket* ntp, NTPTime now)
+int NTP::process(uint32_t timestamp, double offset, double delay)
 {
-    dlog.info(FPSTR(TAG), F("::packet: nsamples: %d nadjustments: %d"), _runtime->nsamples, _persist->nadjustments);
-    if (ntp->stratum == 0)
-    {
-        dlog.error(FPSTR(TAG), F("::packet: bad stratum!"));
-        return -1;
-    }
-
-    if (getLI(ntp->flags) == LI_NOSYNC)
-    {
-        dlog.warning(FPSTR(TAG), F("::packet: leap indicator indicates NOSYNC!"));
-        return -1; /* unsynchronized */
-    }
-
-    /*
-     * Verify valid root distance.
-     */
-    //dbprintf("root distance: %lf reftime:%u xmit_time:%u\n", p->rootdelay / 2 + p->rootdisp, p->reftime_s, ntp->xmit_time.seconds);
-    //if (p->rootdelay / 2 + p->rootdisp >= MAXDISP || p->reftime_s > ntp->xmit_time.seconds)
-    //{
-    //    dbprintln("invalid root distance or new time before prev time!");
-    //    return -1;                 /* invalid header values */
-    //}
-
-    uint64_t T1 = toUINT64(ntp->orig_time);
-    uint64_t T2 = toUINT64(ntp->recv_time);
-    uint64_t T3 = toUINT64(ntp->xmit_time);
-    uint64_t T4 = toUINT64(now);
-
-    double offset     = LFP2D(((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2);
-    double delay      = LFP2D( (int64_t)(T4 - T1) - (int64_t)(T3 - T2));
-
-    dlog.info(FPSTR(TAG), F("::packet: offset: %0.6lf delay: %0.6lf"), offset, delay);
-
     int i;
     for (i = _runtime->nsamples - 1; i >= 0; --i)
     {
@@ -345,14 +386,14 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
             continue;
         }
         _runtime->samples[i + 1] = _runtime->samples[i];
-        dlog.info(FPSTR(TAG), F("::packet: samples[%d]: %lf delay:%lf timestamp:%u"),
+        dlog.info(FPSTR(TAG), F("::process: samples[%d]: %lf delay:%lf timestamp:%u"),
                 i + 1, _runtime->samples[i+1].offset, _runtime->samples[i+1].delay, _runtime->samples[i+1].timestamp);
     }
 
-    _runtime->samples[0].timestamp  = now.seconds;
+    _runtime->samples[0].timestamp  = timestamp;
     _runtime->samples[0].offset     = offset;
     _runtime->samples[0].delay      = delay;
-    dlog.info(FPSTR(TAG), F("::packet: samples[%d]: %lf delay:%lf timestamp:%u"),
+    dlog.info(FPSTR(TAG), F("::process: samples[%d]: %lf delay:%lf timestamp:%u"),
             0, _runtime->samples[0].offset, _runtime->samples[0].delay, _runtime->samples[0].timestamp);
 
     if (_runtime->nsamples < NTP_SAMPLE_COUNT)
@@ -374,13 +415,13 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
         delay_std = delay_std + pow(_runtime->samples[i].delay - mean, 2);
     }
     delay_std = SQRT(delay_std / _runtime->nsamples);
-    dlog.info(FPSTR(TAG), F("::packet: delay STD DEV: %lf, mean: %lf"), delay_std, mean);
+    dlog.info(FPSTR(TAG), F("::process: delay STD DEV: %lf, mean: %lf"), delay_std, mean);
 
     //
     // don't use this offset if its off of the mean by moth than one std deviation
     if ((fabs(_runtime->samples[0].delay) - mean) > delay_std)
     {
-        dlog.info(FPSTR(TAG), F("::packet: sample delay too big!"));
+        dlog.info(FPSTR(TAG), F("::process: sample delay too big!"));
         return -1;
     }
 
@@ -399,7 +440,7 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
     //
     if (fabs(offset) < NTP_OFFSET_THRESHOLD)
     {
-        dlog.info(FPSTR(TAG), F("::packet: offset not big enough for adjust!"));
+        dlog.info(FPSTR(TAG), F("::process: offset not big enough for adjust!"));
         return -1;
     }
 
@@ -415,7 +456,7 @@ int NTP::packet(NTPPacket* ntp, NTPTime now)
 }
 
 //
-// process local clock, return drift
+// save adjustment samples & compute drift
 //
 void NTP::clock()
 {

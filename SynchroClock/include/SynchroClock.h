@@ -44,21 +44,21 @@
 #include <memory>
 #include <vector>
 
-#define USE_DRIFT                   // apply drift
-#define USE_NTP_POLL_ESTIMATE       // use ntp estimated drift for sleep duration calculation
-#define USE_STOP_THE_CLOCK          // if defined then stop the clock for small negative adjustments
-#define STOP_THE_CLOCK_MAX     60   // maximum difference where we will use stop the clock
-#define STOP_THE_CLOCK_EXTRA   2    // extra seconds to leave the clock stopped
+#define USE_DRIFT                     // apply drift
+#define USE_NTP_POLL_ESTIMATE         // use ntp estimated drift for sleep duration calculation
+#define USE_STOP_THE_CLOCK            // if defined then stop the clock for small negative adjustments
+#define STOP_THE_CLOCK_MAX     60     // maximum difference where we will use stop the clock
+#define STOP_THE_CLOCK_EXTRA   2      // extra seconds to leave the clock stopped
 
-#define DEFAULT_TZ_OFFSET      0     // default timzezone offset in seconds
+#define DEFAULT_TZ_OFFSET      0      // default timzezone offset in seconds
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
-#define DEFAULT_SLEEP_DURATION 28800 // default is 8hrs when we are not using the poll estimate
+#define DEFAULT_SLEEP_DURATION 28800  // default is 8hrs when we are not using the poll estimate
 
-#define CLOCK_STRETCH_LIMIT    1500  // i2c clock stretch timeout in microseconds
-#define MAX_SLEEP_DURATION     3600  // we do multiple sleep of this to handle bigger sleeps
-#define CONNECTION_TIMEOUT     30    // wifi connection timeout - we will deep sleep and try again later
-#define CONFIG_DELAY           1000  // how long to hold the button for config mode - light comes on after this time.
-#define FACTORY_RESET_DELAY    10000 // how long to hold the button for factory reset after LED is ON - 10 seconds (10,000 milliseconds)
+#define CLOCK_STRETCH_LIMIT    100000 // i2c clock stretch timeout in microseconds
+#define MAX_SLEEP_DURATION     3600   // we do multiple sleep of this to handle bigger sleeps
+#define CONNECTION_TIMEOUT     30     // wifi connection timeout - we will deep sleep and try again later
+#define CONFIG_DELAY           1000   // how long to hold the button for config mode - light comes on after this time.
+#define FACTORY_RESET_DELAY    10000  // how long to hold the button for factory reset after LED is ON - 10 seconds (10,000 milliseconds)
 
 #define UPDATE_URL_FILENAME    "updateurl.txt"
 
