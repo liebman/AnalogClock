@@ -33,11 +33,25 @@ typedef struct ntp_adjustment
     double adjustment;
 } NTPAdjustment;
 
-#define NTP_SERVER_LENGTH       64      // max length+1 of ntp server name
-#define NTP_SAMPLE_COUNT        8       // number of NTP samples to keep for std devation filtering
-#define NTP_ADJUSTMENT_COUNT    8       // number of NTP adjustments to keep for least squares drift
-#define NTP_OFFSET_THRESHOLD    0.02    // 20ms offset minimum for adjust!
-#define NTP_MAX_INTERVAL        129600  // 36 hours
+#define NTP_SERVER_LENGTH         64      // max length+1 of ntp server name
+#define NTP_SAMPLE_COUNT          8       // number of NTP samples to keep for std devation filtering
+#define NTP_ADJUSTMENT_COUNT      8       // number of NTP adjustments to keep for least squares drift
+#define NTP_OFFSET_THRESHOLD      0.02    // 20ms offset minimum for adjust!
+#ifndef NTP_MAX_INTERVAL
+#define NTP_MAX_INTERVAL          129600  // 36 hours
+#endif
+#ifndef NTP_MIN_INTERVAL
+#define NTP_MIN_INTERVAL          3600    // minimum computed interval
+#endif
+#ifndef NTP_SAMPLE_INTERVAL
+#define NTP_SAMPLE_INTERVAL       (3600/(NTP_SAMPLE_COUNT)) // default to get the first set of samples in an hour
+#endif
+#ifndef NTP_UNREACH_LAST_INTERVAL
+#define NTP_UNREACH_LAST_INTERVAL 3600    // last NTP was unreachable
+#endif
+#ifndef NTP_UNREACH_INTERVAL
+#define NTP_UNREACH_INTERVAL      900     // last few NTP unreachable
+#endif
 
 //
 //  Long term persisted data includes drift an last adjustment information

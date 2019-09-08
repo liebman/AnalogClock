@@ -25,7 +25,8 @@
 #include <FS.h>
 #include <time.h>
 #include <sys/time.h>
-#include "umm_malloc/umm_malloc.h"
+#include <lwip/apps/sntp.h>
+#include <umm_malloc/umm_malloc.h>
 
 //
 // These are only used when debugging
@@ -729,6 +730,7 @@ bool initWiFi()
     // setup wifi, blink let slow while connecting and fast if portal activated.
     feedback.blink(FEEDBACK_LED_SLOW);
 
+    sntp_servermode_dhcp(0);
     WiFiManager wm;
     wm.setEnableConfigPortal(false); // don't automatically use the captive portal
     wm.setDebugOutput(false);
@@ -796,8 +798,9 @@ bool initWiFi()
     // Configure syslog logging if enabled
     if (strlen(config.syslog_host) && config.syslog_port)
     {
-        dlog.info(FPSTR(TAG), F("starting syslog to '%s:%d'"), config.syslog_host, config.syslog_port);
         dlog.begin(new DLogSyslogWriter(config.syslog_host, config.syslog_port, devicename, SYNCHRO_CLOCK_VERSION));
+        dlog.info(FPSTR(TAG), F("starting syslog to '%s:%d'"), config.syslog_host, config.syslog_port);
+        delay(200); // delay so ARP usually finishes before we overrun the UDP transmit buffers (maybe?)
     }
 
     return true;
@@ -1002,6 +1005,9 @@ void setup()
     Serial.begin(76800); // use the default baud rate that the ESPs SDK uses
     dlog.begin(new DLogPrintWriter(Serial));
     dlog.setPreFunc(&dlogPrefix);
+#ifdef NTP_LOG_LEVEL
+    dlog.setLevel(F("NTP"), NTP_LOG_LEVEL);
+#endif
     dlog.info(FPSTR(TAG), F("Startup! SynchroClock version: %s"), SYNCHRO_CLOCK_VERSION);
     dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
     dlog.info(FPSTR(TAG), F("free mem: %u"), free_mem);

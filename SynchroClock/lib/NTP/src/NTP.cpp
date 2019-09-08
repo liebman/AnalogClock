@@ -93,17 +93,17 @@ uint32_t NTP::getPollInterval()
         {
             seconds = fabs(_runtime->samples[0].offset) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
         }
-        dlog.debug(FPSTR(TAG), F("::getPollInterval: seconds: %f"), seconds);
+        dlog.info(FPSTR(TAG), F("::getPollInterval: seconds: %f"), seconds);
 
         if (seconds > (NTP_MAX_INTERVAL/_factor))
         {
-            dlog.debug(FPSTR(TAG), F("::getPollInterval: maxing interval out at %f days!"), (double)NTP_MAX_INTERVAL/86400.0);
+            dlog.info(FPSTR(TAG), F("::getPollInterval: maxing interval out at %f days!"), (double)NTP_MAX_INTERVAL/86400.0);
             seconds = NTP_MAX_INTERVAL/_factor;
         }
-        else if (seconds < (900/_factor))
+        else if (seconds < (NTP_MIN_INTERVAL/_factor))
         {
-            dlog.debug(FPSTR(TAG), F("::getPollInterval: min interval is 15 min!!"));
-            seconds = 900/_factor;
+            dlog.info(FPSTR(TAG), F("::getPollInterval: min interval is %d min!!"), NTP_MIN_INTERVAL);
+            seconds = NTP_MIN_INTERVAL/_factor;
         }
     }
 
@@ -112,24 +112,24 @@ uint32_t NTP::getPollInterval()
         //
         // if we don't have all the samples yet, use a very short interval
         //
-        dlog.debug(FPSTR(TAG), F("::getPollInterval: samples not full, 15 minutes!"));
-        seconds = 900 / _factor; // 15 minutes
+        dlog.info(FPSTR(TAG), F("::getPollInterval: samples not full, %d seconds!"), NTP_SAMPLE_INTERVAL);
+        seconds = NTP_SAMPLE_INTERVAL / _factor;
     }
     else if ((_runtime->reach & 0x07) == 0)
     {
         //
         // if the last three polls failed use a very short interval
         //
-        dlog.warning(FPSTR(TAG), F("::getPollInterval: last three polls failed, using 15 minutes!"));
-        seconds =  900 / _factor;
+        dlog.warning(FPSTR(TAG), F("::getPollInterval: last three polls failed, using %d seconds!"), NTP_UNREACH_INTERVAL);
+        seconds =  NTP_UNREACH_INTERVAL / _factor;
     }
     else if ((_runtime->reach & 0x01) == 0)
     {
         //
         // if the last poll failed then use a shorter interval
         //
-        dlog.warning(FPSTR(TAG), F("::getPollInterval: last poll failed, using 1 hour!"));
-        seconds =  3600 / _factor;
+        dlog.warning(FPSTR(TAG), F("::getPollInterval: last poll failed, using %d seconds!"), NTP_UNREACH_LAST_INTERVAL);
+        seconds =  NTP_UNREACH_LAST_INTERVAL / _factor;
     }
 
     return (uint32_t)seconds;
@@ -239,7 +239,7 @@ int NTP::makeRequest(IPAddress address, double *offset, double *delay, uint32_t 
     ntp.recv_time.fraction = ntohl(ntp.recv_time.fraction);
     ntp.xmit_time.seconds = ntohl(ntp.xmit_time.seconds);
     ntp.xmit_time.fraction = ntohl(ntp.xmit_time.fraction);
-    ntp.orig_time = now;
+    ntp.orig_time = now; // many servers don't seem to copy this value to the reply packet :-(
 
     dumpNTPPacket(&ntp, "makeRequest");
 
@@ -418,7 +418,7 @@ int NTP::process(uint32_t timestamp, double offset, double delay)
     dlog.info(FPSTR(TAG), F("::process: delay STD DEV: %lf, mean: %lf"), delay_std, mean);
 
     //
-    // don't use this offset if its off of the mean by moth than one std deviation
+    // don't use this offset if its off of the mean by more than one std deviation
     if ((fabs(_runtime->samples[0].delay) - mean) > delay_std)
     {
         dlog.info(FPSTR(TAG), F("::process: sample delay too big!"));
