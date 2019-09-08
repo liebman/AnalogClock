@@ -372,7 +372,7 @@ int NTP::getOffset(const char* server, double *offsetp, int (*getTime)(uint32_t 
     // set the update and drift timestamps.
     //
     _runtime->update_timestamp = _runtime->samples[0].timestamp;
-    _runtime->drift_timestamp  = _runtime->samples[0].timestamp;
+    _runtime->drift_timestamp  = toEPOCH(_runtime->samples[0].timestamp);
     return 0;
 }
 
