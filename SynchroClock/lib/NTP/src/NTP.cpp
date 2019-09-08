@@ -91,18 +91,18 @@ uint32_t NTP::getPollInterval()
         }
         else
         {
-            seconds = fabs(_runtime->samples[0].offset) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
+            seconds = (NTP_OFFSET_THRESHOLD - fabs(_runtime->samples[0].offset)) / NTP_OFFSET_THRESHOLD * _runtime->poll_interval;
         }
         dlog.info(FPSTR(TAG), F("::getPollInterval: seconds: %f"), seconds);
 
         if (seconds > (NTP_MAX_INTERVAL/_factor))
         {
-            dlog.info(FPSTR(TAG), F("::getPollInterval: maxing interval out at %f days!"), (double)NTP_MAX_INTERVAL/86400.0);
+            dlog.info(FPSTR(TAG), F("::getPollInterval: maxing interval out at %f seconds!"), (double)NTP_MAX_INTERVAL/86400.0);
             seconds = NTP_MAX_INTERVAL/_factor;
         }
         else if (seconds < (NTP_MIN_INTERVAL/_factor))
         {
-            dlog.info(FPSTR(TAG), F("::getPollInterval: min interval is %d min!!"), NTP_MIN_INTERVAL);
+            dlog.info(FPSTR(TAG), F("::getPollInterval: min interval is %d seconds!!"), NTP_MIN_INTERVAL);
             seconds = NTP_MIN_INTERVAL/_factor;
         }
     }
