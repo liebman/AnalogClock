@@ -1011,6 +1011,9 @@ void setup()
     dlog.info(FPSTR(TAG), F("Startup! SynchroClock version: %s"), SYNCHRO_CLOCK_VERSION);
     dlog.info(FPSTR(TAG), F("ESP ChipId: 0x%08x (%u)"), ESP.getChipId(), ESP.getChipId());
     dlog.info(FPSTR(TAG), F("free mem: %u"), free_mem);
+#ifdef SHOW_RTC_SIZES
+    dlog.info(FPSTR(TAG), F("sizes: RTC: %d NTPRunTime: %d NTPSample: %d" ), sizeof(RTCDeepSleepData), sizeof(NTPRunTime), sizeof(NTPSample));
+#endif
     pinMode(SYNC_PIN, INPUT);
     pinMode(CONFIG_PIN, INPUT);
 

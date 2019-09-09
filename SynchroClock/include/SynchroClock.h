@@ -51,7 +51,9 @@
 #define STOP_THE_CLOCK_EXTRA   2      // extra seconds to leave the clock stopped
 
 #define DEFAULT_TZ_OFFSET      0      // default timzezone offset in seconds
+#ifndef DEFAULT_NTP_SERVER
 #define DEFAULT_NTP_SERVER     "0.zoddotcom.pool.ntp.org"
+#endif
 #define DEFAULT_SLEEP_DURATION 28800  // default is 8hrs when we are not using the poll estimate
 
 #define CLOCK_STRETCH_LIMIT    100000 // i2c clock stretch timeout in microseconds

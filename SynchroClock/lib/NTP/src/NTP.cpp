@@ -417,6 +417,9 @@ int NTP::process(uint32_t timestamp, double offset, double delay)
     delay_std = SQRT(delay_std / _runtime->nsamples);
     dlog.info(FPSTR(TAG), F("::process: delay STD DEV: %lf, mean: %lf"), delay_std, mean);
 
+    _runtime->delay_mean = mean;
+    _runtime->delay_stddev = delay_std;
+
     //
     // don't use this offset if its off of the mean by more than one std deviation
     if ((fabs(_runtime->samples[0].delay) - mean) > delay_std)
@@ -545,6 +548,15 @@ void NTP::updateDriftEstimate()
     int n = 0;
     for (int i = 0; i < _runtime->nsamples && _runtime->samples[i].timestamp >= timebase; ++i)
     {
+        //
+        // skip delay outliers - eliminate any delay value outside of one stddev of the mean
+        //
+        if ((fabs(_runtime->samples[i].delay) - _runtime->delay_mean) > _runtime->delay_stddev)
+        {
+            dlog.debug(FPSTR(TAG), F("::updateDriftEstimate: skipping entry %d because delay too far of the mean"), i);
+            continue;
+        }
+
         double x = (double)(_runtime->samples[i].timestamp - timebase);
         double y = _runtime->samples[i].offset;
         dlog.debug(FPSTR(TAG), F("::computeDriftEstimate: x:%-0.8f y:%-0.8f"), x, y);
@@ -555,7 +567,7 @@ void NTP::updateDriftEstimate()
         ++n;
     }
 
-    dlog.debug(FPSTR(TAG), F("::computeDriftEstimate: found %d samples"), n);
+    dlog.debug(FPSTR(TAG), F("::computeDriftEstimate: found %d valid samples"), n);
 
     if (n < 4)
     {

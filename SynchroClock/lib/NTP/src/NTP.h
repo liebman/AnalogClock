@@ -77,6 +77,8 @@ typedef struct ntp_runtime
     uint32_t        update_timestamp;          // last time an update was applied
     double          drift_estimate;            // used to compute the poll interval
     double          poll_interval;             // estimated time between adjustments based on estimated drift
+    double          delay_mean;                // mean value of sample delay
+    double          delay_stddev;              // standard deviation of sample delay
     // cache these to know when we need to lookup the host again and if its been unreachable.
     char            server[NTP_SERVER_LENGTH]; // cached server name
     uint32_t        ip;                        // cached server ip address (only works for tcp v4)
