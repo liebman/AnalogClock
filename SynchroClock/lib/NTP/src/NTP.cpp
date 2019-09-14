@@ -78,7 +78,7 @@ uint32_t NTP::getPollInterval()
 {
     double seconds = 3600/_factor;
 
-    dlog.info(FPSTR(TAG), F("::getPollInterval: drift_estimate: %0.16f poll_interval: %0.16f"), _runtime->drift_estimate, _runtime->poll_interval);
+    dlog.info(FPSTR(TAG), F("::getPollInterval: drift_estimate: %0.16f poll_interval: %0.16f [drift: %0.16f]"), _runtime->drift_estimate, _runtime->poll_interval, _persist->drift);
 
     if (_runtime->poll_interval > 0.0)
     {
@@ -267,8 +267,8 @@ int NTP::makeRequest(IPAddress address, double *offset, double *delay, uint32_t 
 
     *offset     = LFP2D(((int64_t)(T2 - T1) + (int64_t)(T3 - T4)) / 2);
     *delay      = LFP2D( (int64_t)(T4 - T1) - (int64_t)(T3 - T2));
-    *timestamp  = now.seconds;
-    dlog.info(FPSTR(TAG), F("::makeRequest: offset: %0.6lf delay: %0.6lf"), *offset, *delay);
+    *timestamp  = now.seconds + (int32_t)*offset; // timestamp is based on the the "new" time
+    dlog.info(FPSTR(TAG), F("::makeRequest: offset: %0.6lf delay: %0.6lf timestamp: %u (now: %u)"), *offset, *delay, *timestamp, now.seconds);
 
     //
     // this can happen if we timeout on a previous request and the delayed response 
@@ -358,7 +358,6 @@ int NTP::getOffset(const char* server, double *offsetp, int (*getTime)(uint32_t 
 
     dlog.info(FPSTR(TAG), F("::getOffset: nsamples: %d nadjustments: %d"), _runtime->nsamples, _persist->nadjustments);
 
-
     err = process(timestamp, offset, delay);
     if (err)
     {
@@ -366,13 +365,13 @@ int NTP::getOffset(const char* server, double *offsetp, int (*getTime)(uint32_t 
         return err;
     }
 
-    *offsetp = _runtime->samples[0].offset;
+    *offsetp = offset;
 
     //
     // set the update and drift timestamps.
     //
-    _runtime->update_timestamp = _runtime->samples[0].timestamp;
-    _runtime->drift_timestamp  = toEPOCH(_runtime->samples[0].timestamp);
+    _runtime->update_timestamp = timestamp;
+    _runtime->drift_timestamp  = toEPOCH(timestamp);
     return 0;
 }
 
@@ -399,6 +398,14 @@ int NTP::process(uint32_t timestamp, double offset, double delay)
     if (_runtime->nsamples < NTP_SAMPLE_COUNT)
     {
         _runtime->nsamples += 1;
+    }
+
+    // if this is the first sample then set the offset to 0 so that if power was out for a long 
+    // long time it does not interfere with the drift and drift estimate calculations.
+    if (_runtime->nsamples == 1)
+    {
+        _runtime->samples[0].offset = 0.0;
+        dlog.info(FPSTR(TAG), F("::process: first sample!  setting offset to 0.0!"));
     }
 
     // compute the delay mean and std deviation
