@@ -48,6 +48,7 @@ public:
     static uint8_t    parseHour(const char* hour_string);
     static time_t     mktime(struct tm *tmbuf);
     static struct tm* gmtime_r(const time_t *timer, struct tm *tmbuf);
+    static char*      time2str(const time_t t);
     static int        computeUTCOffset(time_t now, int tz_offset, TimeChange* tc, int tc_count);
     static uint8_t    findDOW(uint16_t y, uint8_t m, uint8_t d);
     static uint8_t    findNthDate(uint16_t year, uint8_t month, uint8_t dow, uint8_t nthWeek);

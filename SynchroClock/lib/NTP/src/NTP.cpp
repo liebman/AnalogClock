@@ -8,6 +8,7 @@
 #include "NTP.h"
 
 #include "NTPPrivate.h"
+#include "TimeUtils.h"
 #include <math.h>
 #include <stdlib.h>
 #ifdef ESP8266
@@ -385,15 +386,17 @@ int NTP::process(uint32_t timestamp, double offset, double delay)
             continue;
         }
         _runtime->samples[i + 1] = _runtime->samples[i];
-        dlog.info(FPSTR(TAG), F("::process: samples[%d]: %lf delay:%lf timestamp:%u"),
-                i + 1, _runtime->samples[i+1].offset, _runtime->samples[i+1].delay, _runtime->samples[i+1].timestamp);
+        dlog.info(FPSTR(TAG), F("::process: samples[%d]: %lf delay:%lf timestamp:%u (%s)"),
+                i + 1, _runtime->samples[i+1].offset, _runtime->samples[i+1].delay, _runtime->samples[i+1].timestamp,
+                TimeUtils::time2str(toEPOCH(_runtime->samples[i+1].timestamp)));
     }
 
     _runtime->samples[0].timestamp  = timestamp;
     _runtime->samples[0].offset     = offset;
     _runtime->samples[0].delay      = delay;
-    dlog.info(FPSTR(TAG), F("::process: samples[%d]: %lf delay:%lf timestamp:%u"),
-            0, _runtime->samples[0].offset, _runtime->samples[0].delay, _runtime->samples[0].timestamp);
+    dlog.info(FPSTR(TAG), F("::process: samples[%d]: %lf delay:%lf timestamp:%u (%s)"),
+            0, _runtime->samples[0].offset, _runtime->samples[0].delay, _runtime->samples[0].timestamp,
+            TimeUtils::time2str(toEPOCH(_runtime->samples[0].timestamp)));
 
     if (_runtime->nsamples < NTP_SAMPLE_COUNT)
     {
@@ -479,16 +482,18 @@ void NTP::clock()
                 continue;
             }
             _persist->adjustments[i + 1] = _persist->adjustments[i];
-            dlog.info(FPSTR(TAG), F("::clock: adjustments[%d]: %lf timestamp:%u"),
-                    i + 1, _persist->adjustments[i+1].adjustment, _persist->adjustments[i+1].timestamp);
+            dlog.info(FPSTR(TAG), F("::clock: adjustments[%d]: %lf timestamp:%u (%s)"),
+                    i + 1, _persist->adjustments[i+1].adjustment, _persist->adjustments[i+1].timestamp,
+                    TimeUtils::time2str(toEPOCH(_persist->adjustments[i+1].timestamp)));
         }
 
         // use the newest sample and include any drift we have applied.
         _persist->adjustments[0].timestamp  = _runtime->samples[0].timestamp;
         _persist->adjustments[0].adjustment = _runtime->samples[0].offset + _runtime->drifted;
         _runtime->drifted = 0.0;
-        dlog.info(FPSTR(TAG), F("::clock: adjustments[%d]: %lf timestamp:%u"),
-                0, _persist->adjustments[0].adjustment, _persist->adjustments[0].timestamp);
+        dlog.info(FPSTR(TAG), F("::clock: adjustments[%d]: %lf timestamp:%u (%s)"),
+                0, _persist->adjustments[0].adjustment, _persist->adjustments[0].timestamp,
+                TimeUtils::time2str(toEPOCH(_persist->adjustments[0].timestamp)));
 
         if (_persist->nadjustments < NTP_ADJUSTMENT_COUNT)
         {

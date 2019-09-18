@@ -34,7 +34,7 @@ typedef struct ntp_adjustment
 } NTPAdjustment;
 
 #define NTP_SERVER_LENGTH         64      // max length+1 of ntp server name
-#define NTP_SAMPLE_COUNT          8       // number of NTP samples to keep for std devation filtering
+#define NTP_SAMPLE_COUNT          10      // number of NTP samples to keep for std devation filtering
 #define NTP_ADJUSTMENT_COUNT      8       // number of NTP adjustments to keep for least squares drift
 #define NTP_OFFSET_THRESHOLD      0.02    // 20ms offset minimum for adjust!
 #ifndef NTP_MAX_INTERVAL
@@ -44,7 +44,7 @@ typedef struct ntp_adjustment
 #define NTP_MIN_INTERVAL          3600    // minimum computed interval
 #endif
 #ifndef NTP_SAMPLE_INTERVAL
-#define NTP_SAMPLE_INTERVAL       (3600/(NTP_SAMPLE_COUNT)) // default to get the first set of samples in an hour
+#define NTP_SAMPLE_INTERVAL       (5*3600/(NTP_SAMPLE_COUNT)) // default to get the first set of samples in 4 hours
 #endif
 #ifndef NTP_UNREACH_LAST_INTERVAL
 #define NTP_UNREACH_LAST_INTERVAL 3600    // last NTP was unreachable

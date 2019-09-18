@@ -329,6 +329,17 @@ struct tm *TimeUtils::gmtime_r(const time_t *timer, struct tm *tmbuf)
   return tmbuf;
 }
 
+char* TimeUtils::time2str(const time_t t)
+{
+    static char time_storage[30];
+    char* s = ctime_r(&t, time_storage);
+    if (s != nullptr && strlen(s) > 0)
+    {
+        s[strlen(s)-1] = '\0';
+    }
+    return s;
+}
+
 //
 // The functions findDOW & findNthDate are from:
 //
