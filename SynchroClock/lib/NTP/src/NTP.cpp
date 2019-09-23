@@ -17,7 +17,7 @@
 
 static PROGMEM const char TAG[] = "NTP";
 
-void dumpNTPPacket(NTPPacket* ntp, const char* label)
+static void dumpNTPPacket(NTPPacket* ntp, const char* label)
 {
     dlog.trace(FPSTR(TAG), F("::%s: size:       %u"), label, sizeof(*ntp));
     dlog.trace(FPSTR(TAG), F("::%s: firstbyte:  0x%02x"), label, *(uint8_t*)ntp);
@@ -98,7 +98,7 @@ uint32_t NTP::getPollInterval()
 
         if (seconds > (NTP_MAX_INTERVAL/_factor))
         {
-            dlog.info(FPSTR(TAG), F("::getPollInterval: maxing interval out at %f seconds!"), (double)NTP_MAX_INTERVAL/86400.0);
+            dlog.info(FPSTR(TAG), F("::getPollInterval: maxing interval out at %d seconds!"), NTP_MAX_INTERVAL);
             seconds = NTP_MAX_INTERVAL/_factor;
         }
         else if (seconds < (NTP_MIN_INTERVAL/_factor))
@@ -376,6 +376,18 @@ int NTP::getOffset(const char* server, double *offsetp, int (*getTime)(uint32_t 
     return 0;
 }
 
+/**
+ * @brief process the result of NTP request
+ * 
+ * Add offiset/delay/timestamp to samples. Update sample mean, standard deviation,
+ * reacability, and drift estimate.  Save as adjustent if the dealay was not more
+ * than one standard deviation from mean.
+ *
+ * @param timestamp NTP timestamp of sample
+ * @param offset time offset
+ * @param delay network delay of retrieving sample
+ * @return 0 if sample should be used to adjust clock, -1 otherwise.
+*/
 int NTP::process(uint32_t timestamp, double offset, double delay)
 {
     int i;
@@ -468,11 +480,16 @@ int NTP::process(uint32_t timestamp, double offset, double delay)
     return 0;
 }
 
-//
-// save adjustment samples & compute drift
-//
+/**
+ * @brief save adjustment value and com[ute drift
+ * 
+*/
 void NTP::clock()
 {
+    //
+    // We only keep adjustments made after we have a full set of samples.  That way we
+    // have have, hopefully, a reasonable expectation of filtering out crazy values that
+    // are generated from wild swinging offsets sometimes caused by one long delay.
     if (_runtime->nsamples >= NTP_SAMPLE_COUNT )
     {
         for (int i = _persist->nadjustments - 1; i >= 0; --i)
@@ -513,16 +530,23 @@ void NTP::clock()
     }
 }
 
-//
-// drift is the adjustment "per second" converted to parts per million
-//
-int NTP::computeDrift(double* drift_result)
+/**
+ * @brief compute real world drift based on adjustmants made.
+ *
+ * drift is the adjustment "per second" converted to parts per million based on
+ *
+ * @param drift_result location to store computed drift
+*/
+void NTP::computeDrift(double* drift_result)
 {
     double a = 0.0;
 
     uint32_t seconds = 0;
     for(int i = 0; i <= _persist->nadjustments-2; ++i)
     {
+        // only process adjustment timestamps that are valid.  When there has been a power loss
+        // the most recient adjustment timestamp is zeroed because we don't know how long the power
+        // was out and therefore can't use the interval for drift calculations.
         if (_persist->adjustments[i].timestamp != 0 &&  _persist->adjustments[i+1].timestamp != 0)
         {
             // valid sample!
@@ -541,10 +565,15 @@ int NTP::computeDrift(double* drift_result)
     {
         *drift_result = drift;
     }
-
-    return 0;
 }
 
+/**
+ * @brief compute estimated drift based on last ntp samples
+ * 
+ * Uses only samples whose delay was within one standard deviation of the mean delay to
+ * compute the linear least squares of the timestamps and offsets.  The slope of this
+ * line is used to compute a drift estimate in parts per million.
+*/
 void NTP::updateDriftEstimate()
 {
     uint32_t timebase = _runtime->update_timestamp; // we only look at timestamps after this.

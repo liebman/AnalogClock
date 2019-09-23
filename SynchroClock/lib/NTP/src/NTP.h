@@ -123,7 +123,7 @@ protected:
     int  makeRequest(IPAddress address, double *offset, double *delay, uint32_t *timestamp, int (*getTime)(uint32_t *result), const unsigned int bestof);
     int  process(uint32_t timestamp, double offset, double delay);
     void clock();
-    int  computeDrift(double* drift_result);
+    void computeDrift(double* drift_result);
     void updateDriftEstimate();
 private:
     NTPRunTime *_runtime;
