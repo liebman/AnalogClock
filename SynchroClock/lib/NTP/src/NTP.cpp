@@ -518,13 +518,10 @@ void NTP::clock()
         }
 
         //
-        // calculate drift if we have some NTP_ADJUSTMENT_COUNT adjustments
+        // calculate drift (will only update if there are enough valid intervals)
         //
-        if (_persist->nadjustments >= 4)
-        {
-            computeDrift(&_persist->drift);
-            dlog.info(FPSTR(TAG), F("::clock: drift: %f"), _persist->drift);
-        }
+        computeDrift(&_persist->drift);
+
         dlog.debug(FPSTR(TAG), F("::clock: saving 'persist' data!"));
         _savePersist();
     }
@@ -533,14 +530,15 @@ void NTP::clock()
 /**
  * @brief compute real world drift based on adjustmants made.
  *
- * drift is the adjustment "per second" converted to parts per million based on
+ * drift is the adjustment "per second" converted to parts per million based on at least
+ * 4 valid intervals. An interval is valid if both the start and end timestamps are not 0.
  *
  * @param drift_result location to store computed drift
 */
 void NTP::computeDrift(double* drift_result)
 {
     double a = 0.0;
-
+    int valid_count = 0;
     uint32_t seconds = 0;
     for(int i = 0; i <= _persist->nadjustments-2; ++i)
     {
@@ -550,20 +548,27 @@ void NTP::computeDrift(double* drift_result)
         if (_persist->adjustments[i].timestamp != 0 &&  _persist->adjustments[i+1].timestamp != 0)
         {
             // valid sample!
+            valid_count += 1;
             seconds += _persist->adjustments[i].timestamp - _persist->adjustments[i+1].timestamp;
             a += _persist->adjustments[i].adjustment;
             dlog.debug(FPSTR(TAG), F("::computeDrift: using adjustment %d and %d delta: %d adj:%f"), i, i+1, _persist->adjustments[i].timestamp - _persist->adjustments[i+1].timestamp, _persist->adjustments[i].adjustment);
         }
     }
-    a = a / (double)seconds;
-    double drift = a * 1000000;
-    dlog.debug(FPSTR(TAG), F("::computeDrift: seconds: %d a: %f drift: %f"), seconds, a, drift);
 
-    dlog.info(FPSTR(TAG), F("::computeDrift: drift: %f PPM"), drift);
+    dlog.info(FPSTR(TAG), F("::computeDrift: valid intervals: %d"), valid_count);
 
-    if (drift_result != NULL)
+    // only compute a new value if we have enough valid intervals.
+    if (valid_count >= 4)
     {
-        *drift_result = drift;
+        a = a / (double)seconds;
+        double drift = a * 1000000;
+
+        dlog.info(FPSTR(TAG), F("::computeDrift: drift: %f PPM"), drift);
+
+        if (drift_result != NULL)
+        {
+            *drift_result = drift;
+        }
     }
 }
 
