@@ -1,0 +1,41 @@
+name: PlatformIO CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: '30 10 * * 6'
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v2
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: Build I2CAnalogClock
+      run: |
+        cd I2CAnalogClock
+        pio run
+    - name: Build SynchroClock
+      run: |
+        cd SynchroClock
+        pio run -e la -e staging
