@@ -38,4 +38,4 @@ jobs:
     - name: Build SynchroClock
       run: |
         cd SynchroClock
-        pio run -e la -e staging
+        pio run
