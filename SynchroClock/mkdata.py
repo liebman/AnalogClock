@@ -1,14 +1,11 @@
+#!/usr/bin/env python3
+
 Import("env", "projenv")
 import csv
 import os
 from subprocess import Popen, PIPE, call
-import urllib2
-try:
-    # for Python 2.x
-    from StringIO import StringIO
-except ImportError:
-    # for Python 3.x
-    from io import StringIO
+from urllib.request import urlopen
+from io import StringIO
 
 #
 # Dump build environment (for debug purpose)
@@ -25,7 +22,7 @@ def generate_ssl_data(source, target, env):
     # Load the manes[] and pems[] array from the URL
     names = []
     pems = []
-    response = urllib2.urlopen(mozurl)
+    response = urlopen(mozurl)
     csvData = response.read()
     csvReader = csv.reader(StringIO(csvData))
     for row in csvReader:
@@ -44,9 +41,9 @@ def generate_ssl_data(source, target, env):
     idx = 0
     # Process the text PEM using openssl into DER files
     for i in range(0, len(pems)):
-        certName = "data/ca_%03d.der" % (idx);
+        certName = "data/ca_%03d.der" % (idx)
         thisPem = pems[i].replace("'", "")
-        print( names[i] + " -> " + certName)
+        print(names[i] + " -> " + certName)
         ssl = Popen(['openssl','x509','-inform','PEM','-outform','DER','-out', certName], shell = False, stdin = PIPE)
         pipe = ssl.stdin
         pipe.write(thisPem)
@@ -67,7 +64,7 @@ def generate_ssl_data(source, target, env):
         os.unlink(der)
 
 
-print("Current build targets", map(str, BUILD_TARGETS))
+print("Current build targets", list(map(str, BUILD_TARGETS)))
 
 # custom action before building SPIFFS image. For example, compress HTML, etc.
 env.AddPreAction("$BUILD_DIR/spiffs.bin", generate_ssl_data)
