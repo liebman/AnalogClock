@@ -3,8 +3,6 @@ name: PlatformIO CI
 on:
   push:
   pull_request:
-  schedule:
-    - cron: '30 10 * * 6'
 
 jobs:
   build:
