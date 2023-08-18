@@ -1,6 +1,6 @@
 # AnalogClock 2.X
 
-Project to sync analog clocks to a few milliseconds using NTP for time synchronization. Details of operation can be found in this [blog post](https://engineering.taboola.com/analog-clocks-ntp/)
+Project to sync analog clocks to a few milliseconds using NTP for time synchronization. Details of operation can be found in this [blog post](https://blog.taboola.com/analog-clocks-ntp/)
 
 [![Build Status](https://travis-ci.org/liebman/AnalogClock.svg?branch=master)](https://travis-ci.org/liebman/AnalogClock)
 
